@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agdental
+      POSTGRES_PASSWORD: agdental
+      POSTGRES_DB: agdental
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agdental"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Local compose uses the bundled Postgres. Override in production.
+      DATABASE_URL: postgresql://agdental:agdental@db:5432/agdental
+      DIRECT_URL: postgresql://agdental:agdental@db:5432/agdental
+      AUTH_SECRET: ${AUTH_SECRET:-dev-secret-change-me-please-32bytes}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-owner@agdentallab.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      # Optional services — leave unset to disable gracefully.
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+    ports:
+      - "3000:3000"
+    # Apply migrations + seed the admin, then start the server.
+    command: sh -c "npx prisma migrate deploy && npx tsx prisma/seed.ts && node server.js"
+
+volumes:
+  pgdata:

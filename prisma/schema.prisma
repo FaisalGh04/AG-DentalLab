@@ -1,0 +1,108 @@
+// AG Dental Lab — Prisma schema
+// PostgreSQL (Supabase). Run `pnpm db:push` or `pnpm db:migrate`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------------
+// Single admin (the lab owner). No multi-admin, no doctor accounts.
+// ------------------------------------------------------------------
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+// ------------------------------------------------------------------
+// Case status lifecycle.
+// ------------------------------------------------------------------
+enum CaseStatus {
+  RECEIVED
+  IN_PROGRESS
+  PRODUCTION
+  COMPLETED
+}
+
+enum CaseCategory {
+  FIXED_RESTORATIONS
+  IMPLANT_SOLUTIONS
+  ORAL_APPLIANCES
+  DIGITAL_DENTISTRY
+}
+
+// ------------------------------------------------------------------
+// A dental case. Doctors search these by patient full name only.
+// ------------------------------------------------------------------
+model PatientCase {
+  id                     String       @id @default(cuid())
+  patientFirstName       String       @map("patient_first_name")
+  patientLastName        String       @map("patient_last_name")
+  // Denormalized lowercased full name for fast, case-insensitive lookup.
+  patientFullNameNorm    String       @map("patient_full_name_norm")
+  doctorName             String       @map("doctor_name")
+  caseType               String       @map("case_type")
+  category               CaseCategory
+  currentStatus          CaseStatus   @default(RECEIVED) @map("current_status")
+  estimatedCompletionDate DateTime?   @map("estimated_completion_date")
+  notes                  String?
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  progress CaseProgress[]
+  images   CaseImage[]
+
+  // Indexes tuned for the two hot paths: public name search + admin list.
+  @@index([patientFullNameNorm])
+  @@index([currentStatus])
+  @@index([createdAt])
+  @@index([doctorName])
+  @@map("patient_cases")
+}
+
+// ------------------------------------------------------------------
+// Ordered production steps for a case. Admin adds/updates freely.
+// ------------------------------------------------------------------
+model CaseProgress {
+  id          String   @id @default(cuid())
+  caseId      String   @map("case_id")
+  stepTitle   String   @map("step_title")
+  description String?
+  completed   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("case_progress")
+}
+
+// ------------------------------------------------------------------
+// Uploaded case images (stored in R2/S3; only the URL is persisted).
+// ------------------------------------------------------------------
+model CaseImage {
+  id        String   @id @default(cuid())
+  caseId    String   @map("case_id")
+  imageUrl  String   @map("image_url")
+  key       String?  // storage object key, for deletion
+  caption   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("case_images")
+}
