@@ -26,11 +26,11 @@ export default async function AdminDashboard() {
   ]);
 
   const cards = [
-    { label: "Total Cases", value: stats.total, icon: FolderKanban, tint: "text-brand-600 bg-brand-50" },
-    { label: "Received", value: stats.received, icon: Inbox, tint: "text-slate-600 bg-slate-100" },
-    { label: "In Progress", value: stats.inProgress, icon: Loader, tint: "text-sky-600 bg-sky-50" },
-    { label: "Production", value: stats.production, icon: Factory, tint: "text-brand-700 bg-brand-100" },
-    { label: "Completed", value: stats.completed, icon: CheckCircle2, tint: "text-green-600 bg-green-50" },
+    { label: "Total Cases", value: stats.total, icon: FolderKanban, tint: "bg-brand-50 text-brand-600 ring-brand-100" },
+    { label: "Received", value: stats.received, icon: Inbox, tint: "bg-slate-100 text-slate-600 ring-slate-200" },
+    { label: "In Progress", value: stats.inProgress, icon: Loader, tint: "bg-sky-50 text-sky-600 ring-sky-100" },
+    { label: "Production", value: stats.production, icon: Factory, tint: "bg-brand-100 text-brand-700 ring-brand-200" },
+    { label: "Completed", value: stats.completed, icon: CheckCircle2, tint: "bg-green-50 text-green-600 ring-green-100" },
   ];
 
   return (
@@ -56,20 +56,22 @@ export default async function AdminDashboard() {
           const Icon = c.icon;
           return (
             <Card key={c.label} className="group p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${c.tint}`}>
+              <div className={`flex h-11 w-11 items-center justify-center rounded-full ring-1 ring-inset ${c.tint}`}>
                 <Icon className="h-5 w-5" />
               </div>
-              <p className="mt-4 font-display text-3xl font-bold text-ink">
+              <p className="mt-4 font-display text-3xl font-bold tabular-nums text-ink">
                 {c.value.toLocaleString()}
               </p>
-              <p className="text-sm text-muted-foreground">{c.label}</p>
+              <p className="mt-0.5 text-sm font-medium text-muted-foreground">
+                {c.label}
+              </p>
             </Card>
           );
         })}
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border/80 bg-white/50 p-6">
+        <div className="flex items-center justify-between border-b border-border/70 bg-brand-50/40 p-6">
           <h2 className="font-display text-lg font-semibold text-ink">
             Recent Cases
           </h2>
@@ -80,7 +82,7 @@ export default async function AdminDashboard() {
           </Button>
         </div>
 
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border/60">
           {recent.items.length === 0 && (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">

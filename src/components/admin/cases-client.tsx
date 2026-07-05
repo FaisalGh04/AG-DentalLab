@@ -167,7 +167,7 @@ export function CasesClient() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/80 bg-brand-50/70 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border/60 bg-brand-50/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                 <th className="px-5 py-3 font-semibold">Patient</th>
                 <th className="px-5 py-3 font-semibold">Tracking ID</th>
                 <th className="px-5 py-3 font-semibold">Doctor</th>
@@ -177,7 +177,7 @@ export function CasesClient() {
                 <th className="px-5 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/60">
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/60">
@@ -223,7 +223,7 @@ export function CasesClient() {
               )}
 
               {data?.items.map((c) => (
-                <tr key={c.id} className="group transition-colors hover:bg-brand-50/55">
+                <tr key={c.id} className="group transition-colors hover:bg-brand-50/70">
                   <td className="px-5 py-4">
                     <Link
                       href={`/admin/cases/${c.id}`}
