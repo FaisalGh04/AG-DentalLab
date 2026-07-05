@@ -30,20 +30,26 @@ export function TextReveal({
   className,
   delay = 0,
   once = true,
+  inView = true,
 }: {
   text: string;
   className?: string;
   delay?: number;
   once?: boolean;
+  /** When false, reveal fires on mount instead of on scroll-into-view.
+   *  Use for above-the-fold content (e.g. the hero headline). */
+  inView?: boolean;
 }) {
   const words = text.split(" ");
+  const trigger = inView
+    ? { whileInView: "show" as const, viewport: { once, margin: "-12% 0px" } }
+    : { animate: "show" as const };
   return (
     <span className={cn("inline", className)}>
       <motion.span
         variants={container}
         initial="hidden"
-        whileInView="show"
-        viewport={{ once, margin: "-12% 0px" }}
+        {...trigger}
         transition={{ delayChildren: delay }}
         className="inline"
         aria-hidden

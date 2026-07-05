@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 function StaticFallback() {
   return (
     <div className="absolute inset-0 grid place-items-center">
-      <div className="relative flex flex-col items-center gap-3">
-        <div className="h-44 w-44 animate-pulse rounded-full bg-brand-200/45 blur-2xl" />
-        <div className="absolute top-5 h-40 w-32 rounded-[45%_45%_38%_38%/48%_48%_52%_52%] border border-brand-200/70 bg-gradient-to-b from-white/95 via-[#f8f6ef]/95 to-[#e9efe9]/90 shadow-card" />
+      <div className="relative flex items-center justify-center">
+        <div className="h-44 w-44 animate-pulse rounded-full bg-brand-500/25 blur-2xl" />
+        <div className="absolute h-40 w-32 rounded-[45%_45%_38%_38%/48%_48%_52%_52%] border border-brand-300/25 bg-gradient-to-b from-[#f8f6ef]/25 via-[#dceae1]/12 to-transparent backdrop-blur-sm" />
       </div>
     </div>
   );
