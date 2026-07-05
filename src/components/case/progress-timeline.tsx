@@ -7,19 +7,19 @@ import { cn } from "@/lib/utils";
 export function ProgressTimeline({ steps }: { steps: ProgressDTO[] }) {
   if (steps.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <div className="rounded-xl border border-dashed border-border bg-brand-50/40 p-5 text-sm text-muted-foreground">
         No production steps have been recorded yet.
-      </p>
+      </div>
     );
   }
 
   return (
-    <ol className="relative space-y-6 border-l-2 border-border pl-6">
+    <ol className="relative space-y-5 border-l-2 border-brand-100 pl-6">
       {steps.map((step) => (
         <li key={step.id} className="relative">
           <span
             className={cn(
-              "absolute -left-[33px] flex h-6 w-6 items-center justify-center rounded-full border-2",
+              "absolute -left-[33px] flex h-6 w-6 items-center justify-center rounded-full border-2 shadow-inner-glow",
               step.completed
                 ? "border-brand-600 bg-brand-600 text-white"
                 : "border-border bg-background text-muted-foreground",
@@ -31,7 +31,7 @@ export function ProgressTimeline({ steps }: { steps: ProgressDTO[] }) {
               <Circle className="h-2 w-2 fill-current" />
             )}
           </span>
-          <div className="flex flex-col gap-0.5">
+          <div className="rounded-xl border border-border/70 bg-white/70 p-4 shadow-inner-glow">
             <p
               className={cn(
                 "font-semibold",

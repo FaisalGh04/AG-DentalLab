@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export function MobileTopbar() {
   return (
-    <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-card/80 px-4 py-3 backdrop-blur lg:hidden">
+    <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-white/[0.82] px-4 py-3 shadow-soft backdrop-blur lg:hidden">
       <Link href="/admin">
         <Logo className="h-8" withWordmark />
       </Link>

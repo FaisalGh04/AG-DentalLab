@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SITE } from "@/lib/constants";
@@ -10,10 +10,13 @@ const inter = Inter({
   display: "swap",
 });
 
-// The display font (--font-geist) aliases to Inter by default. To use the
-// real Geist, install the `geist` package and swap GeistSans.variable in.
-// See README → "Fonts". Kept as one dependency-free variable here.
-const displayFontVariable = inter.variable;
+// Display face for headings — geometric, modern-luxury (Linear/Vercel register).
+const sora = Sora({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -42,18 +45,32 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: `${SITE.name} logo`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE.name} — ${SITE.tagline}`,
     description: SITE.description,
+    images: ["/og-image.png"],
   },
   robots: { index: true, follow: true },
-  icons: { icon: "/favicon.svg" },
+  icons: {
+    icon: [
+      { url: "/ag-dental-lab-icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0D9488",
+  themeColor: "#275F4D",
   width: "device-width",
   initialScale: 1,
 };
@@ -62,7 +79,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${displayFontVariable}`}>
+    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
       <body className="min-h-dvh antialiased">
         <Providers>{children}</Providers>
       </body>

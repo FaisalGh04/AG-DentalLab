@@ -55,7 +55,7 @@ export function useCreateCase() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CaseCreateInput) =>
-      apiFetch<{ id: string }>("/api/admin/cases", {
+      apiFetch<{ id: string; trackingId: string }>("/api/admin/cases", {
         method: "POST",
         body: JSON.stringify(input),
       }),

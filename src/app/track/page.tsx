@@ -8,7 +8,7 @@ import { TrackClient } from "@/components/track/track-client";
 export const metadata: Metadata = {
   title: "Track Your Case",
   description:
-    "Enter a patient's full name to see the live status and production timeline of their dental case at AG Dental Lab.",
+    "Enter your AG Dental Lab tracking ID to see live case status and production timeline.",
   alternates: { canonical: "/track" },
 };
 
@@ -36,8 +36,8 @@ export default function TrackPage() {
               Track your case in seconds
             </h1>
             <p className="mt-4 text-muted-foreground">
-              Enter the patient&apos;s full name to view real-time status and the
-              full production timeline. No account required.
+              Enter the tracking ID provided by the lab to view real-time status
+              and the full production timeline. No account required.
             </p>
           </div>
 

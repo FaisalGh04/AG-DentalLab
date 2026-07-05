@@ -14,7 +14,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-dvh bg-muted/20">
+    <div className="flex min-h-dvh bg-[linear-gradient(135deg,rgba(243,248,245,0.92),rgba(255,255,255,0.78))]">
       <Sidebar adminName={session.user.name ?? session.user.email ?? "Admin"} />
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileTopbar />

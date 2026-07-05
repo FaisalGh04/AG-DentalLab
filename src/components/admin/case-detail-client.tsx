@@ -11,6 +11,7 @@ import {
   Stethoscope,
   Package,
   Tag,
+  Hash,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { StatusStepper } from "@/components/case/status-stepper";
 import { StatusBadge } from "@/components/case/status-badge";
+import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { ProgressManager } from "@/components/admin/progress-manager";
@@ -88,7 +90,7 @@ export function CaseDetailClient({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link
           href="/admin/cases"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-700"
@@ -111,7 +113,7 @@ export function CaseDetailClient({ id }: { id: string }) {
 
       {/* Header card */}
       <Card className="overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-border bg-muted/30 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border/80 bg-brand-50/60 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Patient
@@ -122,8 +124,9 @@ export function CaseDetailClient({ id }: { id: string }) {
             <p className="mt-0.5 text-sm text-muted-foreground">
               Created {formatDate(kase.createdAt)}
             </p>
+            <TrackingIdCopy trackingId={kase.trackingId} className="mt-3" />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <StatusBadge status={kase.currentStatus} />
             <Select
               value={kase.currentStatus}
@@ -147,8 +150,9 @@ export function CaseDetailClient({ id }: { id: string }) {
           <StatusStepper status={kase.currentStatus} />
         </div>
 
-        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-5">
           <Detail icon={Stethoscope} label="Doctor" value={kase.doctorName} />
+          <Detail icon={Hash} label="Tracking ID" value={kase.trackingId} />
           <Detail icon={Package} label="Case Type" value={kase.caseType} />
           <Detail
             icon={Tag}
@@ -163,7 +167,7 @@ export function CaseDetailClient({ id }: { id: string }) {
         </div>
 
         {kase.notes && (
-          <div className="border-t border-border p-6">
+          <div className="border-t border-border/80 bg-white/50 p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Notes
             </p>
@@ -201,12 +205,12 @@ function Detail({
   label,
   value,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
 }) {
   return (
-    <div className="bg-card p-5">
+    <div className="bg-card/88 p-5">
       <div className="flex items-center gap-2 text-muted-foreground">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-semibold uppercase tracking-wider">

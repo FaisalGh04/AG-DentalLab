@@ -7,11 +7,13 @@ import {
   CheckCircle2,
   ArrowRight,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import { getDashboardStats, listCases } from "@/lib/case-service";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/case/status-badge";
+import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { formatDate } from "@/lib/utils";
 import { CATEGORY_META } from "@/lib/constants";
 
@@ -53,7 +55,7 @@ export default async function AdminDashboard() {
         {cards.map((c) => {
           const Icon = c.icon;
           return (
-            <Card key={c.label} className="p-5">
+            <Card key={c.label} className="group p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow">
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${c.tint}`}>
                 <Icon className="h-5 w-5" />
               </div>
@@ -66,8 +68,8 @@ export default async function AdminDashboard() {
         })}
       </div>
 
-      <Card>
-        <div className="flex items-center justify-between border-b border-border p-6">
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border/80 bg-white/50 p-6">
           <h2 className="font-display text-lg font-semibold text-ink">
             Recent Cases
           </h2>
@@ -80,22 +82,31 @@ export default async function AdminDashboard() {
 
         <div className="divide-y divide-border">
           {recent.items.length === 0 && (
-            <p className="p-6 text-sm text-muted-foreground">
-              No cases yet. Create your first case to get started.
-            </p>
+            <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+              <p className="mt-4 font-semibold text-ink">No cases yet</p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Create the first case and it will appear here for quick access.
+              </p>
+            </div>
           )}
           {recent.items.map((c) => (
             <Link
               key={c.id}
               href={`/admin/cases/${c.id}`}
-              className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-muted/40"
+              className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-brand-50/60"
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">
-                  {c.patientFirstName} {c.patientLastName}
-                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <p className="truncate font-semibold text-ink">
+                    {c.patientFirstName} {c.patientLastName}
+                  </p>
+                  <TrackingIdCopy trackingId={c.trackingId} />
+                </div>
                 <p className="truncate text-sm text-muted-foreground">
-                  {c.caseType} • {CATEGORY_META[c.category].label} • {c.doctorName}
+                  {c.caseType} / {CATEGORY_META[c.category].label} / {c.doctorName}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-4">

@@ -57,13 +57,13 @@ export function ImageManager({
 
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="font-display text-lg font-semibold text-ink">
             Case Images
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            PNG, JPG, WebP or AVIF — up to 8MB each.
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            PNG, JPG, WebP or AVIF - up to 8MB each.
           </p>
         </div>
         <input
@@ -92,7 +92,7 @@ export function ImageManager({
         {images.length === 0 && !upload.isPending && (
           <button
             onClick={() => inputRef.current?.click()}
-            className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-12 text-muted-foreground transition-colors hover:border-brand-300 hover:text-brand-600"
+            className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/35 py-12 text-muted-foreground transition-colors hover:border-brand-300 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             <ImagePlus className="h-8 w-8" />
             <span className="text-sm font-medium">Click to add images</span>
@@ -102,7 +102,7 @@ export function ImageManager({
         {images.map((img) => (
           <div
             key={img.id}
-            className="group relative aspect-square overflow-hidden rounded-xl border border-border"
+            className="group relative aspect-square overflow-hidden rounded-xl border border-border shadow-inner-glow"
           >
             <Image
               src={img.imageUrl}
@@ -124,7 +124,7 @@ export function ImageManager({
         ))}
 
         {upload.isPending && (
-          <div className="flex aspect-square items-center justify-center rounded-xl border border-border bg-muted">
+          <div className="flex aspect-square items-center justify-center rounded-xl border border-brand-200 bg-brand-50/50">
             <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
           </div>
         )}

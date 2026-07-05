@@ -4,26 +4,31 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 174 84% 32%; /* #0D9488 */
+    --background: 43 31% 97%;
+    --foreground: 150 14% 8%;
+    --card: 45 33% 99%;
+    --card-foreground: 150 14% 8%;
+    --popover: 45 33% 99%;
+    --popover-foreground: 150 14% 8%;
+    --primary: 157 42% 26%; /* #275F4D */
     --primary-foreground: 0 0% 100%;
-    --secondary: 173 80% 40%; /* #14B8A6 */
+    --secondary: 156 30% 47%; /* #53886F */
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 222 47% 11%; /* #0F172A */
+    --muted: 42 20% 93%;
+    --muted-foreground: 150 6% 42%;
+    --accent: 150 14% 8%; /* #121816 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 174 84% 32%;
-    --radius: 0.9rem;
+    --border: 42 16% 86%;
+    --input: 42 16% 86%;
+    --ring: 157 42% 26%;
+    --radius: 1rem;
+    /* Gold — accent only. */
+    --gold: 38 44% 46%; /* #A98643 */
+    /* Alive surface palette (brief) */
+    --bg-main: 111 22% 94%; /* #ECF3EB */
+    --bg-section: 126 18% 89%; /* #DCE8DD */
   }
 
   .dark {
@@ -33,7 +38,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 173 80% 40%;
+    --primary: 151 31% 58%;
     --primary-foreground: 222 47% 6%;
     --secondary: 174 72% 46%;
     --secondary-foreground: 222 47% 6%;
@@ -61,6 +66,13 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "cv11", "ss01";
+    background-color: hsl(var(--bg-main));
+    background-image:
+      radial-gradient(circle at 12% -8%, rgba(123, 183, 157, 0.28), transparent 30rem),
+      radial-gradient(circle at 88% 2%, rgba(39, 95, 77, 0.14), transparent 32rem),
+      radial-gradient(circle at 68% 108%, rgba(169, 134, 67, 0.08), transparent 34rem),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(236, 243, 235, 0.9));
+    background-attachment: fixed;
   }
   ::selection {
     @apply bg-brand-200 text-brand-900;
@@ -69,19 +81,55 @@
 
 @layer components {
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/60 shadow-soft;
+    @apply border border-white/70 bg-white/[0.72] shadow-soft backdrop-blur-2xl;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      0 18px 48px -28px rgba(39, 95, 77, 0.36);
   }
   .glass-dark {
-    @apply bg-ink/60 backdrop-blur-xl border border-white/10;
+    @apply border border-white/10 bg-ink/70 backdrop-blur-2xl;
   }
   .container-tight {
-    @apply mx-auto w-full max-w-6xl px-6;
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8;
   }
   .text-gradient {
     @apply bg-brand-gradient bg-clip-text text-transparent;
   }
   .section-eyebrow {
-    @apply inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-brand-700;
+    @apply inline-flex items-center gap-2 rounded-full border border-brand-200/80 bg-white/[0.72] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 shadow-inner-glow;
+  }
+  .premium-panel {
+    @apply rounded-[1.5rem] border border-white/70 bg-white/[0.76] shadow-card shadow-inner-glow backdrop-blur-xl;
+  }
+  .brand-orb {
+    @apply pointer-events-none absolute rounded-full blur-3xl;
+  }
+  /* Gold eyebrow variant for accent moments. */
+  .section-eyebrow-gold {
+    @apply inline-flex items-center gap-2 rounded-full border border-gold-200/80 bg-gold-50/70 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-gold-700 shadow-inner-glow;
+  }
+  /* Animated gold gradient text — reserve for small accent words. */
+  .text-shine-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      100deg,
+      #8c6c35 0%,
+      #c39e53 30%,
+      #f0dfb6 50%,
+      #c39e53 70%,
+      #8c6c35 100%
+    );
+    background-size: 200% auto;
+    animation: gold-sheen 6s linear infinite;
+  }
+  /* Subtle film grain to keep large surfaces from feeling flat. */
+  .grain::after {
+    content: "";
+    @apply pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .hairline {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-brand-300/60 to-transparent;
   }
 }
 

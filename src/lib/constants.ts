@@ -1,4 +1,5 @@
-import type { CaseStatus, CaseCategory } from "@prisma/client";
+import type { CaseStatus } from "@prisma/client";
+export { CATEGORY_META, CASE_CATEGORY_ORDER } from "@/lib/case-types";
 
 export const SITE = {
   name: "AG Dental Lab",
@@ -50,16 +51,6 @@ export const STATUS_ORDER: CaseStatus[] = [
   "PRODUCTION",
   "COMPLETED",
 ];
-
-export const CATEGORY_META: Record<
-  CaseCategory,
-  { label: string }
-> = {
-  FIXED_RESTORATIONS: { label: "Fixed Restorations" },
-  IMPLANT_SOLUTIONS: { label: "Implant Solutions" },
-  ORAL_APPLIANCES: { label: "Oral Appliances" },
-  DIGITAL_DENTISTRY: { label: "Digital Dentistry" },
-};
 
 /** Suggested production steps the admin can one-click add. */
 export const SUGGESTED_STEPS = [

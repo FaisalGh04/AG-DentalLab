@@ -1,11 +1,30 @@
 import { Redis } from "@upstash/redis";
 
+function isConfiguredUpstashUrl(value: string | undefined) {
+  if (!value) return false;
+  if (value.includes("[") || value.includes("]")) return false;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && !!parsed.hostname;
+  } catch {
+    return false;
+  }
+}
+
+function isConfiguredUpstashToken(value: string | undefined) {
+  if (!value) return false;
+  if (value.includes("[") || value.includes("]")) return false;
+  return true;
+}
+
 /**
  * Upstash Redis client. If env vars are missing (e.g. local dev without
  * Redis) we fall back to `null` and callers degrade gracefully.
  */
 export const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  isConfiguredUpstashUrl(process.env.UPSTASH_REDIS_REST_URL) &&
+  isConfiguredUpstashToken(process.env.UPSTASH_REDIS_REST_TOKEN)
     ? new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,

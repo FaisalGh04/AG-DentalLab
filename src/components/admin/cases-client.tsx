@@ -13,6 +13,7 @@ import {
   Trash2,
   Eye,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,15 +34,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/case/status-badge";
+import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAdminUI } from "@/store/admin-ui";
 import { useCaseList, useDeleteCase } from "@/hooks/use-cases";
-import { CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { CASE_CATEGORY_ORDER, CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { CaseCategory, CaseStatus } from "@prisma/client";
-
-const CATEGORIES = Object.keys(CATEGORY_META) as CaseCategory[];
 
 export function CasesClient() {
   const params = useSearchParams();
@@ -107,7 +107,7 @@ export function CasesClient() {
             {archived ? "Completed Archive" : "All Cases"}
           </h1>
           <p className="mt-1 text-muted-foreground">
-            {data ? `${data.total} case${data.total === 1 ? "" : "s"}` : "…"}
+            {data ? `${data.total} case${data.total === 1 ? "" : "s"}` : "..."}
           </p>
         </div>
         <Button variant="gradient" onClick={() => setDialogOpen(true)}>
@@ -123,7 +123,7 @@ export function CasesClient() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search patient, doctor or case type…"
+              placeholder="Search patient, doctor or case type..."
               className="pl-10"
             />
           </div>
@@ -152,7 +152,7 @@ export function CasesClient() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All categories</SelectItem>
-              {CATEGORIES.map((c) => (
+              {CASE_CATEGORY_ORDER.map((c) => (
                 <SelectItem key={c} value={c}>
                   {CATEGORY_META[c].label}
                 </SelectItem>
@@ -167,8 +167,9 @@ export function CasesClient() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border/80 bg-brand-50/70 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-5 py-3 font-semibold">Patient</th>
+                <th className="px-5 py-3 font-semibold">Tracking ID</th>
                 <th className="px-5 py-3 font-semibold">Doctor</th>
                 <th className="px-5 py-3 font-semibold">Case Type</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
@@ -179,26 +180,50 @@ export function CasesClient() {
             <tbody className="divide-y divide-border">
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>
-                    <td className="px-5 py-4" colSpan={6}>
-                      <Skeleton className="h-6 w-full" />
+                  <tr key={i} className="border-b border-border/60">
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-36" />
+                      <Skeleton className="mt-2 h-3 w-20" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-7 w-28 rounded-full" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-28" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-32" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-7 w-24 rounded-full" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-24" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Skeleton className="ml-auto h-9 w-9" />
                     </td>
                   </tr>
                 ))}
 
               {!isLoading && data?.items.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-5 py-16 text-center text-muted-foreground"
-                  >
-                    No cases found. Try adjusting your filters.
+                  <td colSpan={7} className="px-5 py-16">
+                    <div className="mx-auto flex max-w-sm flex-col items-center text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+                        <ClipboardList className="h-6 w-6" />
+                      </div>
+                      <p className="mt-4 font-semibold text-ink">No cases found</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Try adjusting your search, status, or category filters.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}
 
               {data?.items.map((c) => (
-                <tr key={c.id} className="group transition-colors hover:bg-muted/30">
+                <tr key={c.id} className="group transition-colors hover:bg-brand-50/55">
                   <td className="px-5 py-4">
                     <Link
                       href={`/admin/cases/${c.id}`}
@@ -209,6 +234,9 @@ export function CasesClient() {
                     <p className="text-xs text-muted-foreground">
                       {CATEGORY_META[c.category].label}
                     </p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <TrackingIdCopy trackingId={c.trackingId} />
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">{c.doctorName}</td>
                   <td className="px-5 py-4 text-muted-foreground">{c.caseType}</td>
@@ -253,7 +281,7 @@ export function CasesClient() {
 
         {/* Pagination */}
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-border px-5 py-3">
+          <div className="flex items-center justify-between border-t border-border/80 bg-white/50 px-5 py-3">
             <p className="text-sm text-muted-foreground">
               Page {data.page} of {data.totalPages}
               {isFetching && (

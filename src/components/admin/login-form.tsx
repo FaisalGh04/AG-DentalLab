@@ -45,7 +45,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="email">Email</Label>
         <div className="relative">
@@ -55,7 +55,7 @@ export function LoginForm() {
             type="email"
             autoComplete="username"
             placeholder="owner@agdentallab.com"
-            className="pl-10"
+            className="h-12 pl-10"
             {...register("email")}
           />
         </div>
@@ -72,8 +72,8 @@ export function LoginForm() {
             id="password"
             type="password"
             autoComplete="current-password"
-            placeholder="••••••••"
-            className="pl-10"
+            placeholder="Password"
+            className="h-12 pl-10"
             {...register("password")}
           />
         </div>
@@ -85,7 +85,7 @@ export function LoginForm() {
       <Button
         type="submit"
         variant="gradient"
-        className="w-full"
+        className="h-12 w-full"
         disabled={pending}
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}

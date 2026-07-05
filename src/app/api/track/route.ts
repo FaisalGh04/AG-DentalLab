@@ -1,14 +1,14 @@
 import type { NextRequest } from "next/server";
 import { apiOk, apiError, handleApiError, rateLimited } from "@/lib/api";
 import { getClientIp, limit, searchRatelimit } from "@/lib/ratelimit";
-import { searchByPatientName } from "@/lib/case-service";
+import { searchByTrackingId } from "@/lib/case-service";
 import { searchSchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * PUBLIC case tracking. Doctors search by patient full name only.
+ * PUBLIC case tracking. Doctors search by tracking ID only.
  * Rate limited per IP. Returns a sanitized DTO with no internal ids.
  */
 export async function GET(req: NextRequest) {
@@ -17,16 +17,16 @@ export async function GET(req: NextRequest) {
     const { success, reset } = await limit(searchRatelimit, `search:${ip}`);
     if (!success) return rateLimited(reset);
 
-    const raw = req.nextUrl.searchParams.get("patientName") ?? "";
-    const parsed = searchSchema.safeParse({ patientName: raw });
+    const raw = req.nextUrl.searchParams.get("trackingId") ?? "";
+    const parsed = searchSchema.safeParse({ trackingId: raw });
     if (!parsed.success) {
-      return apiError("Enter a valid patient name (min 2 characters)", 422);
+      return apiError("Enter a valid tracking ID, for example AG-8F3K2A", 422);
     }
 
-    const result = await searchByPatientName(parsed.data.patientName);
+    const result = await searchByTrackingId(parsed.data.trackingId);
     if (!result) {
       return apiError(
-        "No case found for that patient name. Please check the spelling or contact the lab.",
+        "No case found for that tracking ID. Please check the ID or contact the lab.",
         404,
       );
     }

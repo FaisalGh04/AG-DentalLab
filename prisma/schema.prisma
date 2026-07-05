@@ -36,17 +36,24 @@ enum CaseStatus {
 }
 
 enum CaseCategory {
-  FIXED_RESTORATIONS
-  IMPLANT_SOLUTIONS
-  ORAL_APPLIANCES
-  DIGITAL_DENTISTRY
+  IMPLANT
+  C_AND_B
+  PRESSABLE_CERAMIC
+  VACUUM_FORMER
+  SPECIAL_TRAY
+  RESIN_MODEL
+  EXTERNAL_LABORATORY_SERVICES
+  DENTAL_EQUIPMENT
+  GYPSUM_MODEL
+  FLEX_DENTURE
 }
 
 // ------------------------------------------------------------------
-// A dental case. Doctors search these by patient full name only.
+// A dental case. Doctors track these by public tracking ID only.
 // ------------------------------------------------------------------
 model PatientCase {
   id                     String       @id @default(cuid())
+  trackingId             String       @unique @map("tracking_id")
   patientFirstName       String       @map("patient_first_name")
   patientLastName        String       @map("patient_last_name")
   // Denormalized lowercased full name for fast, case-insensitive lookup.
@@ -63,8 +70,9 @@ model PatientCase {
   progress CaseProgress[]
   images   CaseImage[]
 
-  // Indexes tuned for the two hot paths: public name search + admin list.
+  // Indexes tuned for the two hot paths: public tracking lookup + admin list.
   @@index([patientFullNameNorm])
+  @@index([trackingId])
   @@index([currentStatus])
   @@index([createdAt])
   @@index([doctorName])

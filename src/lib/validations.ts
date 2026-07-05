@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { formatTrackingId } from "@/lib/tracking-id-format";
+import { isValidCaseTypeForCategory } from "@/lib/case-types";
 
 export const CaseStatusEnum = z.enum([
   "RECEIVED",
@@ -8,19 +10,29 @@ export const CaseStatusEnum = z.enum([
 ]);
 
 export const CaseCategoryEnum = z.enum([
-  "FIXED_RESTORATIONS",
-  "IMPLANT_SOLUTIONS",
-  "ORAL_APPLIANCES",
-  "DIGITAL_DENTISTRY",
+  "IMPLANT",
+  "C_AND_B",
+  "PRESSABLE_CERAMIC",
+  "VACUUM_FORMER",
+  "SPECIAL_TRAY",
+  "RESIN_MODEL",
+  "EXTERNAL_LABORATORY_SERVICES",
+  "DENTAL_EQUIPMENT",
+  "GYPSUM_MODEL",
+  "FLEX_DENTURE",
 ]);
 
 // --- Public search --------------------------------------------------
 export const searchSchema = z.object({
-  patientName: z
-    .string()
-    .trim()
-    .min(2, "Enter at least 2 characters")
-    .max(120, "Name is too long"),
+  trackingId: z.preprocess(
+    (value) => (typeof value === "string" ? formatTrackingId(value) : value),
+    z
+      .string()
+      .regex(
+        /^AG-[A-HJ-NP-Z2-9]{6}$/,
+        "Enter a valid tracking ID, for example AG-8F3K2A",
+      ),
+  ),
 });
 export type SearchInput = z.infer<typeof searchSchema>;
 
@@ -32,24 +44,53 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 
 // --- Case create / update ------------------------------------------
-export const caseCreateSchema = z.object({
+const dateInputSchema = z
+  .string()
+  .refine(
+    (value) =>
+      value.length === 0 ||
+      /^\d{4}-\d{2}-\d{2}$/.test(value) ||
+      z.string().datetime().safeParse(value).success,
+    "Enter a valid date",
+  );
+
+const caseInputBaseSchema = z.object({
   patientFirstName: z.string().trim().min(1, "First name is required").max(80),
   patientLastName: z.string().trim().min(1, "Last name is required").max(80),
   doctorName: z.string().trim().min(2, "Doctor name is required").max(120),
   caseType: z.string().trim().min(2, "Case type is required").max(160),
   category: CaseCategoryEnum,
   currentStatus: CaseStatusEnum.default("RECEIVED"),
-  estimatedCompletionDate: z
-    .string()
-    .datetime()
-    .or(z.string().length(0))
-    .nullable()
-    .optional(),
+  estimatedCompletionDate: dateInputSchema.nullable().optional(),
   notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const caseCreateSchema = caseInputBaseSchema.superRefine((data, ctx) => {
+  if (!isValidCaseTypeForCategory(data.category, data.caseType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["caseType"],
+      message: "Select a case type that belongs to the selected category",
+    });
+  }
 });
 export type CaseCreateInput = z.infer<typeof caseCreateSchema>;
 
-export const caseUpdateSchema = caseCreateSchema.partial();
+export const caseUpdateSchema = caseInputBaseSchema.partial().superRefine(
+  (data, ctx) => {
+    if (
+      data.category &&
+      data.caseType &&
+      !isValidCaseTypeForCategory(data.category, data.caseType)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["caseType"],
+        message: "Select a case type that belongs to the selected category",
+      });
+    }
+  },
+);
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
 
 // --- Progress steps -------------------------------------------------

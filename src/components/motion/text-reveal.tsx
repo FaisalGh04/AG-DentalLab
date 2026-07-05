@@ -1,0 +1,67 @@
+"use client";
+
+import * as React from "react";
+import { motion, type Variants } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+const container: Variants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.055, delayChildren: 0.05 },
+  },
+};
+
+const word: Variants = {
+  hidden: { y: "115%", opacity: 0, filter: "blur(10px)" },
+  show: {
+    y: "0%",
+    opacity: 1,
+    filter: "blur(0px)",
+    transition: { duration: 0.72, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+/**
+ * Word-by-word blur/clip reveal. Each word rides up from a clipped baseline as
+ * it enters view — the signature cinematic headline motion.
+ */
+export function TextReveal({
+  text,
+  className,
+  delay = 0,
+  once = true,
+}: {
+  text: string;
+  className?: string;
+  delay?: number;
+  once?: boolean;
+}) {
+  const words = text.split(" ");
+  return (
+    <span className={cn("inline", className)}>
+      <motion.span
+        variants={container}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once, margin: "-12% 0px" }}
+        transition={{ delayChildren: delay }}
+        className="inline"
+        aria-hidden
+      >
+        {words.map((w, i) => (
+          <span
+            key={`${w}-${i}`}
+            className="inline-flex overflow-hidden pb-[0.12em] align-baseline"
+          >
+            <motion.span variants={word} className="inline-block will-change-transform">
+              {w}
+            </motion.span>
+            {i < words.length - 1 && <span>&nbsp;</span>}
+          </span>
+        ))}
+      </motion.span>
+      {/* Accessible, unstyled copy for screen readers / no-JS. */}
+      <span className="sr-only">{text}</span>
+    </span>
+  );
+}

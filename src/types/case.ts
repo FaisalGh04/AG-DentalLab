@@ -23,6 +23,7 @@ export interface ImageDTO {
  * data doctors shouldn't see beyond what they need to track a case.
  */
 export interface PublicCaseDTO {
+  trackingId: string;
   patientName: string;
   doctorName: string;
   caseType: string;
@@ -36,6 +37,7 @@ export interface PublicCaseDTO {
 /** ADMIN case (full detail, includes id). */
 export interface AdminCaseDTO {
   id: string;
+  trackingId: string;
   patientFirstName: string;
   patientLastName: string;
   doctorName: string;
@@ -53,6 +55,7 @@ export interface AdminCaseDTO {
 
 export interface AdminCaseListItem {
   id: string;
+  trackingId: string;
   patientFirstName: string;
   patientLastName: string;
   doctorName: string;

@@ -76,24 +76,28 @@ export function ProgressManager({
 
   return (
     <Card className="p-6">
-      <h3 className="font-display text-lg font-semibold text-ink">
-        Production Steps
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Add and tick off each completed step. Doctors see this timeline live.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-display text-lg font-semibold text-ink">
+            Production Steps
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Add and tick off each completed step. Doctors see this timeline live.
+          </p>
+        </div>
+      </div>
 
       {/* Existing steps */}
       <ul className="mt-6 space-y-2">
         {steps.length === 0 && (
-          <li className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+          <li className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-5 text-sm text-muted-foreground">
             No steps yet. Add one below or use a suggestion.
           </li>
         )}
         {steps.map((step) => (
           <li
             key={step.id}
-            className="flex items-start gap-3 rounded-xl border border-border p-3"
+            className="flex items-start gap-3 rounded-xl border border-border/80 bg-white/[0.62] p-3 shadow-inner-glow transition-colors hover:border-brand-200"
           >
             <button
               onClick={() => toggle(step)}
@@ -133,7 +137,8 @@ export function ProgressManager({
               variant="ghost"
               size="icon"
               onClick={() => del(step.id)}
-              className="text-muted-foreground hover:text-destructive"
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Delete ${step.stepTitle}`}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -153,7 +158,7 @@ export function ProgressManager({
                 key={s}
                 onClick={() => addStep(s)}
                 disabled={add.isPending}
-                className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-50"
+                className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 shadow-inner-glow transition-colors hover:bg-brand-100 disabled:opacity-50"
               >
                 + {s}
               </button>
@@ -163,7 +168,7 @@ export function ProgressManager({
       )}
 
       {/* Custom step form */}
-      <div className="mt-6 space-y-3 rounded-xl bg-muted/40 p-4">
+      <div className="mt-6 space-y-3 rounded-xl border border-border/80 bg-white/[0.62] p-4 shadow-inner-glow">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -172,7 +177,7 @@ export function ProgressManager({
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Optional description…"
+          placeholder="Optional description..."
           rows={2}
         />
         <Button

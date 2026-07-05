@@ -8,10 +8,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: SITE.description,
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#0D9488",
+    background_color: "#FBFAF7",
+    theme_color: "#275F4D",
     icons: [
-      { src: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
+      { src: "/ag-dental-lab-icon.png", sizes: "512x512", type: "image/png" },
+      { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
   };
 }

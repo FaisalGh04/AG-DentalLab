@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -25,8 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
-import { CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { CASE_CATEGORY_ORDER, CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { getCaseTypesForCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
+import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
 import type { CaseCategory, CaseStatus } from "@prisma/client";
 
@@ -37,13 +39,14 @@ interface Props {
   onSaved?: (id: string) => void;
 }
 
-const CATEGORIES = Object.keys(CATEGORY_META) as CaseCategory[];
-
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
   const isEdit = !!existing;
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
   const pending = create.isPending || update.isPending;
+  const [createdTrackingId, setCreatedTrackingId] = React.useState<string | null>(
+    null,
+  );
 
   const {
     register,
@@ -56,7 +59,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     resolver: zodResolver(caseCreateSchema),
     defaultValues: {
       currentStatus: "RECEIVED",
-      category: "FIXED_RESTORATIONS",
+      category: undefined as unknown as CaseCategory,
     },
   });
 
@@ -81,7 +84,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         patientLastName: "",
         doctorName: "",
         caseType: "",
-        category: "FIXED_RESTORATIONS",
+        category: undefined as unknown as CaseCategory,
         currentStatus: "RECEIVED",
         estimatedCompletionDate: "",
         notes: "",
@@ -99,11 +102,18 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     };
 
     try {
-      const res = isEdit
-        ? await update.mutateAsync(payload)
-        : await create.mutateAsync(payload);
+      if (isEdit) {
+        const res = await update.mutateAsync(payload);
+        toast.success("Case updated");
+        onOpenChange(false);
+        onSaved?.(res.id);
+        return;
+      }
+
+      const res = await create.mutateAsync(payload);
       toast.success(isEdit ? "Case updated" : "Case created");
       onOpenChange(false);
+      setCreatedTrackingId(res.trackingId);
       onSaved?.(res.id);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong");
@@ -112,8 +122,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
 
   const category = watch("category");
   const status = watch("currentStatus");
+  const caseType = watch("caseType");
+  const availableCaseTypes = getCaseTypesForCategory(category);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -126,6 +139,15 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {existing && (
+            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Tracking ID
+              </p>
+              <TrackingIdCopy trackingId={existing.trackingId} className="mt-2" />
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Patient First Name" error={errors.patientFirstName?.message}>
               <Input {...register("patientFirstName")} placeholder="Sara" />
@@ -139,24 +161,26 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             <Input {...register("doctorName")} placeholder="Dr. Omar Haddad" />
           </Field>
 
-          <Field label="Case Type" error={errors.caseType?.message}>
-            <Input
-              {...register("caseType")}
-              placeholder="Zirconia Bridge (3 units)"
-            />
-          </Field>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Category" error={errors.category?.message}>
               <Select
-                value={category}
-                onValueChange={(v) => setValue("category", v as CaseCategory)}
+                value={category ?? ""}
+                onValueChange={(v) => {
+                  setValue("category", v as CaseCategory, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  setValue("caseType", "", {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
+                  {CASE_CATEGORY_ORDER.map((c) => (
                     <SelectItem key={c} value={c}>
                       {CATEGORY_META[c].label}
                     </SelectItem>
@@ -165,6 +189,36 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
               </Select>
             </Field>
 
+            <Field label="Case Type" error={errors.caseType?.message}>
+              <Select
+                value={caseType || ""}
+                disabled={!category}
+                onValueChange={(v) =>
+                  setValue("caseType", v, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      category ? "Select case type" : "Select category first"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCaseTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Status" error={errors.currentStatus?.message}>
               <Select
                 value={status}
@@ -217,6 +271,41 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         </form>
       </DialogContent>
     </Dialog>
+    <Dialog
+      open={!!createdTrackingId}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setCreatedTrackingId(null);
+      }}
+    >
+      <DialogContent className="max-w-md text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+          <CheckCircle2 className="h-7 w-7" />
+        </div>
+        <DialogHeader>
+          <DialogTitle>Case Created Successfully</DialogTitle>
+          <DialogDescription>
+            Share this tracking ID with the doctor for public case tracking.
+          </DialogDescription>
+        </DialogHeader>
+        {createdTrackingId && (
+          <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Tracking ID
+            </p>
+            <TrackingIdCopy
+              trackingId={createdTrackingId}
+              className="mt-3 text-sm"
+            />
+          </div>
+        )}
+        <DialogFooter>
+          <Button type="button" onClick={() => setCreatedTrackingId(null)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

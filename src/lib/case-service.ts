@@ -1,7 +1,7 @@
 import { Prisma, type CaseStatus, type CaseCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { cached, invalidate } from "./redis";
-import { normalizeQuery } from "./utils";
+import { formatTrackingId } from "@/lib/tracking-id-format";
 import type {
   PublicCaseDTO,
   AdminCaseListResponse,
@@ -10,37 +10,28 @@ import type {
 
 const PUBLIC_CACHE_TTL = 30; // seconds
 
-function searchCacheKey(norm: string) {
-  return `search:${norm}`;
+function trackingCacheKey(trackingId: string) {
+  return `track:${trackingId}`;
 }
 
 /**
- * PUBLIC search by patient full name. Case-insensitive, indexed lookup.
- * Returns a sanitized DTO (no internal ids). Cached briefly in Redis.
+ * PUBLIC search by tracking ID. Returns a sanitized DTO with no internal ids.
+ * Cached briefly in Redis.
  */
-export async function searchByPatientName(
-  rawQuery: string,
+export async function searchByTrackingId(
+  rawTrackingId: string,
 ): Promise<PublicCaseDTO | null> {
-  const norm = normalizeQuery(rawQuery);
-  if (norm.length < 2) return null;
+  const trackingId = formatTrackingId(rawTrackingId);
 
-  return cached(searchCacheKey(norm), PUBLIC_CACHE_TTL, async () => {
-    // Exact normalized match first (uses the index), then a safe prefix.
-    const found =
-      (await prisma.patientCase.findFirst({
-        where: { patientFullNameNorm: norm },
-        orderBy: { createdAt: "desc" },
-        include: { progress: { orderBy: { order: "asc" } } },
-      })) ??
-      (await prisma.patientCase.findFirst({
-        where: { patientFullNameNorm: { startsWith: norm } },
-        orderBy: { createdAt: "desc" },
-        include: { progress: { orderBy: { order: "asc" } } },
-      }));
-
+  return cached(trackingCacheKey(trackingId), PUBLIC_CACHE_TTL, async () => {
+    const found = await prisma.patientCase.findUnique({
+      where: { trackingId },
+      include: { progress: { orderBy: { order: "asc" } } },
+    });
     if (!found) return null;
 
     const dto: PublicCaseDTO = {
+      trackingId: found.trackingId,
       patientName: `${found.patientFirstName} ${found.patientLastName}`,
       doctorName: found.doctorName,
       caseType: found.caseType,
@@ -62,9 +53,9 @@ export async function searchByPatientName(
   });
 }
 
-/** Invalidate the public search cache for a given full name. */
-export async function invalidateSearchCache(fullNameNorm: string) {
-  await invalidate(searchCacheKey(fullNameNorm));
+/** Invalidate the public tracking cache for a given tracking ID. */
+export async function invalidateTrackingCache(trackingId: string) {
+  await invalidate(trackingCacheKey(trackingId));
 }
 
 // ------------------------------------------------------------------
@@ -94,6 +85,7 @@ export async function listCases(
     const q = params.q.trim();
     where.OR = [
       { patientFullNameNorm: { contains: q.toLowerCase() } },
+      { trackingId: { contains: q.toUpperCase() } },
       { doctorName: { contains: q, mode: "insensitive" } },
       { caseType: { contains: q, mode: "insensitive" } },
     ];
@@ -107,6 +99,7 @@ export async function listCases(
       take: pageSize,
       select: {
         id: true,
+        trackingId: true,
         patientFirstName: true,
         patientLastName: true,
         doctorName: true,
@@ -148,6 +141,7 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
 
   return {
     id: c.id,
+    trackingId: c.trackingId,
     patientFirstName: c.patientFirstName,
     patientLastName: c.patientLastName,
     doctorName: c.doctorName,

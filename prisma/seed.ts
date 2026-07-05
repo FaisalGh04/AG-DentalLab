@@ -1,5 +1,6 @@
 import { PrismaClient, CaseCategory, CaseStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { generateUniqueTrackingId } from "../src/lib/tracking-id";
 
 const prisma = new PrismaClient();
 
@@ -29,11 +30,12 @@ async function main() {
     const demo = await prisma.patientCase.create({
       data: {
         patientFirstName: "Sara",
+        trackingId: await generateUniqueTrackingId(),
         patientLastName: "Khalil",
         patientFullNameNorm: normalizeName("Sara", "Khalil"),
         doctorName: "Dr. Omar Haddad",
-        caseType: "Zirconia Bridge (3 units)",
-        category: CaseCategory.FIXED_RESTORATIONS,
+        caseType: "Ivoclar Prime ZiR",
+        category: CaseCategory.C_AND_B,
         currentStatus: CaseStatus.PRODUCTION,
         estimatedCompletionDate: new Date(Date.now() + 5 * 24 * 3600 * 1000),
         notes: "Shade A2. Deliver before the weekend if possible.",

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
-import { getCaseById, invalidateSearchCache } from "@/lib/case-service";
+import { getCaseById, invalidateTrackingCache } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
 import { caseUpdateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
@@ -61,9 +61,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       },
     });
 
-    // Bust cache for both old and new normalized names.
-    await invalidateSearchCache(existing.patientFullNameNorm);
-    await invalidateSearchCache(norm);
+    await invalidateTrackingCache(existing.trackingId);
 
     return apiOk({ id: updated.id });
   } catch (err) {
@@ -91,7 +89,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     );
 
     await prisma.patientCase.delete({ where: { id } });
-    await invalidateSearchCache(existing.patientFullNameNorm);
+    await invalidateTrackingCache(existing.trackingId);
 
     return apiOk({ id });
   } catch (err) {

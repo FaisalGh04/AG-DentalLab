@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { LoginForm } from "@/components/admin/login-form";
 
@@ -26,14 +26,17 @@ export default function LoginPage() {
           <ArrowLeft className="h-4 w-4" /> Back to home
         </Link>
 
-        <div className="glass rounded-3xl p-8 shadow-card">
+        <div className="glass rounded-[1.5rem] p-8 shadow-card">
           <div className="flex flex-col items-center text-center">
             <Logo className="h-14" />
+            <div className="mt-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-glow">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
             <h1 className="mt-5 font-display text-2xl font-bold text-ink">
               Admin Sign In
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Restricted access — AG Dental Lab management console.
+            <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+              Restricted access - AG Dental Lab management console.
             </p>
           </div>
 

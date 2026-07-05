@@ -24,7 +24,7 @@ export function Sidebar({ adminName }: { adminName: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-card p-4 lg:flex">
+    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border/80 bg-white/[0.72] p-4 shadow-soft backdrop-blur-xl lg:flex">
       <Link href="/admin" className="flex items-center gap-2 px-2 py-3">
         <Logo className="h-9" withWordmark />
       </Link>
@@ -41,10 +41,10 @@ export function Sidebar({ adminName }: { adminName: string }) {
               key={l.href}
               href={l.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                 active
                   ? "bg-brand-gradient text-white shadow-glow"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-muted-foreground hover:bg-brand-50 hover:text-brand-800",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -58,11 +58,11 @@ export function Sidebar({ adminName }: { adminName: string }) {
         <Link
           href="/"
           target="_blank"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-brand-50 hover:text-brand-800"
         >
           <ExternalLink className="h-4 w-4" /> View Website
         </Link>
-        <div className="rounded-xl bg-muted/50 px-3 py-2.5">
+        <div className="rounded-xl border border-border/80 bg-white/70 px-3 py-2.5 shadow-inner-glow">
           <p className="text-xs text-muted-foreground">Signed in as</p>
           <p className="truncate text-sm font-semibold text-ink">{adminName}</p>
         </div>

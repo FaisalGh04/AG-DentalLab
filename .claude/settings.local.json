@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(npm *)"
-    ]
+      "PowerShell(npm *)",
+      "PowerShell(npx next lint 2>&1 | Select-Object -Last 40)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"root: %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /tmp/layout.css -w \"http=%{http_code} bytes=%{size_download}\\\\n\" \"http://localhost:3000/_next/static/css/app/layout.css\")"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }

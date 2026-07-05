@@ -5,7 +5,7 @@ import { listCases } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
 import { caseCreateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
-import { invalidateSearchCache } from "@/lib/case-service";
+import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import type { CaseStatus, CaseCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -42,8 +42,10 @@ export async function POST(req: NextRequest) {
     const input = caseCreateSchema.parse(body);
 
     const norm = normalizeName(input.patientFirstName, input.patientLastName);
+    const trackingId = await generateUniqueTrackingId();
     const created = await prisma.patientCase.create({
       data: {
+        trackingId,
         patientFirstName: input.patientFirstName,
         patientLastName: input.patientLastName,
         patientFullNameNorm: norm,
@@ -58,8 +60,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await invalidateSearchCache(norm);
-    return apiOk({ id: created.id }, 201);
+    return apiOk({ id: created.id, trackingId: created.trackingId }, 201);
   } catch (err) {
     return handleApiError(err);
   }

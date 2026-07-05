@@ -1,137 +1,314 @@
-# Deployment Guide — AG Dental Lab
+# Deployment Guide - AG Dental Lab
 
-Two supported paths: **Vercel** (recommended) and **Docker** (self-host).
+This guide reflects the current project state after the branding and UI/UX polish pass.
+
+Supported deployment paths:
+
+- Vercel, recommended
+- Docker/self-hosting
+
+The app is production-ready once environment variables, database schema, seeded admin credentials, and optional storage/cache providers are configured.
 
 ---
 
-## 1. Provision services
+## Current Deployment Status
 
-### Database — Supabase Postgres
+- Framework: Next.js 15 App Router
+- Database: PostgreSQL through Prisma, intended for Supabase
+- Auth: Auth.js / NextAuth v5 credentials provider
+- Admin: single seeded admin account
+- Storage: Cloudflare R2 or AWS S3 optional for image uploads
+- Cache/rate limit: Upstash Redis optional
+- Monitoring: Sentry optional
+- Build status: `npm.cmd run build` passes
 
-1. Create a Supabase project.
-2. Copy two connection strings from **Project Settings → Database**:
-   - **Pooled** (port `6543`, `?pgbouncer=true`) → `DATABASE_URL`
-   - **Direct** (port `5432`) → `DIRECT_URL`
+Current completion: **95%**
 
-### Cache & rate limiting — Upstash Redis
+Pending deployment-related items:
 
-1. Create an Upstash Redis database (global).
-2. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+- Configure real production database credentials.
+- Configure production `AUTH_URL` and `NEXT_PUBLIC_SITE_URL`.
+- Seed production admin credentials.
+- Configure R2/S3 only if case image uploads are required.
+- Configure Upstash only if production rate limiting/cache is required.
+- Configure Sentry only if monitoring is required.
 
-### Storage — Cloudflare R2 (or AWS S3)
+---
 
-1. Create a bucket (e.g. `ag-dental-lab`) and enable **public access** (or put
-   a CDN in front) so uploaded images can be served.
-2. Create an API token / access key with read+write.
-3. Set:
-   - `S3_ENDPOINT` = `https://<accountid>.r2.cloudflarestorage.com`
-   - `S3_REGION` = `auto` (R2) or your AWS region
-   - `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`
-   - `S3_PUBLIC_URL` = the public/CDN base URL for the bucket
-4. **CORS** — allow `PUT` from your site origin so the browser can upload
-   directly via the presigned URL:
+## Required Environment Variables
 
-   ```json
-   [
-     {
-       "AllowedOrigins": ["https://your-domain.com"],
-       "AllowedMethods": ["PUT"],
-       "AllowedHeaders": ["*"],
-       "MaxAgeSeconds": 3000
-     }
-   ]
-   ```
+Use `.env.example` as the template.
 
-5. Add the public host to `next.config.ts → images.remotePatterns` if it isn't
-   already covered by the `**.r2.dev` / `**.amazonaws.com` patterns.
+### Database - Supabase PostgreSQL
 
-### Monitoring — Sentry (optional)
-
-Set `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`,
-`SENTRY_AUTH_TOKEN`. If unset, Sentry is fully disabled (no build wrapping).
-
-### Auth secret
-
-```bash
-npx auth secret        # or: openssl rand -base64 32
+```env
+DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
 ```
 
-Set as `AUTH_SECRET`. Set `AUTH_URL` to your production URL and
-`AUTH_TRUST_HOST=true`.
+`DATABASE_URL` is the pooled runtime connection.
+
+`DIRECT_URL` is used by Prisma for migrations and schema operations.
+
+### Authentication
+
+```env
+AUTH_SECRET="long-random-secret"
+AUTH_URL="https://your-domain.com"
+AUTH_TRUST_HOST="true"
+```
+
+Generate `AUTH_SECRET` with:
+
+```powershell
+npx auth secret
+```
+
+For local development:
+
+```env
+AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+```
+
+If Next.js uses port `3001`, use:
+
+```env
+AUTH_URL="http://localhost:3001"
+NEXT_PUBLIC_SITE_URL="http://localhost:3001"
+```
+
+### Admin Account
+
+```env
+ADMIN_EMAIL="owner@agdentallab.com"
+ADMIN_PASSWORD="strong-password"
+```
+
+These values are used by:
+
+```powershell
+npm.cmd run db:seed
+```
+
+Changing `.env` alone does not update the database. Run the seed script after changing admin credentials.
+
+### Public Site URL
+
+```env
+NEXT_PUBLIC_SITE_URL="https://your-domain.com"
+```
+
+Used for metadata, canonical URLs, and public links.
 
 ---
 
-## 2. Deploy to Vercel
+## Optional Environment Variables
 
-1. Push this repo to GitHub and **Import** it in Vercel.
-2. Add **all** env vars from `.env.example` in **Project → Settings → Env Vars**.
-3. Build command stays default (`next build`; our `build` script runs
-   `prisma generate` first via package.json).
-4. Run the schema + seed once (locally against the prod DB, or via a one-off):
+### Upstash Redis
 
-   ```bash
-   npm run db:deploy      # apply migrations
-   npm run db:seed        # create the admin
-   ```
+Used for public search caching and rate limiting. Leave blank to disable gracefully.
 
-   > First time with no migration files? Run `npm run db:migrate` locally to
-   > generate `prisma/migrations`, commit them, then `db:deploy` in CI.
+```env
+UPSTASH_REDIS_REST_URL=""
+UPSTASH_REDIS_REST_TOKEN=""
+```
 
-5. Deploy. Verify `https://your-domain.com/api/health` returns `{ ok: true }`.
+### Cloudflare R2 / AWS S3
+
+Used for case image uploads. Leave blank if uploads are not needed yet.
+
+```env
+S3_ENDPOINT=""
+S3_REGION=""
+S3_ACCESS_KEY_ID=""
+S3_SECRET_ACCESS_KEY=""
+S3_BUCKET=""
+S3_PUBLIC_URL=""
+```
+
+For Cloudflare R2:
+
+```env
+S3_ENDPOINT="https://<accountid>.r2.cloudflarestorage.com"
+S3_REGION="auto"
+S3_BUCKET="ag-dental-lab"
+S3_PUBLIC_URL="https://pub-xxxx.r2.dev"
+```
+
+R2/S3 CORS must allow browser `PUT` uploads from the deployed origin:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-domain.com"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+### Sentry
+
+Optional monitoring. Leave blank to disable.
+
+```env
+NEXT_PUBLIC_SENTRY_DSN=""
+SENTRY_ORG=""
+SENTRY_PROJECT=""
+SENTRY_AUTH_TOKEN=""
+```
 
 ---
 
-## 3. Deploy with Docker
+## Local Development
 
-The app builds to a standalone server (`output: "standalone"`).
+```powershell
+cd D:\AG_DentalLab
+npm.cmd install
+npm.cmd run db:push
+npm.cmd run db:seed
+npm.cmd run dev
+```
 
-### One-command local stack (app + Postgres)
+Open the URL printed by Next.js.
 
-```bash
-# optional: create a .env with AUTH_SECRET, ADMIN_* etc. for compose
+If port `3000` is busy, Next.js will automatically use another port such as `3001`.
+
+Use `npm.cmd` in Windows PowerShell to avoid `npm.ps1` execution policy issues.
+
+---
+
+## Production Build Locally
+
+```powershell
+cd D:\AG_DentalLab
+npm.cmd run build
+npm.cmd run start
+```
+
+If port `3000` is busy:
+
+```powershell
+npm.cmd run start -- -p 3001
+```
+
+---
+
+## Deploy to Vercel
+
+1. Push the repository to GitHub.
+2. Import the repository into Vercel.
+3. Add environment variables from `.env.example`.
+4. Set production values:
+   - `DATABASE_URL`
+   - `DIRECT_URL`
+   - `AUTH_SECRET`
+   - `AUTH_URL`
+   - `AUTH_TRUST_HOST`
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+   - `NEXT_PUBLIC_SITE_URL`
+5. Optional:
+   - Add Upstash variables.
+   - Add R2/S3 variables.
+   - Add Sentry variables.
+6. Apply database schema:
+
+```powershell
+npm.cmd run db:deploy
+```
+
+If no migrations exist and this is the first deployment, use:
+
+```powershell
+npm.cmd run db:push
+```
+
+7. Seed the admin:
+
+```powershell
+npm.cmd run db:seed
+```
+
+8. Deploy.
+9. Verify:
+
+```text
+https://your-domain.com/api/health
+```
+
+Expected response:
+
+```json
+{ "ok": true }
+```
+
+---
+
+## Deploy with Docker
+
+### Local Compose
+
+```powershell
 docker compose up --build
 ```
 
-Compose starts Postgres, waits for health, applies migrations, seeds the admin,
-then serves on **http://localhost:3000**.
+The compose setup starts the app and supporting services defined in `docker-compose.yml`.
 
-### Standalone image (external managed DB)
+### Standalone Image
 
-```bash
+```powershell
 docker build -t ag-dental-lab .
+```
 
-docker run -p 3000:3000 \
-  -e DATABASE_URL="postgresql://…:6543/postgres?pgbouncer=true" \
-  -e DIRECT_URL="postgresql://…:5432/postgres" \
-  -e AUTH_SECRET="…" \
-  -e AUTH_URL="https://your-domain.com" \
-  -e AUTH_TRUST_HOST="true" \
-  -e ADMIN_EMAIL="owner@agdentallab.com" \
-  -e ADMIN_PASSWORD="strong-password" \
-  -e UPSTASH_REDIS_REST_URL="…" -e UPSTASH_REDIS_REST_TOKEN="…" \
-  -e S3_ENDPOINT="…" -e S3_ACCESS_KEY_ID="…" -e S3_SECRET_ACCESS_KEY="…" \
-  -e S3_BUCKET="ag-dental-lab" -e S3_PUBLIC_URL="https://pub-xxxx.r2.dev" \
+Example:
+
+```powershell
+docker run -p 3000:3000 `
+  -e DATABASE_URL="postgresql://..." `
+  -e DIRECT_URL="postgresql://..." `
+  -e AUTH_SECRET="long-random-secret" `
+  -e AUTH_URL="https://your-domain.com" `
+  -e AUTH_TRUST_HOST="true" `
+  -e ADMIN_EMAIL="owner@agdentallab.com" `
+  -e ADMIN_PASSWORD="strong-password" `
+  -e NEXT_PUBLIC_SITE_URL="https://your-domain.com" `
   ag-dental-lab
 ```
 
-Run migrations against your managed DB before/at first boot:
+Before first production use:
 
-```bash
-npm run db:deploy && npm run db:seed
+```powershell
+npm.cmd run db:deploy
+npm.cmd run db:seed
 ```
-
-The image exposes a `HEALTHCHECK` hitting `/api/health`.
 
 ---
 
-## 4. Post-deploy checklist
+## Post-Deploy Checklist
 
-- [ ] `/` loads with animations; Lighthouse ≥ 95.
-- [ ] `/track` returns the seeded demo case ("Sara Khalil").
-- [ ] `/login` works with the seeded admin; `/admin` is protected.
-- [ ] Create a case → it appears in `/track`.
-- [ ] Add progress steps → they show on the public timeline.
-- [ ] Upload an image (requires S3 + CORS).
-- [ ] Rate limiting active (Upstash configured).
-- [ ] **Change the admin password.**
-- [ ] Set a custom domain + HTTPS.
+- [ ] `/` loads with official logo and polished landing sections.
+- [ ] `/login` works with seeded admin credentials.
+- [ ] `/admin` is protected from logged-out users.
+- [ ] `/admin` dashboard loads.
+- [ ] `/admin/cases` can create, edit, filter, and delete cases.
+- [ ] Case progress steps can be added and toggled.
+- [ ] `/track` can find the seeded demo case by patient full name.
+- [ ] A newly created case appears in public tracking.
+- [ ] Image upload works if R2/S3 is configured.
+- [ ] Rate limiting/cache works if Upstash is configured.
+- [ ] Metadata, favicon, Apple icon, manifest, and Open Graph preview are correct.
+- [ ] Production `AUTH_URL` and `NEXT_PUBLIC_SITE_URL` match the deployed domain.
+- [ ] Admin password has been changed from any placeholder value.
+
+---
+
+## Known Deployment Warnings
+
+The build may show non-blocking warnings from Sentry/OpenTelemetry about dynamic dependencies. Current production builds still complete successfully.
+
+Prisma may warn that `package.json#prisma` config is deprecated for Prisma 7. The current Prisma 6 setup works, but a future maintenance task should migrate to `prisma.config.ts`.
+
+Next.js reports that `next lint` is deprecated and will be removed in Next.js 16. A future maintenance task should migrate to the ESLint CLI.
