@@ -144,7 +144,7 @@ export function TrackClient() {
                 <StatusStepper status={result.currentStatus} />
               </div>
 
-              <div className="grid gap-px bg-brand-400/15 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-px bg-brand-400/15 sm:grid-cols-2 lg:grid-cols-3">
                 <Detail icon={Hash} label="Tracking ID" value={result.trackingId} />
                 <Detail icon={User} label="Patient" value={result.patientName} />
                 <Detail icon={Stethoscope} label="Doctor" value={result.doctorName} />
@@ -201,7 +201,7 @@ function Detail({
           {label}
         </span>
       </div>
-      <p className="mt-1.5 font-medium text-cream">{value}</p>
+      <p className="mt-1.5 break-words font-medium text-cream">{value}</p>
     </div>
   );
 }
