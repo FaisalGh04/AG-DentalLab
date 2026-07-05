@@ -223,6 +223,76 @@
     filter: blur(70px);
     animation: mesh-drift-b 32s ease-in-out infinite;
   }
+
+  /* Frosted-glass login card — true 3D glass floating over the animated mesh.
+     Scoped to the login page only (no theme leak into shared components). */
+  .login-glass {
+    position: relative;
+    border-radius: 1.75rem;
+    /* Translucent so the mesh blurs through, with a subtle diagonal sheen
+       that keeps the card reading as glass even where the backdrop is dark. */
+    background-color: hsl(158 32% 10% / 0.42);
+    background-image: linear-gradient(
+      155deg,
+      hsl(158 36% 14% / 0.55),
+      hsl(164 44% 6% / 0.42)
+    );
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(22px) saturate(140%);
+    border: 1px solid rgba(109, 166, 142, 0.16);
+    /* Layered depth: far soft lift + mid grounding + brand glow + inner top edge. */
+    box-shadow:
+      0 44px 90px -48px rgba(0, 0, 0, 0.9),
+      0 18px 40px -24px rgba(0, 0, 0, 0.6),
+      0 0 70px -26px rgba(39, 95, 77, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  /* 1px light-edge gradient border — brighter at the top, fading downward. */
+  .login-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      180deg,
+      rgba(245, 245, 240, 0.38),
+      rgba(245, 245, 240, 0.06) 38%,
+      rgba(245, 245, 240, 0) 72%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* Faint inner highlight glow at the top — light reflecting off glass. */
+  .login-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: radial-gradient(
+      130% 64% at 50% -8%,
+      rgba(245, 245, 240, 0.12),
+      transparent 58%
+    );
+    pointer-events: none;
+  }
+  /* Keep browser autofill from painting login inputs with its light-blue box —
+     force the dark glass fill + cream text instead. */
+  .login-input:-webkit-autofill,
+  .login-input:-webkit-autofill:hover,
+  .login-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(60 14% 95%);
+    caret-color: hsl(60 14% 95%);
+    -webkit-box-shadow: 0 0 0 1000px hsl(158 32% 10% / 0.92) inset;
+    box-shadow: 0 0 0 1000px hsl(158 32% 10% / 0.92) inset;
+    transition: background-color 9999s ease-out 0s;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

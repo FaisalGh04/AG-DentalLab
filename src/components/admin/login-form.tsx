@@ -47,45 +47,49 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-brand-50/80">
+          Email
+        </Label>
         <div className="relative">
-          <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
           <Input
             id="email"
             type="email"
             autoComplete="username"
             placeholder="owner@agdentallab.com"
-            className="h-12 pl-10"
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 pl-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("email")}
           />
         </div>
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p className="text-sm text-red-300">{errors.email.message}</p>
         )}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" className="text-brand-50/80">
+          Password
+        </Label>
         <div className="relative">
-          <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
           <Input
             id="password"
             type="password"
             autoComplete="current-password"
             placeholder="Password"
-            className="h-12 pl-10"
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 pl-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("password")}
           />
         </div>
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-sm text-red-300">{errors.password.message}</p>
         )}
       </div>
 
       <Button
         type="submit"
         variant="gradient"
-        className="h-12 w-full"
+        className="h-12 w-full bg-[#F5F5F0] text-brand-900 shadow-glow hover:-translate-y-0.5 hover:bg-white focus-visible:ring-brand-300/50"
         disabled={pending}
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}

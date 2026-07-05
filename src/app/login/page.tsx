@@ -12,35 +12,36 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden p-6">
+    <main className="dark landing-dark-shell relative flex min-h-[100svh] items-center justify-center p-6">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-grid-brand [background-size:32px_32px] opacity-50" />
-        <div className="absolute left-1/2 top-0 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-brand-100/60 blur-[120px]" />
+        <div className="absolute inset-0 bg-grid-brand [background-size:34px_34px] opacity-[0.07]" />
+        {/* Bright brand orbs sat directly behind the card so the frosted blur
+            has vivid, varied light to soften — this is what sells the glass. */}
+        <div className="absolute left-1/2 top-1/2 h-[420px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-500/30 blur-[100px]" />
+        <div className="absolute left-[38%] top-[36%] h-[280px] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-300/20 blur-[90px]" />
+        <div className="absolute left-[64%] top-[62%] h-[300px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-700/30 blur-[110px]" />
       </div>
 
       <div className="w-full max-w-md">
         <Link
           href="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-700"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-brand-100/70 transition-colors hover:text-[#F5F5F0]"
         >
           <ArrowLeft className="h-4 w-4" /> Back to home
         </Link>
 
-        <div className="glass rounded-[1.5rem] p-8 shadow-card">
-          <div className="flex flex-col items-center text-center">
-            <Logo className="h-14" />
-            <div className="mt-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-glow">
+        <div className="login-glass p-8">
+          <div className="relative z-[3] flex flex-col items-center text-center">
+            <Logo className="h-14 w-auto justify-center brightness-0 invert drop-shadow-[0_0_16px_rgba(123,183,157,0.3)]" />
+            <div className="mt-6 flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-500/15 text-[#F5F5F0] shadow-glow">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <h1 className="mt-5 font-display text-2xl font-bold text-ink">
+            <h1 className="mt-5 font-display text-2xl font-bold text-[#F5F5F0]">
               Admin Sign In
             </h1>
-            <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-              Restricted access - AG Dental Lab management console.
-            </p>
           </div>
 
-          <div className="mt-8">
+          <div className="relative z-[3] mt-8">
             <Suspense fallback={null}>
               <LoginForm />
             </Suspense>
