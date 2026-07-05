@@ -131,7 +131,7 @@ export function TrackClient() {
                   </p>
                   <TrackingIdCopy
                     trackingId={result.trackingId}
-                    className="mt-2 border-brand-300/25 bg-brand-500/12 text-brand-100"
+                    className="mt-2 border-brand-300/25 bg-brand-500/15 text-brand-100"
                   />
                   <h2 className="mt-4 font-display text-2xl font-bold text-cream">
                     {result.patientName}
