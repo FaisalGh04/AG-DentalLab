@@ -53,13 +53,13 @@ export function TrackClient() {
   return (
     <div className="mx-auto w-full max-w-3xl">
       <form onSubmit={handleSubmit(onSubmit)} className="relative">
-        <div className="glass flex flex-col gap-3 rounded-[1.25rem] p-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 rounded-[1.35rem] border border-white/75 bg-white/[0.78] p-3 shadow-[0_24px_70px_-40px_rgba(39,95,77,0.55)] ring-1 ring-brand-100/80 backdrop-blur-2xl sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-700/70" />
             <Input
               {...register("trackingId")}
               placeholder="Enter your Tracking ID"
-              className="h-12 border-transparent bg-white/60 pl-12 text-base shadow-none focus-visible:ring-brand-400"
+              className="h-12 border-brand-200/80 bg-white/85 pl-12 text-base text-ink shadow-inner-glow placeholder:text-muted-foreground/70 focus-visible:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-500/25"
               autoComplete="off"
               aria-label="Tracking ID"
             />
@@ -69,7 +69,7 @@ export function TrackClient() {
             size="lg"
             variant="gradient"
             disabled={mutation.isPending}
-            className="h-12"
+            className="h-12 bg-[linear-gradient(135deg,#174438,#275F4D_52%,#6AA58A)] shadow-[0_18px_34px_-20px_rgba(39,95,77,0.9)] hover:brightness-110 focus-visible:ring-brand-500/35"
           >
             {mutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -87,8 +87,8 @@ export function TrackClient() {
       </form>
 
       {!mutation.data && !mutation.isError && !mutation.isPending && (
-        <div className="mt-8 rounded-[1.25rem] border border-dashed border-brand-200 bg-white/[0.62] p-8 text-center shadow-inner-glow">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+        <div className="mt-8 rounded-[1.35rem] border border-brand-200/80 bg-white/[0.72] p-8 text-center shadow-[0_22px_70px_-42px_rgba(39,95,77,0.55)] ring-1 ring-white/75 backdrop-blur-2xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-200/80 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.92),rgba(214,234,224,0.92)_45%,rgba(39,95,77,0.14))] text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_34px_-24px_rgba(39,95,77,0.8)]">
             <ClipboardList className="h-6 w-6" />
           </div>
           <p className="mt-4 font-semibold text-ink">Ready to search</p>
