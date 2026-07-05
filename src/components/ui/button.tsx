@@ -13,13 +13,15 @@ const buttonVariants = cva(
         gradient:
           "bg-brand-gradient text-white shadow-glow hover:-translate-y-0.5 hover:brightness-110",
         secondary:
-          "bg-brand-500/15 text-brand-100 ring-1 ring-brand-400/25 hover:-translate-y-0.5 hover:bg-brand-500/25 hover:text-white",
+          "bg-brand-50 text-brand-800 ring-1 ring-brand-200/80 hover:-translate-y-0.5 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-100 dark:ring-brand-400/25 dark:hover:bg-brand-500/25 dark:hover:text-white",
         outline:
-          "border border-brand-400/25 bg-white/[0.06] text-foreground shadow-inner-glow hover:-translate-y-0.5 hover:border-brand-300/45 hover:bg-white/[0.1] hover:shadow-glow",
-        ghost: "text-foreground/72 hover:bg-white/10 hover:text-foreground",
+          "border border-brand-200/80 bg-white/[0.72] text-ink shadow-inner-glow hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:shadow-soft dark:border-brand-400/25 dark:bg-white/[0.06] dark:text-foreground dark:hover:border-brand-300/45 dark:hover:bg-white/[0.1] dark:hover:shadow-glow",
+        ghost:
+          "text-foreground/72 hover:bg-brand-50 hover:text-brand-800 dark:hover:bg-white/10 dark:hover:text-foreground",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        link: "text-brand-200 underline-offset-4 hover:text-brand-100 hover:underline",
+        link:
+          "text-brand-700 underline-offset-4 hover:underline dark:text-brand-200 dark:hover:text-brand-100",
       },
       size: {
         default: "h-11 px-6 py-2",

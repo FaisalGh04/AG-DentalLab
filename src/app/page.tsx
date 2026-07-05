@@ -33,7 +33,7 @@ const jsonLd = {
 
 export default function HomePage() {
   return (
-    <>
+    <div className="dark landing-dark-shell text-foreground">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -49,6 +49,6 @@ export default function HomePage() {
         <Contact />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
