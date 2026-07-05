@@ -5,11 +5,14 @@ import { SITE } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/70 bg-white/[0.58] backdrop-blur-sm">
+    <footer className="bg-gradient-to-b from-transparent via-brand-950/30 to-brand-950/45 backdrop-blur-sm">
       <div className="container-tight py-14">
         <div className="grid gap-10 md:grid-cols-4">
           <div className="md:col-span-2">
-            <Logo className="h-14 w-52" withWordmark />
+            <Logo
+              className="h-14 w-52 brightness-0 invert drop-shadow-[0_0_14px_rgba(123,183,157,0.22)]"
+              withWordmark
+            />
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
               {SITE.tagline}. A digital dental laboratory delivering precise,
               reliable, and innovative solutions since 1994.
@@ -20,22 +23,22 @@ export function Footer() {
             <h4 className="text-sm font-semibold text-foreground">Explore</h4>
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/#about" className="transition-colors hover:text-brand-700">
+                <Link href="/#about" className="transition-colors hover:text-brand-300">
                   About
                 </Link>
               </li>
               <li>
-                <Link href="/#services" className="transition-colors hover:text-brand-700">
+                <Link href="/#services" className="transition-colors hover:text-brand-300">
                   Services
                 </Link>
               </li>
               <li>
-                <Link href="/#work" className="transition-colors hover:text-brand-700">
+                <Link href="/#work" className="transition-colors hover:text-brand-300">
                   Our Work
                 </Link>
               </li>
               <li>
-                <Link href="/track" className="transition-colors hover:text-brand-700">
+                <Link href="/track" className="transition-colors hover:text-brand-300">
                   Track a Case
                 </Link>
               </li>
@@ -48,7 +51,7 @@ export function Footer() {
               <li>
                 <a
                   href={SITE.phoneHref}
-                  className="flex items-center gap-2 transition-colors hover:text-brand-700"
+                  className="flex items-center gap-2 transition-colors hover:text-brand-300"
                 >
                   <Phone className="h-4 w-4" /> {SITE.phone}
                 </a>
@@ -61,7 +64,7 @@ export function Footer() {
                   href={SITE.instagramHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 transition-colors hover:text-brand-700"
+                  className="flex items-center gap-2 transition-colors hover:text-brand-300"
                 >
                   <Instagram className="h-4 w-4" /> @{SITE.instagram}
                 </a>
@@ -81,7 +84,7 @@ export function Footer() {
             href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline-offset-2 transition-colors hover:text-brand-700 hover:underline"
+            className="underline-offset-2 transition-colors hover:text-brand-300 hover:underline"
           >
             CC Attribution
           </a>{" "}

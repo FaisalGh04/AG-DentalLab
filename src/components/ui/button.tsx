@@ -13,13 +13,13 @@ const buttonVariants = cva(
         gradient:
           "bg-brand-gradient text-white shadow-glow hover:-translate-y-0.5 hover:brightness-110",
         secondary:
-          "bg-brand-50 text-brand-800 ring-1 ring-brand-200/80 hover:-translate-y-0.5 hover:bg-brand-100",
+          "bg-brand-500/15 text-brand-100 ring-1 ring-brand-400/25 hover:-translate-y-0.5 hover:bg-brand-500/25 hover:text-white",
         outline:
-          "border border-brand-200/80 bg-white/[0.72] text-ink shadow-inner-glow hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:shadow-soft",
-        ghost: "text-foreground/72 hover:bg-brand-50 hover:text-brand-800",
+          "border border-brand-400/25 bg-white/[0.06] text-foreground shadow-inner-glow hover:-translate-y-0.5 hover:border-brand-300/45 hover:bg-white/[0.1] hover:shadow-glow",
+        ghost: "text-foreground/72 hover:bg-white/10 hover:text-foreground",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        link: "text-brand-700 underline-offset-4 hover:underline",
+        link: "text-brand-200 underline-offset-4 hover:text-brand-100 hover:underline",
       },
       size: {
         default: "h-11 px-6 py-2",

@@ -19,11 +19,13 @@ const PLACEHOLDERS = [
 
 export function WorkGallery() {
   return (
-    <section id="work" className="relative bg-white/40 py-24 md:py-36">
+    <section id="work" className="relative py-24 md:py-36">
+      {/* Subtle teal wash (fades at edges → no hard section line). */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,transparent,rgba(71,133,109,0.05),transparent)]" />
       <div className="container-tight">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="section-eyebrow">Our Work</span>
-          <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-ink text-balance md:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-foreground text-balance md:text-5xl">
             <TextReveal text="Craftsmanship you can see" />
           </h2>
           <p className="mt-4 text-muted-foreground">
@@ -41,18 +43,18 @@ export function WorkGallery() {
               transition={{ delay: i * 0.06, duration: 0.5 }}
               whileHover={{ scale: 1.01 }}
               className={cn(
-                "group relative flex items-center justify-center overflow-hidden rounded-[1.35rem] border border-dashed border-brand-200/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(233,242,237,0.62))] shadow-inner-glow transition-shadow hover:shadow-glow",
+                "premium-panel group relative flex items-center justify-center overflow-hidden border-dashed border-brand-400/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow",
                 p.span,
               )}
             >
               {/* Replace this placeholder with <Image /> once assets exist. */}
-              <div className="relative z-10 flex flex-col items-center gap-3 text-brand-400 transition-transform duration-300 group-hover:scale-105">
+              <div className="relative z-10 flex flex-col items-center gap-3 text-brand-200/55 transition-transform duration-300 group-hover:scale-105 group-hover:text-brand-200/80">
                 <ImageIcon className="h-8 w-8" />
-                <span className="max-w-[9rem] text-center text-xs font-semibold text-brand-600">
+                <span className="max-w-[9rem] text-center text-xs font-semibold text-brand-100/70">
                   {p.label}
                 </span>
               </div>
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-brand-100/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-brand-500/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </motion.figure>
           ))}
         </div>

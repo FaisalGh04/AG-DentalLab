@@ -75,11 +75,14 @@ export function Navbar() {
               "flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300",
               scrolled
                 ? "glass shadow-card"
-                : "border border-transparent bg-white/35 backdrop-blur-sm",
+                : "border border-white/[0.06] bg-[hsl(158_30%_9%/0.35)] backdrop-blur-md",
             )}
           >
             <Link href="/" className="flex items-center gap-2" aria-label="Home">
-              <Logo className="h-11 w-40" withWordmark />
+              <Logo
+                className="h-11 w-40 brightness-0 invert drop-shadow-[0_0_14px_rgba(123,183,157,0.25)]"
+                withWordmark
+              />
             </Link>
 
             <div className="hidden items-center gap-1 md:flex">
@@ -92,15 +95,15 @@ export function Navbar() {
                     className={cn(
                       "relative rounded-xl px-3.5 py-2 text-sm font-medium transition-colors duration-200",
                       isActive
-                        ? "text-brand-800"
-                        : "text-foreground/66 hover:text-brand-800",
+                        ? "text-foreground"
+                        : "text-foreground/60 hover:text-foreground",
                     )}
                   >
                     {isActive && (
                       <motion.span
                         layoutId="nav-active-pill"
                         transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                        className="absolute inset-0 -z-10 rounded-xl bg-white/80 shadow-inner-glow"
+                        className="absolute inset-0 -z-10 rounded-xl border border-brand-400/20 bg-brand-500/15"
                       />
                     )}
                     {l.label}
@@ -123,7 +126,7 @@ export function Navbar() {
             </div>
 
             <button
-              className="rounded-xl p-2 transition-colors hover:bg-brand-50 md:hidden"
+              className="rounded-xl p-2 text-foreground transition-colors hover:bg-white/10 md:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label="Toggle menu"
             >

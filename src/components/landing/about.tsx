@@ -38,7 +38,7 @@ export function About() {
       <div className="container-tight">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="section-eyebrow">Our Story</span>
-          <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-ink text-balance md:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-foreground text-balance md:text-5xl">
             <TextReveal text="Three decades of dental craftsmanship" />
           </h2>
           <p className="mt-4 text-muted-foreground">
@@ -63,11 +63,11 @@ export function About() {
               >
                 {/* Gold hairline accent + hover sheen. */}
                 <div className="absolute inset-x-0 top-0 h-px bg-gold-gradient opacity-70" />
-                <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand-50/0 to-brand-50/60 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 transition-colors duration-300 group-hover:bg-brand-gradient group-hover:text-white">
+                <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-brand-500/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-glow">
                   <Icon className="h-5 w-5" />
                 </div>
-                <div className="mt-4 font-display text-3xl font-extrabold tracking-tight text-brand-800 md:text-4xl">
+                <div className="mt-4 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
                   <Counter to={c.to} suffix={c.suffix} />
                 </div>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground">
@@ -99,14 +99,14 @@ function Timeline() {
   return (
     <div ref={ref} className="relative mt-16">
       {/* Desktop connecting track. */}
-      <div className="absolute left-[16.66%] right-[16.66%] top-8 hidden h-px bg-brand-200/70 md:block">
+      <div className="absolute left-[16.66%] right-[16.66%] top-8 hidden h-px bg-brand-400/25 md:block">
         <motion.div
           style={{ scaleX }}
           className="h-full w-full origin-left bg-gradient-to-r from-brand-500 via-brand-600 to-gold-400"
         />
       </div>
       {/* Mobile vertical track. */}
-      <div className="absolute bottom-4 left-8 top-4 w-px bg-brand-200/70 md:hidden">
+      <div className="absolute bottom-4 left-8 top-4 w-px bg-brand-400/25 md:hidden">
         <motion.div
           style={{ scaleY }}
           className="h-full w-full origin-top bg-gradient-to-b from-brand-500 via-brand-600 to-gold-400"
@@ -128,7 +128,7 @@ function Timeline() {
               <span className="text-sm font-bold">{item.year}</span>
             </div>
             <div className="md:mt-6">
-              <h3 className="text-lg font-semibold text-ink">{item.title}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
               <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
                 {item.body}
               </p>
