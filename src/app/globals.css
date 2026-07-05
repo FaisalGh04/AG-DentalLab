@@ -4,53 +4,33 @@
 
 @layer base {
   :root {
-    --background: 43 31% 97%;
-    --foreground: 150 14% 8%;
-    --card: 45 33% 99%;
-    --card-foreground: 150 14% 8%;
-    --popover: 45 33% 99%;
-    --popover-foreground: 150 14% 8%;
+    /* ── Dark teal design system (2026) ─────────────────────────────
+       Near-black with a green undertone (#0A1512) as the base,
+       #275F4D brand for surfaces/accents, soft cream (#F5F5F0) for text. */
+    --background: 164 35% 6%; /* #0A1512 */
+    --foreground: 60 14% 95%; /* #F5F5F0 cream */
+    --card: 158 30% 10%;
+    --card-foreground: 60 14% 95%;
+    --popover: 158 32% 9%;
+    --popover-foreground: 60 14% 95%;
     --primary: 157 42% 26%; /* #275F4D */
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 60 20% 96%;
     --secondary: 156 30% 47%; /* #53886F */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 42 20% 93%;
-    --muted-foreground: 150 6% 42%;
-    --accent: 150 14% 8%; /* #121816 */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --secondary-foreground: 158 40% 8%;
+    --muted: 158 22% 15%;
+    --muted-foreground: 150 12% 68%; /* readable light muted-green */
+    --accent: 158 30% 14%;
+    --accent-foreground: 60 14% 95%;
+    --destructive: 0 62% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 42 16% 86%;
-    --input: 42 16% 86%;
-    --ring: 157 42% 26%;
+    --border: 156 24% 20%;
+    --input: 156 24% 18%;
+    --ring: 157 42% 42%;
     --radius: 1rem;
     /* Gold — accent only. */
-    --gold: 38 44% 46%; /* #A98643 */
-    /* Alive surface palette (brief) */
-    --bg-main: 111 22% 94%; /* #ECF3EB */
-    --bg-section: 126 18% 89%; /* #DCE8DD */
-  }
-
-  .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 151 31% 58%;
-    --primary-foreground: 222 47% 6%;
-    --secondary: 174 72% 46%;
-    --secondary-foreground: 222 47% 6%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 210 40% 98%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 173 80% 40%;
+    --gold: 38 44% 52%;
+    /* Cream accent — headings / CTAs. */
+    --cream: 60 14% 95%; /* #F5F5F0 */
   }
 }
 
@@ -66,28 +46,87 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "cv11", "ss01";
-    background-color: hsl(var(--bg-main));
+    background-color: hsl(var(--background));
+    /* Static depth glows layered under the animated mesh. */
     background-image:
-      radial-gradient(circle at 12% -8%, rgba(123, 183, 157, 0.28), transparent 30rem),
-      radial-gradient(circle at 88% 2%, rgba(39, 95, 77, 0.14), transparent 32rem),
-      radial-gradient(circle at 68% 108%, rgba(169, 134, 67, 0.08), transparent 34rem),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(236, 243, 235, 0.9));
+      radial-gradient(circle at 14% -6%, rgba(47, 109, 88, 0.35), transparent 34rem),
+      radial-gradient(circle at 86% 4%, rgba(39, 95, 77, 0.22), transparent 36rem),
+      radial-gradient(circle at 70% 112%, rgba(83, 136, 111, 0.16), transparent 38rem);
     background-attachment: fixed;
+    position: relative;
   }
+
+  /* ── Animated CSS-only gradient mesh ──────────────────────────────
+     Two fixed, blurred blob layers drifting in opposite directions.
+     GPU-accelerated (transform/opacity only), no JS. */
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: -30%;
+    z-index: -1;
+    pointer-events: none;
+    will-change: transform;
+  }
+  body::before {
+    background:
+      radial-gradient(38% 42% at 22% 28%, rgba(39, 95, 77, 0.55), transparent 70%),
+      radial-gradient(34% 38% at 78% 20%, rgba(47, 109, 88, 0.40), transparent 70%);
+    filter: blur(60px);
+    animation: mesh-drift-a 26s ease-in-out infinite;
+  }
+  body::after {
+    background:
+      radial-gradient(40% 44% at 68% 74%, rgba(83, 136, 111, 0.32), transparent 72%),
+      radial-gradient(30% 34% at 30% 82%, rgba(23, 56, 47, 0.55), transparent 70%);
+    filter: blur(70px);
+    animation: mesh-drift-b 32s ease-in-out infinite;
+  }
+
   ::selection {
-    @apply bg-brand-200 text-brand-900;
+    @apply bg-brand-500 text-brand-950;
+  }
+}
+
+@keyframes mesh-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(4%, -3%, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-4%, 4%, 0) scale(0.94);
+  }
+}
+
+@keyframes mesh-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(-5%, 4%, 0) scale(1.1);
+  }
+  66% {
+    transform: translate3d(5%, -5%, 0) scale(0.96);
   }
 }
 
 @layer components {
+  /* Dark glassmorphism — translucent teal, blur, soft brand glow. */
   .glass {
-    @apply border border-white/70 bg-white/[0.72] shadow-soft backdrop-blur-2xl;
+    @apply border border-brand-400/20 backdrop-blur-2xl;
+    background-color: hsl(158 32% 9% / 0.55);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.82),
-      0 18px 48px -28px rgba(39, 95, 77, 0.36);
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 18px 48px -28px rgba(0, 0, 0, 0.6),
+      0 0 40px -12px rgba(39, 95, 77, 0.55);
   }
   .glass-dark {
-    @apply border border-white/10 bg-ink/70 backdrop-blur-2xl;
+    @apply border border-white/[0.06] backdrop-blur-2xl;
+    background-color: hsl(164 40% 5% / 0.7);
   }
   .container-tight {
     @apply mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8;
@@ -96,28 +135,35 @@
     @apply bg-brand-gradient bg-clip-text text-transparent;
   }
   .section-eyebrow {
-    @apply inline-flex items-center gap-2 rounded-full border border-brand-200/80 bg-white/[0.72] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 shadow-inner-glow;
+    @apply inline-flex items-center gap-2 rounded-full border border-brand-400/25 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-200 backdrop-blur;
+    background-color: hsl(158 30% 12% / 0.6);
   }
   .premium-panel {
-    @apply rounded-[1.5rem] border border-white/70 bg-white/[0.76] shadow-card shadow-inner-glow backdrop-blur-xl;
+    @apply rounded-[1.5rem] border border-brand-400/20 backdrop-blur-xl;
+    background-color: hsl(158 30% 10% / 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 30px 80px -40px rgba(0, 0, 0, 0.7),
+      0 0 60px -22px rgba(39, 95, 77, 0.5);
   }
   .brand-orb {
     @apply pointer-events-none absolute rounded-full blur-3xl;
   }
   /* Gold eyebrow variant for accent moments. */
   .section-eyebrow-gold {
-    @apply inline-flex items-center gap-2 rounded-full border border-gold-200/80 bg-gold-50/70 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-gold-700 shadow-inner-glow;
+    @apply inline-flex items-center gap-2 rounded-full border border-gold-400/25 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-gold-300 backdrop-blur;
+    background-color: hsl(38 30% 14% / 0.5);
   }
   /* Animated gold gradient text — reserve for small accent words. */
   .text-shine-gold {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(
       100deg,
-      #8c6c35 0%,
-      #c39e53 30%,
+      #a9852f 0%,
+      #d8b876 30%,
       #f0dfb6 50%,
-      #c39e53 70%,
-      #8c6c35 100%
+      #d8b876 70%,
+      #a9852f 100%
     );
     background-size: 200% auto;
     animation: gold-sheen 6s linear infinite;
@@ -125,11 +171,11 @@
   /* Subtle film grain to keep large surfaces from feeling flat. */
   .grain::after {
     content: "";
-    @apply pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-multiply;
+    @apply pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   .hairline {
-    @apply h-px w-full bg-gradient-to-r from-transparent via-brand-300/60 to-transparent;
+    @apply h-px w-full bg-gradient-to-r from-transparent via-brand-400/40 to-transparent;
   }
 }
 
@@ -150,9 +196,12 @@
   width: 10px;
   height: 10px;
 }
+::-webkit-scrollbar-track {
+  background-color: hsl(var(--background));
+}
 ::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-brand-200;
+  @apply rounded-full bg-brand-700;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-brand-300;
+  @apply bg-brand-600;
 }
