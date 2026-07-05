@@ -53,13 +53,13 @@ export function TrackClient() {
   return (
     <div className="mx-auto w-full max-w-3xl">
       <form onSubmit={handleSubmit(onSubmit)} className="relative">
-        <div className="flex flex-col gap-3 rounded-[1.35rem] border border-white/75 bg-white/[0.78] p-3 shadow-[0_24px_70px_-40px_rgba(39,95,77,0.55)] ring-1 ring-brand-100/80 backdrop-blur-2xl sm:flex-row sm:items-center">
+        <div className="premium-panel flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-700/70" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-200/75" />
             <Input
               {...register("trackingId")}
               placeholder="Enter your Tracking ID"
-              className="h-12 border-brand-200/80 bg-white/85 pl-12 text-base text-ink shadow-inner-glow placeholder:text-muted-foreground/70 focus-visible:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-500/25"
+              className="h-12 border-brand-400/25 bg-brand-950/45 pl-12 text-base text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
               autoComplete="off"
               aria-label="Tracking ID"
             />
@@ -69,7 +69,7 @@ export function TrackClient() {
             size="lg"
             variant="gradient"
             disabled={mutation.isPending}
-            className="h-12 bg-[linear-gradient(135deg,#174438,#275F4D_52%,#6AA58A)] shadow-[0_18px_34px_-20px_rgba(39,95,77,0.9)] hover:brightness-110 focus-visible:ring-brand-500/35"
+            className="h-12 bg-[#F5F5F0] text-brand-900 shadow-glow hover:-translate-y-0.5 hover:bg-white focus-visible:ring-brand-300/50"
           >
             {mutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -87,12 +87,12 @@ export function TrackClient() {
       </form>
 
       {!mutation.data && !mutation.isError && !mutation.isPending && (
-        <div className="mt-8 rounded-[1.35rem] border border-brand-200/80 bg-white/[0.72] p-8 text-center shadow-[0_22px_70px_-42px_rgba(39,95,77,0.55)] ring-1 ring-white/75 backdrop-blur-2xl">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-200/80 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.92),rgba(214,234,224,0.92)_45%,rgba(39,95,77,0.14))] text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_34px_-24px_rgba(39,95,77,0.8)]">
+        <div className="premium-panel mt-8 p-8 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/30 bg-brand-500/15 text-brand-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_34px_-12px_rgba(83,136,111,0.9)]">
             <ClipboardList className="h-6 w-6" />
           </div>
-          <p className="mt-4 font-semibold text-ink">Ready to search</p>
-          <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+          <p className="mt-4 font-semibold text-cream">Ready to search</p>
+          <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-brand-50/68">
             Enter the case tracking ID provided by AG Dental Lab to view status,
             dates, notes, and production progress.
           </p>
@@ -108,7 +108,7 @@ export function TrackClient() {
             exit={{ opacity: 0 }}
             className="mt-6"
           >
-            <Card className="flex items-start gap-3 border-amber-200 bg-amber-50 p-5 text-amber-800">
+            <Card className="flex items-start gap-3 border-amber-300/35 bg-amber-500/10 p-5 text-amber-100">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
               <p className="text-sm">{mutation.error.message}</p>
             </Card>
@@ -123,14 +123,17 @@ export function TrackClient() {
             exit={{ opacity: 0 }}
             className="mt-8 space-y-6"
           >
-            <Card className="overflow-hidden">
-              <div className="flex flex-col gap-4 border-b border-border/80 bg-brand-50/60 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <Card className="overflow-hidden border-brand-400/20 bg-brand-950/55 text-cream">
+              <div className="flex flex-col gap-4 border-b border-brand-400/20 bg-brand-500/10 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-100/60">
                     Tracking ID
                   </p>
-                  <TrackingIdCopy trackingId={result.trackingId} className="mt-2 text-sm" />
-                  <h2 className="mt-4 font-display text-2xl font-bold text-ink">
+                  <TrackingIdCopy
+                    trackingId={result.trackingId}
+                    className="mt-2 border-brand-300/25 bg-brand-500/12 text-brand-100"
+                  />
+                  <h2 className="mt-4 font-display text-2xl font-bold text-cream">
                     {result.patientName}
                   </h2>
                 </div>
@@ -141,7 +144,7 @@ export function TrackClient() {
                 <StatusStepper status={result.currentStatus} />
               </div>
 
-              <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-px bg-brand-400/15 sm:grid-cols-2 lg:grid-cols-5">
                 <Detail icon={Hash} label="Tracking ID" value={result.trackingId} />
                 <Detail icon={User} label="Patient" value={result.patientName} />
                 <Detail icon={Stethoscope} label="Doctor" value={result.doctorName} />
@@ -159,17 +162,17 @@ export function TrackClient() {
               </div>
 
               {result.notes && (
-                <div className="border-t border-border/80 bg-white/50 p-6">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-100/60">
                     Notes
                   </p>
-                  <p className="mt-2 text-sm text-foreground/80">{result.notes}</p>
+                  <p className="mt-2 text-sm text-brand-50/78">{result.notes}</p>
                 </div>
               )}
             </Card>
 
-            <Card className="p-6">
-              <h3 className="mb-6 font-display text-lg font-semibold text-ink">
+            <Card className="border-brand-400/20 bg-brand-950/55 p-6 text-cream">
+              <h3 className="mb-6 font-display text-lg font-semibold text-cream">
                 Production Timeline
               </h3>
               <ProgressTimeline steps={result.progress} />
@@ -191,14 +194,14 @@ function Detail({
   value: string;
 }) {
   return (
-    <div className="bg-card/88 p-5">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="bg-brand-950/45 p-5">
+      <div className="flex items-center gap-2 text-brand-100/58">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-semibold uppercase tracking-wider">
           {label}
         </span>
       </div>
-      <p className="mt-1.5 font-medium text-ink">{value}</p>
+      <p className="mt-1.5 font-medium text-cream">{value}</p>
     </div>
   );
 }

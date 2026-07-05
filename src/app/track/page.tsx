@@ -14,33 +14,34 @@ export const metadata: Metadata = {
 
 export default function TrackPage() {
   return (
-    <>
+    <div className="dark min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="relative min-h-[100svh] overflow-hidden pb-24 pt-36">
+      <main className="relative isolate min-h-[100svh] overflow-hidden pb-24 pt-36">
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-[linear-gradient(145deg,hsl(43_31%_98%)_0%,hsl(116_24%_94%)_42%,hsl(154_31%_90%)_100%)]" />
-          <div className="absolute left-[-8%] top-20 h-[520px] w-[620px] rounded-full bg-brand-200/35 blur-[120px]" />
-          <div className="absolute right-[-10%] top-8 h-[460px] w-[620px] rounded-full bg-brand-500/12 blur-[130px]" />
-          <div className="absolute bottom-[-18%] left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-gold-100/35 blur-[140px]" />
-          <div className="absolute inset-0 bg-grid-brand [background-size:34px_34px] opacity-[0.28]" />
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute left-[-12%] top-[-10%] h-[540px] w-[680px] rounded-full bg-brand-500/35 blur-[120px]" />
+          <div className="absolute right-[-14%] top-10 h-[500px] w-[760px] rounded-full bg-brand-700/28 blur-[140px]" />
+          <div className="absolute bottom-[-20%] left-1/2 h-[460px] w-[860px] -translate-x-1/2 rounded-full bg-brand-300/14 blur-[150px]" />
+          <div className="absolute inset-0 bg-grid-brand [background-size:34px_34px] opacity-[0.08]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(83,136,111,0.16),transparent_42rem)]" />
         </div>
 
         <div className="container-tight">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-700"
+            className="inline-flex items-center gap-2 text-sm font-medium text-brand-100/70 transition-colors hover:text-cream"
           >
             <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
 
           <div className="mx-auto mt-8 max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-300/70 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-800 shadow-inner-glow backdrop-blur-xl">
+            <span className="section-eyebrow">
               Case Tracking
             </span>
-            <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-ink md:text-5xl">
+            <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-cream md:text-5xl">
               Track your case in seconds
             </h1>
-            <p className="mt-4 text-muted-foreground">
+            <p className="mt-4 text-brand-50/70">
               Enter the tracking ID provided by the lab to view real-time status
               and the full production timeline. No account required.
             </p>
@@ -52,6 +53,6 @@ export default function TrackPage() {
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

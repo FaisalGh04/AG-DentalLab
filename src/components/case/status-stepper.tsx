@@ -21,8 +21,10 @@ export function StatusStepper({ status }: { status: CaseStatus }) {
                   "flex h-9 w-9 items-center justify-center rounded-full border-2 text-xs font-bold transition-all",
                   done && "border-brand-600 bg-brand-600 text-white",
                   active &&
-                    "border-brand-600 bg-brand-50 text-brand-700 shadow-glow",
-                  !done && !active && "border-border bg-background text-muted-foreground",
+                    "border-brand-600 bg-brand-50 text-brand-700 shadow-glow dark:border-brand-300 dark:bg-brand-400/15 dark:text-brand-100",
+                  !done &&
+                    !active &&
+                    "border-border bg-background text-muted-foreground dark:border-brand-400/25 dark:bg-brand-950/45 dark:text-brand-100/55",
                 )}
               >
                 {done ? <Check className="h-4 w-4" /> : meta.step}
@@ -30,7 +32,9 @@ export function StatusStepper({ status }: { status: CaseStatus }) {
               <span
                 className={cn(
                   "text-center text-[11px] font-medium leading-tight",
-                  active ? "text-brand-700" : "text-muted-foreground",
+                  active
+                    ? "text-brand-700 dark:text-brand-100"
+                    : "text-muted-foreground dark:text-brand-100/55",
                 )}
               >
                 {meta.label}
@@ -40,7 +44,7 @@ export function StatusStepper({ status }: { status: CaseStatus }) {
               <div
                 className={cn(
                   "mx-2 mt-[18px] h-0.5 flex-1 rounded-full transition-colors",
-                  done ? "bg-brand-500" : "bg-border",
+                  done ? "bg-brand-500" : "bg-border dark:bg-brand-400/20",
                 )}
               />
             )}
