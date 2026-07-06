@@ -10,11 +10,25 @@ import crypto from "crypto";
  * S3-compatible client. Works with Cloudflare R2 (endpoint =
  * https://<accountid>.r2.cloudflarestorage.com) or AWS S3.
  */
+
+/**
+ * A var counts as configured only if it's present AND not one of the
+ * `.env.example` placeholders. Without this, placeholder strings (which are
+ * non-empty) pass a naive presence check, so the upload route thinks storage
+ * is enabled and then throws a confusing 500 ("Invalid URL") when presigning
+ * against the fake `<accountid>` endpoint — instead of returning the intended
+ * "Object storage is not configured" 503.
+ */
+const PLACEHOLDER = /<accountid>|your-access-key|your-secret-key|pub-xxxx/i;
+function isConfigured(value: string | undefined): value is string {
+  return !!value && !PLACEHOLDER.test(value);
+}
+
 const hasStorage =
-  !!process.env.S3_ENDPOINT &&
-  !!process.env.S3_ACCESS_KEY_ID &&
-  !!process.env.S3_SECRET_ACCESS_KEY &&
-  !!process.env.S3_BUCKET;
+  isConfigured(process.env.S3_ENDPOINT) &&
+  isConfigured(process.env.S3_ACCESS_KEY_ID) &&
+  isConfigured(process.env.S3_SECRET_ACCESS_KEY) &&
+  isConfigured(process.env.S3_BUCKET);
 
 export const s3 = hasStorage
   ? new S3Client({
