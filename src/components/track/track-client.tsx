@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import {
   ClipboardList,
   Hash,
   Tag,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +28,10 @@ import { ProgressTimeline } from "@/components/case/progress-timeline";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { searchSchema, type SearchInput } from "@/lib/validations";
 import { apiFetch, ApiError } from "@/lib/fetcher";
-import { CATEGORY_META } from "@/lib/constants";
+import { CATEGORY_META, STATUS_META } from "@/lib/constants";
 import { formatEstCompletion } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
+import type { CaseStatus } from "@prisma/client";
 
 export function TrackClient() {
   const {
@@ -49,6 +52,29 @@ export function TrackClient() {
 
   const onSubmit = (data: SearchInput) => mutation.mutate(data);
   const result = mutation.data;
+
+  // Which stage's photos are shown; defaults to the case's current stage.
+  const [selectedStage, setSelectedStage] = React.useState<CaseStatus | null>(
+    null,
+  );
+  React.useEffect(() => {
+    setSelectedStage(result ? result.currentStatus : null);
+  }, [result]);
+
+  const activeStage = selectedStage ?? result?.currentStatus ?? null;
+  const stagesWithImages = result
+    ? (Array.from(
+        new Set(result.images.map((i) => i.stage).filter(Boolean)),
+      ) as CaseStatus[])
+    : [];
+  const stageImages =
+    result && activeStage
+      ? result.images.filter((i) => i.stage === activeStage)
+      : [];
+  const stageReached =
+    result && activeStage
+      ? STATUS_META[activeStage].step <= STATUS_META[result.currentStatus].step
+      : false;
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -141,8 +167,52 @@ export function TrackClient() {
               </div>
 
               <div className="p-6">
-                <StatusStepper status={result.currentStatus} />
+                <StatusStepper
+                  status={result.currentStatus}
+                  interactive
+                  selectedStatus={activeStage}
+                  stagesWithImages={stagesWithImages}
+                  onSelectStatus={setSelectedStage}
+                />
               </div>
+
+              {activeStage && (
+                <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
+                  <div className="flex items-center gap-2 text-brand-100/60">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      {STATUS_META[activeStage].label} — Photos
+                    </span>
+                  </div>
+                  {stageImages.length > 0 ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {stageImages.map((img) => (
+                        <a
+                          key={img.id}
+                          href={img.imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative aspect-square overflow-hidden rounded-xl border border-brand-400/20"
+                        >
+                          <Image
+                            src={img.imageUrl}
+                            alt={img.caption ?? `${STATUS_META[activeStage].label} photo`}
+                            fill
+                            sizes="(max-width: 640px) 50vw, 220px"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-brand-50/68">
+                      {stageReached
+                        ? "No photos were uploaded for this stage."
+                        : "This stage hasn't been reached yet."}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid gap-px bg-brand-400/15 sm:grid-cols-2 lg:grid-cols-3">
                 <Detail icon={Hash} label="Tracking ID" value={result.trackingId} />

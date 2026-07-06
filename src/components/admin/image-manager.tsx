@@ -7,7 +7,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadImage, useDeleteImage } from "@/hooks/use-progress";
+import { STATUS_META } from "@/lib/constants";
 import type { ImageDTO } from "@/types/case";
+import type { CaseStatus } from "@prisma/client";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
@@ -15,11 +17,14 @@ const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
 export function ImageManager({
   caseId,
   images,
+  currentStatus,
 }: {
   caseId: string;
   images: ImageDTO[];
+  currentStatus: CaseStatus;
 }) {
-  const upload = useUploadImage(caseId);
+  // Uploads are tagged with the case's current lifecycle stage.
+  const upload = useUploadImage(caseId, currentStatus);
   const remove = useDeleteImage(caseId);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -63,7 +68,12 @@ export function ImageManager({
             Case Images
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            PNG, JPG, WebP or AVIF - up to 8MB each.
+            PNG, JPG, WebP or AVIF - up to 8MB each. New uploads are tagged to
+            the current stage:{" "}
+            <span className="font-semibold text-brand-700">
+              {STATUS_META[currentStatus].label}
+            </span>
+            .
           </p>
         </div>
         <input
@@ -112,6 +122,11 @@ export function ImageManager({
               className="object-cover"
             />
             <div className="absolute inset-0 bg-ink/0 transition-colors group-hover:bg-ink/40" />
+            {img.stage && (
+              <span className="absolute bottom-2 left-2 rounded-md bg-ink/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                {STATUS_META[img.stage].label}
+              </span>
+            )}
             <Button
               variant="destructive"
               size="icon"

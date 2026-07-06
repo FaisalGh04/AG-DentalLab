@@ -178,7 +178,11 @@ export function CaseDetailClient({ id }: { id: string }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressManager caseId={id} steps={kase.progress} />
-        <ImageManager caseId={id} images={kase.images} />
+        <ImageManager
+          caseId={id}
+          images={kase.images}
+          currentStatus={kase.currentStatus}
+        />
       </div>
 
       <CaseFormDialog

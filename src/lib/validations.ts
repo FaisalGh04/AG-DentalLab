@@ -125,5 +125,8 @@ export const imageAttachSchema = z.object({
   imageUrl: z.string().url(),
   key: z.string().min(1),
   caption: z.string().trim().max(200).optional().nullable(),
+  // Lifecycle stage this image documents; server falls back to the case's
+  // current status when omitted.
+  stage: CaseStatusEnum.optional().nullable(),
 });
 export type ImageAttachInput = z.infer<typeof imageAttachSchema>;

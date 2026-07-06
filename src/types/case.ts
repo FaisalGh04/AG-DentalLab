@@ -15,6 +15,7 @@ export interface ImageDTO {
   id: string;
   imageUrl: string;
   caption: string | null;
+  stage: CaseStatus | null;
   createdAt: string;
 }
 
@@ -32,6 +33,7 @@ export interface PublicCaseDTO {
   estimatedCompletionDate: string | null;
   notes: string | null;
   progress: ProgressDTO[];
+  images: ImageDTO[];
 }
 
 /** ADMIN case (full detail, includes id). */

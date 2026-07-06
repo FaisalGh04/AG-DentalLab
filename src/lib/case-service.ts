@@ -26,7 +26,10 @@ export async function searchByTrackingId(
   return cached(trackingCacheKey(trackingId), PUBLIC_CACHE_TTL, async () => {
     const found = await prisma.patientCase.findUnique({
       where: { trackingId },
-      include: { progress: { orderBy: { order: "asc" } } },
+      include: {
+        progress: { orderBy: { order: "asc" } },
+        images: { orderBy: { createdAt: "desc" } },
+      },
     });
     if (!found) return null;
 
@@ -47,6 +50,13 @@ export async function searchByTrackingId(
         completed: p.completed,
         order: p.order,
         createdAt: p.createdAt.toISOString(),
+      })),
+      images: found.images.map((i) => ({
+        id: i.id,
+        imageUrl: i.imageUrl,
+        caption: i.caption,
+        stage: i.stage,
+        createdAt: i.createdAt.toISOString(),
       })),
     };
     return dto;
@@ -164,6 +174,7 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       id: i.id,
       imageUrl: i.imageUrl,
       caption: i.caption,
+      stage: i.stage,
       createdAt: i.createdAt.toISOString(),
     })),
   };

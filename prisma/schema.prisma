@@ -102,15 +102,19 @@ model CaseProgress {
 // Uploaded case images (stored in R2/S3; only the URL is persisted).
 // ------------------------------------------------------------------
 model CaseImage {
-  id        String   @id @default(cuid())
-  caseId    String   @map("case_id")
-  imageUrl  String   @map("image_url")
-  key       String?  // storage object key, for deletion
+  id        String      @id @default(cuid())
+  caseId    String      @map("case_id")
+  imageUrl  String      @map("image_url")
+  key       String?     // storage object key, for deletion
   caption   String?
-  createdAt DateTime @default(now()) @map("created_at")
+  // Which lifecycle stage this image documents. Nullable so pre-existing rows
+  // stay valid; new uploads are tagged with the case's status at upload time.
+  stage     CaseStatus?
+  createdAt DateTime    @default(now()) @map("created_at")
 
   case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId])
+  @@index([caseId, stage])
   @@map("case_images")
 }
