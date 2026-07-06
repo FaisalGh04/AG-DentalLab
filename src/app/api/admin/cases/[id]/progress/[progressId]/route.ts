@@ -3,7 +3,6 @@ import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
 import { progressUpdateSchema } from "@/lib/validations";
-import { invalidateTrackingCache } from "@/lib/case-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +17,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const { id: caseId, progressId } = await params;
     const step = await prisma.caseProgress.findFirst({
       where: { id: progressId, caseId },
-      include: { case: { select: { trackingId: true } } },
     });
     if (!step) return apiError("Step not found", 404);
 
@@ -34,7 +32,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       },
     });
 
-    await invalidateTrackingCache(step.case.trackingId);
     return apiOk({ id: progressId });
   } catch (err) {
     return handleApiError(err);
@@ -49,12 +46,10 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const { id: caseId, progressId } = await params;
     const step = await prisma.caseProgress.findFirst({
       where: { id: progressId, caseId },
-      include: { case: { select: { trackingId: true } } },
     });
     if (!step) return apiError("Step not found", 404);
 
     await prisma.caseProgress.delete({ where: { id: progressId } });
-    await invalidateTrackingCache(step.case.trackingId);
     return apiOk({ id: progressId });
   } catch (err) {
     return handleApiError(err);

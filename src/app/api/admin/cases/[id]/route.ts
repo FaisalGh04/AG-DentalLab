@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
-import { getCaseById, invalidateTrackingCache } from "@/lib/case-service";
+import { revalidateTag } from "next/cache";
+import { getCaseById } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
 import { caseUpdateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
@@ -61,7 +62,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       },
     });
 
-    await invalidateTrackingCache(existing.trackingId);
+    // Status may have changed → refresh the cached dashboard counts.
+    revalidateTag("cases");
 
     return apiOk({ id: updated.id });
   } catch (err) {
@@ -89,7 +91,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     );
 
     await prisma.patientCase.delete({ where: { id } });
-    await invalidateTrackingCache(existing.trackingId);
+    revalidateTag("cases");
 
     return apiOk({ id });
   } catch (err) {

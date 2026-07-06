@@ -1,6 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { Prisma, type CaseStatus, type CaseCategory } from "@prisma/client";
 import { prisma } from "./prisma";
-import { cached, invalidate } from "./redis";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import type {
   PublicCaseDTO,
@@ -9,64 +9,51 @@ import type {
   AdminCaseDTO,
 } from "@/types/case";
 
-const PUBLIC_CACHE_TTL = 30; // seconds
-
-function trackingCacheKey(trackingId: string) {
-  return `track:${trackingId}`;
-}
-
 /**
  * PUBLIC search by tracking ID. Returns a sanitized DTO with no internal ids.
- * Cached briefly in Redis.
+ * Intentionally NOT cached — patients must always see live, accurate status.
  */
 export async function searchByTrackingId(
   rawTrackingId: string,
 ): Promise<PublicCaseDTO | null> {
   const trackingId = formatTrackingId(rawTrackingId);
 
-  return cached(trackingCacheKey(trackingId), PUBLIC_CACHE_TTL, async () => {
-    const found = await prisma.patientCase.findUnique({
-      where: { trackingId },
-      include: {
-        progress: { orderBy: { order: "asc" } },
-        images: { orderBy: { createdAt: "desc" } },
-      },
-    });
-    if (!found) return null;
-
-    const dto: PublicCaseDTO = {
-      trackingId: found.trackingId,
-      patientName: `${found.patientFirstName} ${found.patientLastName}`,
-      doctorName: found.doctorName,
-      caseType: found.caseType,
-      category: found.category,
-      currentStatus: found.currentStatus,
-      estimatedCompletionDate:
-        found.estimatedCompletionDate?.toISOString() ?? null,
-      notes: found.notes,
-      progress: found.progress.map((p) => ({
-        id: p.id,
-        stepTitle: p.stepTitle,
-        description: p.description,
-        completed: p.completed,
-        order: p.order,
-        createdAt: p.createdAt.toISOString(),
-      })),
-      images: found.images.map((i) => ({
-        id: i.id,
-        imageUrl: i.imageUrl,
-        caption: i.caption,
-        stage: i.stage,
-        createdAt: i.createdAt.toISOString(),
-      })),
-    };
-    return dto;
+  const found = await prisma.patientCase.findUnique({
+    where: { trackingId },
+    include: {
+      progress: { orderBy: { order: "asc" } },
+      images: { orderBy: { createdAt: "desc" } },
+    },
   });
-}
+  if (!found) return null;
 
-/** Invalidate the public tracking cache for a given tracking ID. */
-export async function invalidateTrackingCache(trackingId: string) {
-  await invalidate(trackingCacheKey(trackingId));
+  const dto: PublicCaseDTO = {
+    trackingId: found.trackingId,
+    patientName: `${found.patientFirstName} ${found.patientLastName}`,
+    doctorName: found.doctorName,
+    caseType: found.caseType,
+    category: found.category,
+    currentStatus: found.currentStatus,
+    estimatedCompletionDate:
+      found.estimatedCompletionDate?.toISOString() ?? null,
+    notes: found.notes,
+    progress: found.progress.map((p) => ({
+      id: p.id,
+      stepTitle: p.stepTitle,
+      description: p.description,
+      completed: p.completed,
+      order: p.order,
+      createdAt: p.createdAt.toISOString(),
+    })),
+    images: found.images.map((i) => ({
+      id: i.id,
+      imageUrl: i.imageUrl,
+      caption: i.caption,
+      stage: i.stage,
+      createdAt: i.createdAt.toISOString(),
+    })),
+  };
+  return dto;
 }
 
 // ------------------------------------------------------------------
@@ -181,7 +168,7 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
   };
 }
 
-export async function getDashboardStats() {
+async function computeDashboardStats() {
   // One grouped query instead of five separate COUNTs.
   const grouped = await prisma.patientCase.groupBy({
     by: ["currentStatus"],
@@ -196,6 +183,18 @@ export async function getDashboardStats() {
   const total = received + inProgress + production + completed;
   return { total, received, inProgress, production, completed };
 }
+
+/**
+ * Dashboard count badges. Cached ~30s in Next's Data Cache and tagged "cases"
+ * so it's revalidated immediately whenever a case is created/updated/deleted
+ * (see the case API routes). Global counts tolerate brief cross-session
+ * staleness; the admin's own actions reflect instantly via revalidateTag.
+ */
+export const getDashboardStats = unstable_cache(
+  computeDashboardStats,
+  ["dashboard-stats"],
+  { revalidate: 30, tags: ["cases"] },
+);
 
 /**
  * Most-recently-updated cases for the dashboard. Unlike listCases this skips

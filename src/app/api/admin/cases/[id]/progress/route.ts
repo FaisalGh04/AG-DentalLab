@@ -3,7 +3,6 @@ import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
 import { progressCreateSchema } from "@/lib/validations";
-import { invalidateTrackingCache } from "@/lib/case-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +42,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       },
     });
 
-    await invalidateTrackingCache(kase.trackingId);
     return apiOk({ id: step.id }, 201);
   } catch (err) {
     return handleApiError(err);

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { apiOk, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { listCases } from "@/lib/case-service";
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
         notes: input.notes ?? null,
       },
     });
+
+    // New case → refresh the cached dashboard counts.
+    revalidateTag("cases");
 
     return apiOk({ id: created.id, trackingId: created.trackingId }, 201);
   } catch (err) {
