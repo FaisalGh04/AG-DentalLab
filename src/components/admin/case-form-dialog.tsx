@@ -47,6 +47,9 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const [createdTrackingId, setCreatedTrackingId] = React.useState<string | null>(
     null,
   );
+  // Est. completion time (HH:mm) is kept in local state and combined with the
+  // date on submit. Empty string = no specific time (stored as 00:00 UTC).
+  const [estTime, setEstTime] = React.useState("");
 
   const {
     register,
@@ -78,6 +81,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
           : "",
         notes: existing.notes ?? "",
       });
+      setEstTime(extractUtcTime(existing.estimatedCompletionDate));
     } else if (open && !existing) {
       reset({
         patientFirstName: "",
@@ -89,15 +93,18 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         estimatedCompletionDate: "",
         notes: "",
       });
+      setEstTime("");
     }
   }, [open, existing, reset]);
 
   async function onSubmit(values: CaseCreateInput) {
-    // Convert date input (yyyy-mm-dd) to ISO or null.
+    // Combine the date (yyyy-mm-dd) and time (HH:mm) as a UTC wall-clock so the
+    // stored value renders identically for every viewer. No date => null.
+    const datePart = values.estimatedCompletionDate?.slice(0, 10);
     const payload = {
       ...values,
-      estimatedCompletionDate: values.estimatedCompletionDate
-        ? new Date(values.estimatedCompletionDate).toISOString()
+      estimatedCompletionDate: datePart
+        ? new Date(`${datePart}T${estTime || "00:00"}:00.000Z`).toISOString()
         : null,
     };
 
@@ -240,12 +247,21 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          <Field
-            label="Estimated Completion Date"
-            error={errors.estimatedCompletionDate?.message}
-          >
-            <Input type="date" {...register("estimatedCompletionDate")} />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Estimated Completion Date"
+              error={errors.estimatedCompletionDate?.message}
+            >
+              <Input type="date" {...register("estimatedCompletionDate")} />
+            </Field>
+            <Field label="Estimated Completion Time">
+              <Input
+                type="time"
+                value={estTime}
+                onChange={(e) => setEstTime(e.target.value)}
+              />
+            </Field>
+          </div>
 
           <Field label="Notes" error={errors.notes?.message}>
             <Textarea
@@ -307,6 +323,15 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     </Dialog>
     </>
   );
+}
+
+/** Pull the "HH:mm" (UTC) out of a stored ISO date; "" when unset/midnight. */
+function extractUtcTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return hh === "00" && mm === "00" ? "" : `${hh}:${mm}`;
 }
 
 function Field({

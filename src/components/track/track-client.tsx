@@ -27,7 +27,7 @@ import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { searchSchema, type SearchInput } from "@/lib/validations";
 import { apiFetch, ApiError } from "@/lib/fetcher";
 import { CATEGORY_META } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatEstCompletion } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
 
 export function TrackClient() {
@@ -157,7 +157,7 @@ export function TrackClient() {
                 <Detail
                   icon={CalendarClock}
                   label="Est. Completion"
-                  value={formatDate(result.estimatedCompletionDate)}
+                  value={formatEstCompletion(result.estimatedCompletionDate)}
                 />
               </div>
 

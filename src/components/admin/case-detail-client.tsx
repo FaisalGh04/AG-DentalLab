@@ -33,7 +33,7 @@ import { ProgressManager } from "@/components/admin/progress-manager";
 import { ImageManager } from "@/components/admin/image-manager";
 import { useCase, useDeleteCase, useUpdateCase } from "@/hooks/use-cases";
 import { CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatEstCompletion } from "@/lib/utils";
 import type { CaseStatus } from "@prisma/client";
 
 export function CaseDetailClient({ id }: { id: string }) {
@@ -162,7 +162,7 @@ export function CaseDetailClient({ id }: { id: string }) {
           <Detail
             icon={CalendarClock}
             label="Est. Completion"
-            value={formatDate(kase.estimatedCompletionDate)}
+            value={formatEstCompletion(kase.estimatedCompletionDate)}
           />
         </div>
 

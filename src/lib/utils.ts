@@ -35,6 +35,28 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   }).format(new Date(date));
 }
 
+/**
+ * Estimated completion is stored as a UTC wall-clock (a date plus an optional
+ * time). Format it in UTC so every viewer — admin or public — sees exactly the
+ * date/time the lab entered, regardless of their own timezone. A midnight
+ * (00:00) time means no specific time was set, so we show the date only (this
+ * also keeps legacy date-only cases rendering as before).
+ */
+export function formatEstCompletion(
+  date: Date | string | null | undefined,
+): string {
+  if (!date) return "—";
+  const d = new Date(date);
+  const hasTime = d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(hasTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
+    timeZone: "UTC",
+  }).format(d);
+}
+
 export function initials(name: string): string {
   return name
     .split(" ")
