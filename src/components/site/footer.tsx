@@ -5,91 +5,105 @@ import { SITE } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/70 bg-white/[0.58] backdrop-blur-sm dark:border-transparent dark:bg-transparent dark:bg-gradient-to-b dark:from-transparent dark:via-brand-950/30 dark:to-brand-950/45">
-      <div className="container-tight py-14">
-        <div className="grid gap-10 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <Logo
-              className="h-14 w-52 dark:brightness-0 dark:invert dark:drop-shadow-[0_0_14px_rgba(123,183,157,0.22)]"
-              withWordmark
-            />
-            <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
-              {SITE.tagline}. A digital dental laboratory delivering precise,
-              reliable, and innovative solutions since 1994.
-            </p>
+    <footer className="relative isolate px-5 pb-8 pt-6 sm:px-6 lg:px-8">
+      {/* Vivid brand light painted directly BEHIND the glass panel so its
+          backdrop-filter blur has bright, varied color to visibly soften —
+          this is what makes it read as real glass (same trick as the login
+          card's orbs), regardless of what page renders the footer. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 mx-auto max-w-7xl overflow-hidden rounded-[1.75rem]">
+        <div className="absolute left-[10%] top-1/2 h-[240px] w-[420px] -translate-y-1/2 rounded-full bg-brand-500/35 blur-[90px]" />
+        <div className="absolute left-1/2 top-[26%] h-[210px] w-[340px] -translate-x-1/2 rounded-full bg-brand-300/25 blur-[80px]" />
+        <div className="absolute right-[8%] top-[64%] h-[240px] w-[380px] rounded-full bg-brand-700/38 blur-[100px]" />
+      </div>
+
+      <div className="footer-glass mx-auto w-full max-w-7xl px-6 py-14 sm:px-10 lg:px-12">
+        {/* z-[3] keeps content above the ::before border and ::after highlight. */}
+        <div className="relative z-[3]">
+          <div className="grid gap-10 md:grid-cols-4">
+            <div className="md:col-span-2">
+              <Logo
+                className="h-14 w-52 dark:brightness-0 dark:invert dark:drop-shadow-[0_0_14px_rgba(123,183,157,0.22)]"
+                withWordmark
+              />
+              <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
+                {SITE.tagline}. A digital dental laboratory delivering precise,
+                reliable, and innovative solutions since 1994.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Explore</h4>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link href="/#about" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#services" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
+                    Services
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#work" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
+                    Our Work
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/track" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
+                    Track a Case
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Contact</h4>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <li>
+                  <a
+                    href={SITE.phoneHref}
+                    className="flex items-center gap-2 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
+                  >
+                    <Phone className="h-4 w-4" /> {SITE.phone}
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> {SITE.location}
+                </li>
+                <li>
+                  <a
+                    href={SITE.instagramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
+                  >
+                    <Instagram className="h-4 w-4" /> @{SITE.instagram}
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div>
-            <h4 className="text-sm font-semibold text-foreground">Explore</h4>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/#about" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                  Services
-                </Link>
-              </li>
-              <li>
-                <Link href="/#work" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                  Our Work
-                </Link>
-              </li>
-              <li>
-                <Link href="/track" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                  Track a Case
-                </Link>
-              </li>
-            </ul>
+          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-xs text-muted-foreground md:flex-row">
+            <p>Copyright {new Date().getFullYear()} {SITE.name}. All rights reserved.</p>
+            <p>Founded by {SITE.founder} - Established 1994</p>
           </div>
 
-          <div>
-            <h4 className="text-sm font-semibold text-foreground">Contact</h4>
-            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <li>
-                <a
-                  href={SITE.phoneHref}
-                  className="flex items-center gap-2 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
-                >
-                  <Phone className="h-4 w-4" /> {SITE.phone}
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" /> {SITE.location}
-              </li>
-              <li>
-                <a
-                  href={SITE.instagramHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
-                >
-                  <Instagram className="h-4 w-4" /> @{SITE.instagram}
-                </a>
-              </li>
-            </ul>
-          </div>
+          {/* Required CC-BY legal attribution — kept fully visible/readable, only de-emphasized as discreet fine print (smaller + more muted). Do not remove. */}
+          <p className="mt-5 text-center text-[0.58rem] leading-4 text-muted-foreground/45">
+            &ldquo;Molar Tooth&rdquo; by Vikrama Raghuraman, licensed under{" "}
+            <a
+              href="https://creativecommons.org/licenses/by/4.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 transition-colors hover:text-brand-700 hover:underline dark:hover:text-brand-300"
+            >
+              CC Attribution
+            </a>{" "}
+            (Sketchfab).
+          </p>
         </div>
-
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-xs text-muted-foreground md:flex-row">
-          <p>Copyright {new Date().getFullYear()} {SITE.name}. All rights reserved.</p>
-          <p>Founded by {SITE.founder} - Established 1994</p>
-        </div>
-
-        <p className="mt-4 text-center text-[0.68rem] leading-5 text-muted-foreground/70">
-          &ldquo;Molar Tooth&rdquo; by Vikrama Raghuraman, licensed under{" "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline-offset-2 transition-colors hover:text-brand-700 hover:underline dark:hover:text-brand-300"
-          >
-            CC Attribution
-          </a>{" "}
-          (Sketchfab).
-        </p>
       </div>
     </footer>
   );

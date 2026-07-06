@@ -293,6 +293,68 @@
     box-shadow: 0 0 0 1000px hsl(158 32% 10% / 0.92) inset;
     transition: background-color 9999s ease-out 0s;
   }
+
+  /* Frosted-glass footer panel — same true-3D-glass recipe as the login card
+     (translucent fill + backdrop blur + layered depth shadow + gradient edge +
+     inner top highlight). Scoped so it can't leak into other shared components.
+     Relies on the brand orbs painted behind it (in the Footer component) so the
+     backdrop blur has vivid, varied light to visibly soften. */
+  .footer-glass {
+    position: relative;
+    border-radius: 1.75rem;
+    /* Translucent so the mesh/orbs blur through, with a diagonal sheen so it
+       keeps reading as glass even where the backdrop is dark. */
+    background-color: hsl(158 32% 10% / 0.42);
+    background-image: linear-gradient(
+      155deg,
+      hsl(158 36% 14% / 0.55),
+      hsl(164 44% 6% / 0.42)
+    );
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(22px) saturate(140%);
+    border: 1px solid rgba(109, 166, 142, 0.16);
+    /* Layered depth: far soft lift + mid grounding + brand glow + inner top edge. */
+    box-shadow:
+      0 44px 90px -48px rgba(0, 0, 0, 0.9),
+      0 18px 40px -24px rgba(0, 0, 0, 0.6),
+      0 0 70px -26px rgba(39, 95, 77, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  /* 1px light-edge gradient border — brighter at the top, fading downward. */
+  .footer-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      180deg,
+      rgba(245, 245, 240, 0.38),
+      rgba(245, 245, 240, 0.06) 38%,
+      rgba(245, 245, 240, 0) 72%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* Faint inner highlight glow at the top — light reflecting off the glass. */
+  .footer-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: radial-gradient(
+      130% 60% at 50% -6%,
+      rgba(245, 245, 240, 0.1),
+      transparent 58%
+    );
+    pointer-events: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
