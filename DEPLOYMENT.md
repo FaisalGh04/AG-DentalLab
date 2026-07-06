@@ -1,37 +1,31 @@
 # Deployment Guide - AG Dental Lab
 
-This guide reflects the current project state after the branding and UI/UX polish pass.
+The app is **deployed live on Vercel**: https://ag-dental-lab-2005.vercel.app
 
 Supported deployment paths:
 
-- Vercel, recommended
+- Vercel, recommended (current production)
 - Docker/self-hosting
-
-The app is production-ready once environment variables, database schema, seeded admin credentials, and optional storage/cache providers are configured.
 
 ---
 
 ## Current Deployment Status
 
 - Framework: Next.js 15 App Router
-- Database: PostgreSQL through Prisma, intended for Supabase
-- Auth: Auth.js / NextAuth v5 credentials provider
+- Database: PostgreSQL through Prisma on Supabase (`ap-southeast-1`)
+- Region: Vercel `sin1`, co-located with the Supabase database region
+- Auth: Auth.js / NextAuth v5 credentials provider (JWT sessions)
 - Admin: single seeded admin account
-- Storage: Cloudflare R2 or AWS S3 optional for image uploads
-- Cache/rate limit: Upstash Redis optional
+- Storage: Supabase Storage (S3-compatible) — **configured and working**; also compatible with Cloudflare R2 / AWS S3
+- Cache/rate limit: Upstash Redis optional (public tracking is intentionally uncached)
 - Monitoring: Sentry optional
+- Migrations: committed under `prisma/migrations/` and **applied automatically on deploy** (the build runs `prisma migrate deploy`)
 - Build status: `npm.cmd run build` passes
 
-Current completion: **95%**
+Production environment already configured on Vercel:
 
-Pending deployment-related items:
-
-- Configure real production database credentials.
-- Configure production `AUTH_URL` and `NEXT_PUBLIC_SITE_URL`.
-- Seed production admin credentials.
-- Configure R2/S3 only if case image uploads are required.
-- Configure Upstash only if production rate limiting/cache is required.
-- Configure Sentry only if monitoring is required.
+- Production database (Supabase), `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, seeded admin, and `S3_*` storage credentials are set.
+- Upstash and Sentry remain optional.
 
 ---
 
@@ -114,9 +108,9 @@ UPSTASH_REDIS_REST_URL=""
 UPSTASH_REDIS_REST_TOKEN=""
 ```
 
-### Cloudflare R2 / AWS S3
+### Object Storage (Supabase Storage / Cloudflare R2 / AWS S3)
 
-Used for case image uploads. Leave blank if uploads are not needed yet.
+Required for case image uploads. Production uses **Supabase Storage** (S3‑compatible). If the `S3_*` values are left blank or kept as the `.env.example` placeholders, the upload API returns a clear 503 ("Object storage is not configured") instead of failing obscurely.
 
 ```env
 S3_ENDPOINT=""
@@ -125,6 +119,15 @@ S3_ACCESS_KEY_ID=""
 S3_SECRET_ACCESS_KEY=""
 S3_BUCKET=""
 S3_PUBLIC_URL=""
+```
+
+For Supabase Storage (S3‑compatible endpoint from the Supabase dashboard):
+
+```env
+S3_ENDPOINT="https://<project-ref>.storage.supabase.co/storage/v1/s3"
+S3_REGION="<supabase-region>"
+S3_BUCKET="<bucket-name>"
+S3_PUBLIC_URL="https://<project-ref>.supabase.co/storage/v1/object/public/<bucket-name>"
 ```
 
 For Cloudflare R2:
@@ -136,7 +139,7 @@ S3_BUCKET="ag-dental-lab"
 S3_PUBLIC_URL="https://pub-xxxx.r2.dev"
 ```
 
-R2/S3 CORS must allow browser `PUT` uploads from the deployed origin:
+The storage provider's CORS must allow browser `PUT` uploads from the deployed origin:
 
 ```json
 [
@@ -214,19 +217,8 @@ npm.cmd run start -- -p 3001
    - Add Upstash variables.
    - Add R2/S3 variables.
    - Add Sentry variables.
-6. Apply database schema:
-
-```powershell
-npm.cmd run db:deploy
-```
-
-If no migrations exist and this is the first deployment, use:
-
-```powershell
-npm.cmd run db:push
-```
-
-7. Seed the admin:
+6. Database schema: committed migrations apply automatically during the Vercel build (`prisma migrate deploy` is part of the `build` script). `prisma migrate deploy` requires `DIRECT_URL` to be present in the build environment.
+7. Seed the admin (first deploy only, run once against the production database):
 
 ```powershell
 npm.cmd run db:seed
@@ -294,11 +286,12 @@ npm.cmd run db:seed
 - [ ] `/admin` is protected from logged-out users.
 - [ ] `/admin` dashboard loads.
 - [ ] `/admin/cases` can create, edit, filter, and delete cases.
+- [ ] Completed cases leave "All Cases" and appear only in the Archive.
 - [ ] Case progress steps can be added and toggled.
-- [ ] `/track` can find the seeded demo case by patient full name.
-- [ ] A newly created case appears in public tracking.
-- [ ] Image upload works if R2/S3 is configured.
-- [ ] Rate limiting/cache works if Upstash is configured.
+- [ ] `/track` finds a case by its tracking ID (`AG-XXXXXX`).
+- [ ] A newly created case appears in public tracking with live status.
+- [ ] Image upload works and images appear under the correct stage on `/track`.
+- [ ] Rate limiting works if Upstash is configured.
 - [ ] Metadata, favicon, Apple icon, manifest, and Open Graph preview are correct.
 - [ ] Production `AUTH_URL` and `NEXT_PUBLIC_SITE_URL` match the deployed domain.
 - [ ] Admin password has been changed from any placeholder value.

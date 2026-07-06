@@ -4,6 +4,33 @@ All notable project changes are summarized here for future handoff.
 
 ---
 
+## 2026-07 - Tracking IDs, Storage, Per‑Stage Images, Performance
+
+### Added
+
+- Public **tracking‑ID** system (`AG‑XXXXXX`): public tracking now searches by tracking ID instead of patient name; each `PatientCase` has a unique `trackingId`.
+- **Category → case type taxonomy** (`src/lib/case-types.ts`); the admin case form constrains case type to the selected category.
+- **Estimated completion time**: `estimatedCompletionDate` now captures date and time; admin form has a time picker and Track/admin display both.
+- **Per‑stage case images**: `CaseImage.stage` column (migration `add_case_image_stage`, backfilled); admin tags uploads with the current stage; the public Track Case step indicator is clickable to view each stage's images.
+- **Working object storage**: Supabase Storage (S3‑compatible) presigned uploads configured; a placeholder‑detection guard makes unconfigured storage return a clear 503.
+- **Completed‑case Archive**: completed cases are excluded from All Cases and shown only in the Archive.
+- Dark glassmorphism theme across landing, Track Case, and login; glassmorphism footer; account dropdown with sign‑out confirmation.
+- Committed Prisma migrations; the build runs `prisma migrate deploy` so migrations auto‑apply on Vercel.
+
+### Changed
+
+- **Dashboard performance**: replaced five `count()` queries with one `groupBy`, and added a count‑free recent‑cases query (dashboard DB work 7 → 2 logical queries).
+- **Caching**: dashboard counts cached ~30s via `unstable_cache` (tag `cases`), revalidated on case writes; public tracking made explicitly always‑fresh (removed the Redis wrapper on tracking search).
+- Vercel region set to `sin1` to co‑locate with the Supabase database region.
+
+### Verified
+
+- `npm.cmd run typecheck` passes.
+- `npm.cmd run build` passes.
+- Feature flows verified in a real browser (uploads, per‑stage viewing, archive move, cache invalidation).
+
+---
+
 ## Current State - UI/Branding Polish Complete
 
 ### Added
@@ -92,8 +119,6 @@ All notable project changes are summarized here for future handoff.
 
 ## Next Planned Changes
 
-- Category to case type dependency.
-- Tracking ID system.
 - QR/share tracking links.
 - Better duplicate-name handling.
 - Admin reporting/analytics.

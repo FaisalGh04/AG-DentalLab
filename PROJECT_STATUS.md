@@ -1,10 +1,10 @@
 # Project Status - AG Dental Lab
 
-Last updated after the official branding and UI/UX polish pass.
+Last updated: 2026-07-06.
 
-Current completion: **95%**
+The project is a production Next.js application, **deployed live on Vercel** (region `sin1`) with a Supabase PostgreSQL database (`ap-southeast-1`). Backend, database, authentication, admin dashboard, case management, public tracking, object storage, and the branded dark‑theme UI are all complete. Recent work covered the tracking‑ID system, per‑stage case images, working storage, estimated‑completion time, performance/caching, and the completed‑case archive.
 
-The project is an existing, production-ready Next.js application. Core functionality is implemented. The backend, database, authentication, admin dashboard, case management, and public tracking system are complete. Recent work focused on frontend polish and official AG Dental Lab branding.
+Production: https://ag-dental-lab-2005.vercel.app
 
 ---
 
@@ -12,124 +12,87 @@ The project is an existing, production-ready Next.js application. Core functiona
 
 ### Core Product
 
-- Landing page
-- Admin dashboard
-- Admin authentication
-- Protected admin routes
+- Landing page (static, dark glassmorphism theme)
+- Admin dashboard with cached status counts and recent cases
+- Admin authentication (NextAuth v5 credentials, JWT sessions)
+- Protected admin routes via edge middleware
 - Case management CRUD
-- Case status lifecycle
-- Case progress timeline
-- Public case tracking by patient full name
-- PostgreSQL database schema
-- Prisma ORM integration
-- API route handlers
-- Validation with Zod
-- Rate limit/cache integration with graceful fallback
-- Optional image upload infrastructure
+- Category‑dependent case types (taxonomy in `lib/case-types.ts`)
+- Case status lifecycle and progress timeline
+- Estimated completion **date + time**
+- **Public case tracking by tracking ID (`AG‑XXXXXX`)**
+- **Per‑stage case images** viewable from the public step indicator
+- Completed cases move to the **Archive** and are excluded from All Cases
+- **Object storage configured and working** (Supabase Storage, S3‑compatible presigned uploads)
+- PostgreSQL schema with committed Prisma migrations
+- API route handlers with Zod validation
+- Rate limit/cache helpers with graceful fallback
 - Optional Sentry integration
 
-### Branding
+### Branding & UI
 
-- Official AG Dental Lab logo added.
-- Logo transparent padding removed.
-- Logo integrated in:
-  - Navbar
-  - Hero
-  - Shared Logo component
-  - Metadata
-  - Manifest
-  - Favicon
-  - Apple icon
-  - Open Graph image
-- Brand palette created from the official logo.
-- Theme tokens updated in Tailwind and CSS variables.
+- Official AG Dental Lab logo and icon assets across the app
+- Brand palette and Tailwind/CSS theme tokens
+- Dark glassmorphism theme on landing, Track Case, and login; light theme on admin
+- Glassmorphism footer; login glass card; premium‑panel card language
+- Polished admin shell, cases table, case detail, progress/image managers
+- Accessible focus states and contrast
 
-### UI/UX
+### Performance & Caching
 
-- Navbar redesigned.
-- Hero section redesigned.
-- About section improved.
-- Services section improved.
-- Mission section improved.
-- Vision section improved.
-- Portfolio/work gallery improved.
-- Why Choose Us completed and polished.
-- Contact completed and polished.
-- Footer completed and polished.
-- Admin dashboard UI improved.
-- Case tracking UI improved.
-- Login page UI improved.
-- Tables improved.
-- Badges improved.
-- Progress timeline improved.
-- Loading states improved.
-- Empty states improved.
-- Skeleton loaders improved.
-- Shared components redesigned.
-- Accessibility and contrast improved.
-- Framer Motion timing refined.
+- Dashboard stats: single `groupBy` instead of five counts, plus a count‑free recent‑cases query
+- Dashboard counts cached ~30s (`unstable_cache`, tag `cases`), revalidated immediately on case writes
+- Public tracking kept fully dynamic/uncached for real‑time accuracy
+- Landing statically prerendered
+- Server region co‑located with the database region
 
 ### Verification
 
 - `npm.cmd run typecheck` passes.
-- `npm.cmd run lint` passes.
 - `npm.cmd run build` passes.
 
 ---
 
-## Pending
+## Pending (optional, not blockers)
 
-These are not blockers for current functionality.
-
-- Category to case type dependency.
-- Tracking ID system.
-- QR/share tracking links.
-- Additional admin reporting/analytics.
-- Admin-managed portfolio images.
-- Production storage verification flow.
-- Real-device final responsive QA.
-- Migration away from deprecated `next lint`.
-- Future Prisma config migration for Prisma 7 compatibility.
+- Admin‑managed portfolio images for the landing work gallery.
+- Additional admin reporting/analytics (charts, trends).
+- Image ordering/captions.
+- Real‑device final responsive QA.
+- Migrate off deprecated `next lint` (ESLint CLI).
+- Migrate `package.json#prisma` config to `prisma.config.ts` for Prisma 7.
 
 ---
 
 ## Known Limitations
 
-- Public tracking searches by patient full name only.
-- Case type is currently free text.
-- Portfolio images are placeholders.
-- Image uploads require R2/S3 environment configuration.
+- Portfolio images are placeholders (not admin‑managed).
 - Single admin only; no doctor accounts.
-- No tracking IDs yet.
 - No audit log yet.
 - No CSV export/import yet.
+- Public tracking is intentionally uncached (freshness over caching).
 
 ---
 
 ## Next Development Checklist
 
-- [ ] Add category to case type dependency in `CaseFormDialog`.
-- [ ] Define allowed case types per `CaseCategory`.
-- [ ] Add tracking ID field to `PatientCase`.
-- [ ] Update admin create/edit forms to show tracking ID.
-- [ ] Update public `/track` to support tracking ID search.
-- [ ] Consider QR code generation for tracking links.
-- [ ] Add duplicate patient-name disambiguation.
+- [ ] Add admin‑managed landing portfolio images.
+- [ ] Add image ordering/captions in case images.
 - [ ] Add admin sorting by updated date, estimated completion, doctor, and status.
 - [ ] Add dashboard charts for active workload.
-- [ ] Add image ordering/captions in case images.
-- [ ] Add admin-managed landing portfolio images.
+- [ ] Add duplicate patient‑name disambiguation.
+- [ ] Add QR/share link support for tracking IDs.
 - [ ] Add final mobile/tablet visual QA pass.
-- [ ] Add deployment smoke-test checklist to CI/CD.
+- [ ] Add deployment smoke‑test checklist to CI/CD.
+- [ ] Maintenance: ESLint CLI migration; `prisma.config.ts` migration.
 
 ---
 
 ## Handoff Notes
 
-- Do not rebuild the project from scratch.
-- Do not change backend logic unless specifically requested.
-- Do not change Prisma or authentication unless specifically requested.
-- Continue using the existing design system and brand palette.
-- Prefer improving existing components over adding new patterns.
-- Use `npm.cmd` on Windows PowerShell.
-- After changing admin credentials in `.env`, run `npm.cmd run db:seed`.
+- The app is live in production; treat schema and auth changes with care and always use committed migrations (`prisma migrate deploy` runs during the Vercel build).
+- Public tracking searches by tracking ID (`AG‑XXXXXX`), not patient name, and must stay fresh/uncached.
+- Completed cases live only in the Archive view.
+- Object storage is Supabase Storage (S3‑compatible); uploads tag images with the case's current stage.
+- Continue using the existing design system and brand palette; prefer improving existing components over adding new patterns.
+- Use `npm.cmd` on Windows PowerShell. After changing admin credentials in `.env`, run `npm.cmd run db:seed`.

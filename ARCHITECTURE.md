@@ -14,7 +14,7 @@ AG Dental Lab is a single Next.js 15 application that serves:
 - Authenticated admin APIs.
 - Public tracking and health APIs.
 
-The app uses PostgreSQL through Prisma and is designed for Supabase. It supports optional Upstash Redis, Cloudflare R2/AWS S3, and Sentry.
+The app uses PostgreSQL through Prisma on Supabase and is deployed on Vercel (region `sin1`, co‑located with the database region). Object storage is Supabase Storage (S3‑compatible). Upstash Redis and Sentry are optional.
 
 ---
 
@@ -70,6 +70,7 @@ Main dental case record.
 Fields:
 
 - `id`
+- `trackingId` (unique public tracking code, e.g. `AG-8F3K2A`)
 - `patientFirstName`
 - `patientLastName`
 - `patientFullNameNorm`
@@ -77,7 +78,7 @@ Fields:
 - `caseType`
 - `category`
 - `currentStatus`
-- `estimatedCompletionDate`
+- `estimatedCompletionDate` (`DateTime` — stores both date and time)
 - `notes`
 - `createdAt`
 - `updatedAt`
@@ -113,9 +114,10 @@ Fields:
 - `imageUrl`
 - `key`
 - `caption`
+- `stage` (nullable `CaseStatus` — which lifecycle stage the image documents)
 - `createdAt`
 
-Image files live in R2/S3. The database stores URLs and object keys.
+Image files live in Supabase Storage (S3‑compatible). The database stores the public URL and object key. New uploads are tagged with the case's current stage, and the public Track Case page shows images per stage. Indexed on `caseId` and `[caseId, stage]`.
 
 ---
 
@@ -130,10 +132,18 @@ Image files live in R2/S3. The database stores URLs and object keys.
 
 ### CaseCategory
 
-- `FIXED_RESTORATIONS`
-- `IMPLANT_SOLUTIONS`
-- `ORAL_APPLIANCES`
-- `DIGITAL_DENTISTRY`
+- `IMPLANT`
+- `C_AND_B`
+- `PRESSABLE_CERAMIC`
+- `VACUUM_FORMER`
+- `SPECIAL_TRAY`
+- `RESIN_MODEL`
+- `EXTERNAL_LABORATORY_SERVICES`
+- `DENTAL_EQUIPMENT`
+- `GYPSUM_MODEL`
+- `FLEX_DENTURE`
+
+Allowed case types per category are defined in `src/lib/case-types.ts`; the admin case form constrains case type to the selected category.
 
 ---
 
@@ -172,10 +182,11 @@ Admin credentials are seeded from `.env` by `prisma/seed.ts`.
 
 `GET /api/track`
 
-- Searches cases by patient full name.
-- Returns sanitized public DTO.
+- Searches a case by its public tracking ID (`AG-XXXXXX`).
+- Returns a sanitized public DTO (status, doctor, case type, category, estimated completion date+time, notes, progress timeline, and per‑stage images).
 - Does not expose internal IDs.
-- Uses rate limiting/cache when Upstash is configured.
+- IP rate limited when Upstash is configured.
+- Always served fresh (not cached) so patients see real‑time status.
 
 ### Admin APIs
 
@@ -184,6 +195,7 @@ All admin APIs require authenticated admin session.
 `GET /api/admin/cases`
 
 - List, search, filter, paginate.
+- Default ("All Cases") excludes `COMPLETED`; `?archived=true` returns `COMPLETED` only (the Archive view).
 
 `POST /api/admin/cases`
 
@@ -215,7 +227,7 @@ All admin APIs require authenticated admin session.
 
 `POST /api/admin/upload`
 
-- Return presigned upload URL when storage is configured.
+- Return a presigned upload URL. Returns a clear 503 when storage is not configured (placeholder `S3_*` values are treated as unconfigured).
 
 `POST /api/admin/cases/[id]/images`
 
@@ -373,20 +385,11 @@ Required for production.
 
 ### Upstash Redis
 
-Optional. Used for:
+Optional. Used for IP rate limiting. If unset, the app falls back gracefully. Public tracking is intentionally not cached, so freshness does not depend on Redis.
 
-- Rate limiting.
-- Public tracking cache.
+### Supabase Storage (S3‑compatible)
 
-If unset, app falls back gracefully.
-
-### Cloudflare R2 / AWS S3
-
-Optional. Used for:
-
-- Case image upload storage.
-
-If unset, image upload returns a clear storage configuration error.
+Configured and in use for case image uploads via presigned `PUT`. Also compatible with Cloudflare R2 / AWS S3 by swapping the `S3_*` variables. Placeholder values are detected and treated as "not configured," so uploads fail with a clear 503 instead of a confusing error.
 
 ### Sentry
 
@@ -397,9 +400,9 @@ Optional monitoring. If variables are blank, it is effectively disabled.
 ## Important Constraints for Future Development
 
 - Preserve existing backend behavior unless explicitly requested.
-- Do not change Prisma schema casually.
+- Change the Prisma schema only via committed migrations (`prisma migrate deploy` runs during the Vercel build).
 - Do not change auth/session behavior casually.
 - Continue using existing UI primitives and brand tokens.
-- Keep new UI consistent with the current official AG Dental Lab style.
-- Public tracking currently avoids exposing internal case IDs.
-- Any tracking ID feature should be designed intentionally before changing public API behavior.
+- Keep new UI consistent with the current official AG Dental Lab dark‑theme style.
+- Public tracking searches by tracking ID, avoids exposing internal case IDs, and must remain fresh/uncached.
+- Dashboard counts are cached with `unstable_cache` (tag `cases`); any new write path that changes case counts should call `revalidateTag("cases")`.
