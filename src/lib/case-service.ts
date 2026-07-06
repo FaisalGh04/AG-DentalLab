@@ -5,6 +5,7 @@ import { formatTrackingId } from "@/lib/tracking-id-format";
 import type {
   PublicCaseDTO,
   AdminCaseListResponse,
+  AdminCaseListItem,
   AdminCaseDTO,
 } from "@/types/case";
 
@@ -181,13 +182,50 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
 }
 
 export async function getDashboardStats() {
-  const [total, received, inProgress, production, completed] =
-    await Promise.all([
-      prisma.patientCase.count(),
-      prisma.patientCase.count({ where: { currentStatus: "RECEIVED" } }),
-      prisma.patientCase.count({ where: { currentStatus: "IN_PROGRESS" } }),
-      prisma.patientCase.count({ where: { currentStatus: "PRODUCTION" } }),
-      prisma.patientCase.count({ where: { currentStatus: "COMPLETED" } }),
-    ]);
+  // One grouped query instead of five separate COUNTs.
+  const grouped = await prisma.patientCase.groupBy({
+    by: ["currentStatus"],
+    _count: { _all: true },
+  });
+  const countOf = (s: CaseStatus) =>
+    grouped.find((g) => g.currentStatus === s)?._count._all ?? 0;
+  const received = countOf("RECEIVED");
+  const inProgress = countOf("IN_PROGRESS");
+  const production = countOf("PRODUCTION");
+  const completed = countOf("COMPLETED");
+  const total = received + inProgress + production + completed;
   return { total, received, inProgress, production, completed };
+}
+
+/**
+ * Most-recently-updated cases for the dashboard. Unlike listCases this skips
+ * the total COUNT (the dashboard never paginates), saving one round-trip.
+ */
+export async function listRecentCases(
+  limit = 6,
+): Promise<AdminCaseListItem[]> {
+  const items = await prisma.patientCase.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      trackingId: true,
+      patientFirstName: true,
+      patientLastName: true,
+      doctorName: true,
+      caseType: true,
+      category: true,
+      currentStatus: true,
+      estimatedCompletionDate: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: { select: { progress: true, images: true } },
+    },
+  });
+  return items.map((c) => ({
+    ...c,
+    estimatedCompletionDate: c.estimatedCompletionDate?.toISOString() ?? null,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+  }));
 }

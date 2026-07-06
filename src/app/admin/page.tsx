@@ -9,7 +9,7 @@ import {
   Plus,
   ClipboardList,
 } from "lucide-react";
-import { getDashboardStats, listCases } from "@/lib/case-service";
+import { getDashboardStats, listRecentCases } from "@/lib/case-service";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/case/status-badge";
@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   const [stats, recent] = await Promise.all([
     getDashboardStats(),
-    listCases({ page: 1, pageSize: 6 }),
+    listRecentCases(6),
   ]);
 
   const cards = [
@@ -83,7 +83,7 @@ export default async function AdminDashboard() {
         </div>
 
         <div className="divide-y divide-border/60">
-          {recent.items.length === 0 && (
+          {recent.length === 0 && (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
                 <ClipboardList className="h-6 w-6" />
@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
           )}
-          {recent.items.map((c) => (
+          {recent.map((c) => (
             <Link
               key={c.id}
               href={`/admin/cases/${c.id}`}
