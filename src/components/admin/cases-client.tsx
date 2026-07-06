@@ -127,22 +127,26 @@ export function CasesClient() {
               className="pl-10"
             />
           </div>
-          <Select
-            value={status}
-            onValueChange={(v) => setStatus(v as CaseStatus | "ALL")}
-          >
-            <SelectTrigger className="md:w-44">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All statuses</SelectItem>
-              {STATUS_ORDER.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_META[s].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Archive is all-completed, so the status filter only applies to
+              "All Cases", where COMPLETED is intentionally excluded. */}
+          {!archived && (
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as CaseStatus | "ALL")}
+            >
+              <SelectTrigger className="md:w-44">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {STATUS_ORDER.filter((s) => s !== "COMPLETED").map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_META[s].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select
             value={category}
             onValueChange={(v) => setCategory(v as CaseCategory | "ALL")}

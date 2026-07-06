@@ -76,9 +76,17 @@ export async function listCases(
   const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20));
 
   const where: Prisma.PatientCaseWhereInput = {};
-  if (params.status) where.currentStatus = params.status;
   if (params.category) where.category = params.category;
-  if (params.archived) where.currentStatus = "COMPLETED";
+
+  // Completed cases live ONLY in the Archive; "All Cases" never shows them.
+  if (params.archived) {
+    where.currentStatus = "COMPLETED";
+  } else if (params.status && params.status !== "COMPLETED") {
+    where.currentStatus = params.status;
+  } else {
+    where.currentStatus = { not: "COMPLETED" };
+  }
+
   if (params.q) {
     const q = params.q.trim();
     where.OR = [
