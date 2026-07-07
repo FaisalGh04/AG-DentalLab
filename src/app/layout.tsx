@@ -79,7 +79,24 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={`${inter.variable} ${sora.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Apply the saved language direction before first paint to avoid an
+            LTR→RTL flash for returning Arabic visitors. Scoped to public routes
+            only — admin/login stay English + LTR (kept in sync with
+            isLocalizedPath in lib/i18n/config). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var l=localStorage.getItem('ag-lang');var p=location.pathname;var pub=(p==='/'||p==='/track'||p.indexOf('/track/')===0);if(l==='ar'&&pub){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();",
+          }}
+        />
+      </head>
       <body className="min-h-dvh antialiased">
         <Providers>{children}</Providers>
       </body>

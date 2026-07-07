@@ -1,0 +1,150 @@
+{
+  "nav": {
+    "about": "About",
+    "services": "Services",
+    "work": "Our Work",
+    "why": "Why Us",
+    "contact": "Contact",
+    "trackCase": "Track Case",
+    "contactUs": "Contact Us",
+    "language": "Language",
+    "home": "Home",
+    "toggleMenu": "Toggle menu"
+  },
+  "hero": {
+    "badge": "Digital Dental Laboratory • Established 1994",
+    "title1": "Your Partner in",
+    "title2": "Perfect ",
+    "title3": "Smiles",
+    "trackCase": "Track Your Case",
+    "contactUs": "Contact Us"
+  },
+  "about": {
+    "eyebrow": "Our Story",
+    "title": "Three decades of dental craftsmanship",
+    "subtitle": "From a single lab in Amman to a fully digital manufacturing partner trusted by dentists across the region.",
+    "counters": {
+      "years": "Years Expertise",
+      "partners": "Dentist Partners",
+      "cases": "Cases Delivered",
+      "units": "Units Crafted"
+    },
+    "timeline": {
+      "founded": { "title": "Founded", "body": "AG Dental Lab was founded by Abdullatif Ghatasheh." },
+      "digital": { "title": "Digital Pioneer", "body": "First dental lab in Jordan using digital CAD/CAM zirconia." },
+      "rebrand": { "title": "AG Dental Lab", "body": "Rebranded and became AG Dental Lab." }
+    }
+  },
+  "services": {
+    "eyebrow": "What We Do",
+    "title": "A complete digital dental portfolio",
+    "subtitle": "Every restoration produced in-house with an integrated digital workflow - from scan to delivery.",
+    "fixed": {
+      "title": "Fixed Restorations",
+      "items": ["Crowns", "Bridges", "Veneers", "Zirconia", "E.max", "PFM", "Inlay", "Onlay", "PMMA"]
+    },
+    "implant": {
+      "title": "Implant Solutions",
+      "items": ["Single", "Multiple", "Full-Arch", "Custom Abutments"]
+    },
+    "oral": {
+      "title": "Oral Appliances",
+      "items": ["Retainers", "Night Guards", "Sports Guards", "Bleaching Trays"]
+    },
+    "digital": {
+      "title": "Digital Dentistry",
+      "items": ["CAD/CAM", "Digital Design", "Milling", "3D Printing", "Digital Workflow"]
+    }
+  },
+  "mission": {
+    "title": "Our Mission",
+    "p1": "We are committed to providing integrated digital dental services including dental restorations, zirconia milling, precision metal fabrication, 3D printing, and technical support for dentists.",
+    "p2": "Built on 35+ years of expertise and global quality standards, we deliver precise, reliable, and innovative solutions that improve clinical success and patient satisfaction."
+  },
+  "vision": {
+    "title": "Our Vision",
+    "p1": "To become the leading regional reference in integrated digital dental solutions by combining 30+ years of expertise with advanced digital manufacturing technologies.",
+    "p2": "We aim to elevate dental care quality and deliver better outcomes for dentists and patients."
+  },
+  "work": {
+    "eyebrow": "Our Work",
+    "title": "Craftsmanship you can see",
+    "subtitle": "A curated gallery of our finest restorations. Images coming soon.",
+    "items": ["Full-Arch Zirconia", "E.max Veneers", "Implant Bridge", "Digital Smile Design", "PFM Crown", "Night Guard"]
+  },
+  "why": {
+    "eyebrow": "Why Choose Us",
+    "title": "The partner dentists rely on",
+    "subtitle": "Built for clinicians who need dependable communication, clean workflows, and restoration quality that stays consistent from one case to the next.",
+    "reasons": [
+      { "title": "Predictable Quality", "body": "Consistent, repeatable results on every single case." },
+      { "title": "Pioneer in Jordan", "body": "First lab in Jordan to adopt digital CAD/CAM zirconia." },
+      { "title": "35+ Years Experience", "body": "Decades of refined dental craftsmanship." },
+      { "title": "Trusted Warranty", "body": "Confidence backed by a dependable guarantee." },
+      { "title": "Direct Communication", "body": "Talk straight to the lab, no middlemen." },
+      { "title": "Ongoing Follow-up", "body": "We stay with each case until it's perfect." },
+      { "title": "Long-Term Partnership", "body": "We grow together with our dentist partners." },
+      { "title": "Integrated Digital System", "body": "One seamless workflow from scan to delivery." }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Get In Touch",
+    "title": "Let's craft perfect smiles together",
+    "subtitle": "Partner with a lab that treats your cases like its own. Reach out or track an existing case in seconds.",
+    "phone": "Phone",
+    "location": "Location",
+    "instagram": "Instagram",
+    "address": "Al-Rabiah, Amman, Jordan",
+    "trackCase": "Track Your Case",
+    "callLab": "Call the Lab"
+  },
+  "footer": {
+    "tagline": "Your Partner in Perfect Smiles. A digital dental laboratory delivering precise, reliable, and innovative solutions since 1994.",
+    "explore": "Explore",
+    "trackACase": "Track a Case",
+    "contact": "Contact",
+    "rights": "Copyright {year} AG Dental Lab. All rights reserved.",
+    "founded": "Founded by {founder} - Established 1994",
+    "founderName": "Abdullatif Ghatasheh"
+  },
+  "track": {
+    "backHome": "Back to home",
+    "eyebrow": "Case Tracking",
+    "title": "Track your case in seconds",
+    "subtitle": "Enter the tracking ID provided by the lab to view real-time status and the full production timeline. No account required.",
+    "placeholder": "Enter your Tracking ID",
+    "button": "Track Case",
+    "readyTitle": "Ready to search",
+    "readyBody": "Enter the case tracking ID provided by AG Dental Lab to view status, dates, notes, and production progress.",
+    "trackingId": "Tracking ID",
+    "patient": "Patient",
+    "doctor": "Doctor",
+    "category": "Category",
+    "caseType": "Case Type",
+    "estCompletion": "Est. Completion",
+    "notes": "Notes",
+    "productionTimeline": "Production Timeline",
+    "stagePhotos": "Photos",
+    "noStagePhotos": "No photos were uploaded for this stage.",
+    "stageNotReached": "This stage hasn't been reached yet.",
+    "noSteps": "No production steps have been recorded yet."
+  },
+  "status": {
+    "RECEIVED": "Received",
+    "IN_PROGRESS": "In Progress",
+    "PRODUCTION": "Production",
+    "COMPLETED": "Completed"
+  },
+  "category": {
+    "IMPLANT": "Implant",
+    "C_AND_B": "C&B",
+    "PRESSABLE_CERAMIC": "Pressable Ceramic",
+    "VACUUM_FORMER": "Vacuum Former",
+    "SPECIAL_TRAY": "Special Tray",
+    "RESIN_MODEL": "Resin Model",
+    "EXTERNAL_LABORATORY_SERVICES": "External Laboratory Services",
+    "DENTAL_EQUIPMENT": "Dental Equipment",
+    "GYPSUM_MODEL": "Gypsum Model",
+    "FLEX_DENTURE": "Flex. Denture"
+  }
+}

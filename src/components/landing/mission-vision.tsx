@@ -2,8 +2,10 @@
 
 import { Target, Eye } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { useI18n } from "@/components/i18n/language-provider";
 
 export function MissionVision() {
+  const { t } = useI18n();
   return (
     <section id="mission" className="relative py-24 md:py-36">
       <div className="container-tight grid gap-6 md:grid-cols-2">
@@ -14,17 +16,13 @@ export function MissionVision() {
               <Target className="h-7 w-7" />
             </div>
             <h3 className="relative mt-6 font-display text-2xl font-bold text-foreground">
-              Our Mission
+              {t("mission.title")}
             </h3>
             <p className="mt-4 leading-relaxed text-muted-foreground">
-              We are committed to providing integrated digital dental services
-              including dental restorations, zirconia milling, precision metal
-              fabrication, 3D printing, and technical support for dentists.
+              {t("mission.p1")}
             </p>
             <p className="mt-4 leading-relaxed text-muted-foreground">
-              Built on 35+ years of expertise and global quality standards, we
-              deliver precise, reliable, and innovative solutions that improve
-              clinical success and patient satisfaction.
+              {t("mission.p2")}
             </p>
           </div>
         </Reveal>
@@ -37,16 +35,11 @@ export function MissionVision() {
             <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-brand-200 ring-1 ring-white/20">
               <Eye className="h-7 w-7" />
             </div>
-            <h3 className="relative mt-6 font-display text-2xl font-bold text-foreground">Our Vision</h3>
-            <p className="mt-4 leading-relaxed text-white/70">
-              To become the leading regional reference in integrated digital
-              dental solutions by combining 30+ years of expertise with advanced
-              digital manufacturing technologies.
-            </p>
-            <p className="mt-4 leading-relaxed text-white/70">
-              We aim to elevate dental care quality and deliver better outcomes
-              for dentists and patients.
-            </p>
+            <h3 className="relative mt-6 font-display text-2xl font-bold text-foreground">
+              {t("vision.title")}
+            </h3>
+            <p className="mt-4 leading-relaxed text-white/70">{t("vision.p1")}</p>
+            <p className="mt-4 leading-relaxed text-white/70">{t("vision.p2")}</p>
           </div>
         </Reveal>
       </div>

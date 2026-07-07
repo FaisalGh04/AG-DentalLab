@@ -26,14 +26,23 @@ import { StatusStepper } from "@/components/case/status-stepper";
 import { StatusBadge } from "@/components/case/status-badge";
 import { ProgressTimeline } from "@/components/case/progress-timeline";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
+import { useI18n } from "@/components/i18n/language-provider";
 import { searchSchema, type SearchInput } from "@/lib/validations";
 import { apiFetch, ApiError } from "@/lib/fetcher";
-import { CATEGORY_META, STATUS_META } from "@/lib/constants";
+import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatEstCompletion } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
 import type { CaseStatus } from "@prisma/client";
 
 export function TrackClient() {
+  const { t } = useI18n();
+
+  // Translated stage labels for the shared status components (which default to
+  // English STATUS_META labels for the admin views).
+  const statusLabels = Object.fromEntries(
+    STATUS_ORDER.map((s) => [s, t(`status.${s}`)]),
+  ) as Record<CaseStatus, string>;
+
   const {
     register,
     handleSubmit,
@@ -84,10 +93,10 @@ export function TrackClient() {
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-200/75" />
             <Input
               {...register("trackingId")}
-              placeholder="Enter your Tracking ID"
+              placeholder={t("track.placeholder")}
               className="h-12 border-brand-400/25 bg-brand-950/45 pl-12 text-base text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
               autoComplete="off"
-              aria-label="Tracking ID"
+              aria-label={t("track.trackingId")}
             />
           </div>
           <Button
@@ -102,7 +111,7 @@ export function TrackClient() {
             ) : (
               <Search className="h-5 w-5" />
             )}
-            Track Case
+            {t("track.button")}
           </Button>
         </div>
         {errors.trackingId && (
@@ -117,10 +126,9 @@ export function TrackClient() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/30 bg-brand-500/15 text-brand-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_34px_-12px_rgba(83,136,111,0.9)]">
             <ClipboardList className="h-6 w-6" />
           </div>
-          <p className="mt-4 font-semibold text-cream">Ready to search</p>
+          <p className="mt-4 font-semibold text-cream">{t("track.readyTitle")}</p>
           <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-brand-50/68">
-            Enter the case tracking ID provided by AG Dental Lab to view status,
-            dates, notes, and production progress.
+            {t("track.readyBody")}
           </p>
         </div>
       )}
@@ -153,7 +161,7 @@ export function TrackClient() {
               <div className="flex flex-col gap-4 border-b border-brand-400/20 bg-brand-500/10 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-brand-100/60">
-                    Tracking ID
+                    {t("track.trackingId")}
                   </p>
                   <TrackingIdCopy
                     trackingId={result.trackingId}
@@ -163,7 +171,10 @@ export function TrackClient() {
                     {result.patientName}
                   </h2>
                 </div>
-                <StatusBadge status={result.currentStatus} />
+                <StatusBadge
+                  status={result.currentStatus}
+                  label={statusLabels[result.currentStatus]}
+                />
               </div>
 
               <div className="p-6">
@@ -173,6 +184,7 @@ export function TrackClient() {
                   selectedStatus={activeStage}
                   stagesWithImages={stagesWithImages}
                   onSelectStatus={setSelectedStage}
+                  labels={statusLabels}
                 />
               </div>
 
@@ -181,7 +193,7 @@ export function TrackClient() {
                   <div className="flex items-center gap-2 text-brand-100/60">
                     <ImageIcon className="h-4 w-4" />
                     <span className="text-xs font-semibold uppercase tracking-wider">
-                      {STATUS_META[activeStage].label} — Photos
+                      {statusLabels[activeStage]} — {t("track.stagePhotos")}
                     </span>
                   </div>
                   {stageImages.length > 0 ? (
@@ -196,7 +208,7 @@ export function TrackClient() {
                         >
                           <Image
                             src={img.imageUrl}
-                            alt={img.caption ?? `${STATUS_META[activeStage].label} photo`}
+                            alt={img.caption ?? statusLabels[activeStage]}
                             fill
                             sizes="(max-width: 640px) 50vw, 220px"
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -207,26 +219,26 @@ export function TrackClient() {
                   ) : (
                     <p className="mt-3 text-sm text-brand-50/68">
                       {stageReached
-                        ? "No photos were uploaded for this stage."
-                        : "This stage hasn't been reached yet."}
+                        ? t("track.noStagePhotos")
+                        : t("track.stageNotReached")}
                     </p>
                   )}
                 </div>
               )}
 
               <div className="grid gap-px bg-brand-400/15 sm:grid-cols-2 lg:grid-cols-3">
-                <Detail icon={Hash} label="Tracking ID" value={result.trackingId} />
-                <Detail icon={User} label="Patient" value={result.patientName} />
-                <Detail icon={Stethoscope} label="Doctor" value={result.doctorName} />
+                <Detail icon={Hash} label={t("track.trackingId")} value={result.trackingId} />
+                <Detail icon={User} label={t("track.patient")} value={result.patientName} />
+                <Detail icon={Stethoscope} label={t("track.doctor")} value={result.doctorName} />
                 <Detail
                   icon={Tag}
-                  label="Category"
-                  value={CATEGORY_META[result.category].label}
+                  label={t("track.category")}
+                  value={t(`category.${result.category}`)}
                 />
-                <Detail icon={Package} label="Case Type" value={result.caseType} />
+                <Detail icon={Package} label={t("track.caseType")} value={result.caseType} />
                 <Detail
                   icon={CalendarClock}
-                  label="Est. Completion"
+                  label={t("track.estCompletion")}
                   value={formatEstCompletion(result.estimatedCompletionDate)}
                 />
               </div>
@@ -234,7 +246,7 @@ export function TrackClient() {
               {result.notes && (
                 <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
                   <p className="text-xs font-semibold uppercase tracking-wider text-brand-100/60">
-                    Notes
+                    {t("track.notes")}
                   </p>
                   <p className="mt-2 text-sm text-brand-50/78">{result.notes}</p>
                 </div>
@@ -243,9 +255,12 @@ export function TrackClient() {
 
             <Card className="border-brand-400/20 bg-brand-950/55 p-6 text-cream">
               <h3 className="mb-6 font-display text-lg font-semibold text-cream">
-                Production Timeline
+                {t("track.productionTimeline")}
               </h3>
-              <ProgressTimeline steps={result.progress} />
+              <ProgressTimeline
+                steps={result.progress}
+                emptyLabel={t("track.noSteps")}
+              />
             </Card>
           </motion.div>
         )}

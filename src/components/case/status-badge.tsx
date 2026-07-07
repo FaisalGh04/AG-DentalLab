@@ -12,7 +12,15 @@ const variantFor: Record<
   COMPLETED: "success",
 };
 
-export function StatusBadge({ status }: { status: CaseStatus }) {
+export function StatusBadge({
+  status,
+  label,
+}: {
+  status: CaseStatus;
+  /** Optional translated label; falls back to the English STATUS_META label
+   *  (admin views pass nothing and stay English). */
+  label?: string;
+}) {
   const meta = STATUS_META[status];
   return (
     <Badge variant={variantFor[status]}>
@@ -20,7 +28,7 @@ export function StatusBadge({ status }: { status: CaseStatus }) {
         className="h-1.5 w-1.5 rounded-full"
         style={{ backgroundColor: meta.color }}
       />
-      {meta.label}
+      {label ?? meta.label}
     </Badge>
   );
 }

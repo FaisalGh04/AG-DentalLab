@@ -4,11 +4,18 @@ import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 /** Vertical timeline of production steps. Read-only (public + admin view). */
-export function ProgressTimeline({ steps }: { steps: ProgressDTO[] }) {
+export function ProgressTimeline({
+  steps,
+  emptyLabel = "No production steps have been recorded yet.",
+}: {
+  steps: ProgressDTO[];
+  /** Optional translated empty-state message; admin passes nothing (English). */
+  emptyLabel?: string;
+}) {
   if (steps.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-brand-50/40 p-5 text-sm text-muted-foreground dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-50/65">
-        No production steps have been recorded yet.
+        {emptyLabel}
       </div>
     );
   }

@@ -13,32 +13,35 @@ import {
 } from "lucide-react";
 import { Reveal, staggerContainer, staggerItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
+import { useI18n } from "@/components/i18n/language-provider";
 
-const REASONS = [
-  { icon: BadgeCheck, title: "Predictable Quality", body: "Consistent, repeatable results on every single case." },
-  { icon: Award, title: "Pioneer in Jordan", body: "First lab in Jordan to adopt digital CAD/CAM zirconia." },
-  { icon: Clock, title: "35+ Years Experience", body: "Decades of refined dental craftsmanship." },
-  { icon: ShieldCheck, title: "Trusted Warranty", body: "Confidence backed by a dependable guarantee." },
-  { icon: MessageCircle, title: "Direct Communication", body: "Talk straight to the lab, no middlemen." },
-  { icon: Repeat, title: "Ongoing Follow-up", body: "We stay with each case until it's perfect." },
-  { icon: Handshake, title: "Long-Term Partnership", body: "We grow together with our dentist partners." },
-  { icon: Workflow, title: "Integrated Digital System", body: "One seamless workflow from scan to delivery." },
+// Icons only; the title/body for each reason come from the "why.reasons" array
+// (index-aligned) so they translate with the locale.
+const REASON_ICONS = [
+  BadgeCheck,
+  Award,
+  Clock,
+  ShieldCheck,
+  MessageCircle,
+  Repeat,
+  Handshake,
+  Workflow,
 ];
 
 export function WhyUs() {
+  const { t, tList } = useI18n();
+  const reasons = tList<{ title: string; body: string }>("why.reasons");
   return (
     <section id="why" className="relative overflow-hidden py-24 md:py-36">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_15%,rgba(123,183,157,0.12),transparent_28rem)]" />
       <div className="container-tight">
         <Reveal className="mx-auto max-w-3xl text-center">
-          <span className="section-eyebrow">Why Choose Us</span>
+          <span className="section-eyebrow">{t("why.eyebrow")}</span>
           <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-foreground text-balance md:text-5xl">
-            <TextReveal text="The partner dentists rely on" />
+            <TextReveal text={t("why.title")} />
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            Built for clinicians who need dependable communication, clean
-            workflows, and restoration quality that stays consistent from one
-            case to the next.
+            {t("why.subtitle")}
           </p>
         </Reveal>
 
@@ -49,11 +52,11 @@ export function WhyUs() {
           viewport={{ once: true, margin: "-60px" }}
           className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         >
-          {REASONS.map((r) => {
-            const Icon = r.icon;
+          {REASON_ICONS.map((Icon, i) => {
+            const reason = reasons[i];
             return (
               <motion.div
-                key={r.title}
+                key={i}
                 variants={staggerItem}
                 whileHover={{ y: -5 }}
                 className="group premium-panel relative min-h-48 overflow-hidden p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow"
@@ -63,8 +66,12 @@ export function WhyUs() {
                 <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-glow">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="relative mt-4 font-semibold text-foreground">{r.title}</h3>
-                <p className="relative mt-2 text-sm leading-6 text-muted-foreground">{r.body}</p>
+                <h3 className="relative mt-4 font-semibold text-foreground">
+                  {reason?.title}
+                </h3>
+                <p className="relative mt-2 text-sm leading-6 text-muted-foreground">
+                  {reason?.body}
+                </p>
               </motion.div>
             );
           })}

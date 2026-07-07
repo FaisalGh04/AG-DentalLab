@@ -6,30 +6,34 @@ import { Reveal } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { Magnetic } from "@/components/motion/magnetic";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/language-provider";
 import { SITE } from "@/lib/constants";
 
-const CARDS = [
-  {
-    icon: Phone,
-    label: "Phone",
-    value: SITE.phone,
-    href: SITE.phoneHref,
-  },
-  {
-    icon: MapPin,
-    label: "Location",
-    value: SITE.location,
-    href: "https://maps.google.com/?q=Al-Rabiah,Amman,Jordan",
-  },
-  {
-    icon: Instagram,
-    label: "Instagram",
-    value: `@${SITE.instagram}`,
-    href: SITE.instagramHref,
-  },
-];
-
 export function Contact() {
+  const { t } = useI18n();
+
+  // Icon/href are static; the label and (for the address) the value translate.
+  const CARDS = [
+    {
+      icon: Phone,
+      label: t("contact.phone"),
+      value: SITE.phone,
+      href: SITE.phoneHref,
+    },
+    {
+      icon: MapPin,
+      label: t("contact.location"),
+      value: t("contact.address"),
+      href: "https://maps.google.com/?q=Al-Rabiah,Amman,Jordan",
+    },
+    {
+      icon: Instagram,
+      label: t("contact.instagram"),
+      value: `@${SITE.instagram}`,
+      href: SITE.instagramHref,
+    },
+  ];
+
   return (
     <section id="contact" className="relative py-24 md:py-36">
       <div className="container-tight">
@@ -40,14 +44,13 @@ export function Contact() {
 
             <div className="relative">
               <span className="section-eyebrow border-gold-300/30 bg-white/10 text-gold-200">
-                Get In Touch
+                {t("contact.eyebrow")}
               </span>
               <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
-                <TextReveal text="Let's craft perfect smiles together" />
+                <TextReveal text={t("contact.title")} />
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-white/[0.68]">
-                Partner with a lab that treats your cases like its own. Reach out
-                or track an existing case in seconds.
+                {t("contact.subtitle")}
               </p>
 
               <div className="mt-12 grid gap-4 md:grid-cols-3">
@@ -77,14 +80,14 @@ export function Contact() {
                 <Magnetic strength={0.35}>
                   <Button asChild size="lg" variant="gradient">
                     <Link href="/track">
-                      <Search className="h-5 w-5" /> Track Your Case
+                      <Search className="h-5 w-5" /> {t("contact.trackCase")}
                     </Link>
                   </Button>
                 </Magnetic>
                 <Magnetic strength={0.35}>
                   <Button asChild size="lg" variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/[0.16]">
                     <a href={SITE.phoneHref}>
-                      Call the Lab <ArrowRight className="h-5 w-5" />
+                      {t("contact.callLab")} <ArrowRight className="h-5 w-5" />
                     </a>
                   </Button>
                 </Magnetic>

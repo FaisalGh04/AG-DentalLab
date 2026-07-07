@@ -9,14 +9,16 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Magnetic } from "@/components/motion/magnetic";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
+import { LanguageToggle } from "@/components/site/language-toggle";
+import { useI18n } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/#about", id: "about", label: "About" },
-  { href: "/#services", id: "services", label: "Services" },
-  { href: "/#work", id: "work", label: "Our Work" },
-  { href: "/#why", id: "why", label: "Why Us" },
-  { href: "/#contact", id: "contact", label: "Contact" },
+  { href: "/#about", id: "about" },
+  { href: "/#services", id: "services" },
+  { href: "/#work", id: "work" },
+  { href: "/#why", id: "why" },
+  { href: "/#contact", id: "contact" },
 ];
 
 /** Tracks which landing section is currently in view for the active indicator. */
@@ -47,6 +49,7 @@ function useActiveSection(enabled: boolean) {
 }
 
 export function Navbar() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = React.useState(false);
@@ -78,7 +81,11 @@ export function Navbar() {
                 : "border border-transparent bg-white/35 backdrop-blur-sm dark:border-white/[0.06] dark:bg-[hsl(158_30%_9%/0.35)] dark:backdrop-blur-md",
             )}
           >
-            <Link href="/" className="flex items-center gap-2" aria-label="Home">
+            <Link
+              href="/"
+              className="flex items-center gap-2"
+              aria-label={t("nav.home")}
+            >
               <Logo
                 className="h-11 w-40 dark:brightness-0 dark:invert dark:drop-shadow-[0_0_14px_rgba(123,183,157,0.25)]"
                 withWordmark
@@ -106,21 +113,22 @@ export function Navbar() {
                         className="absolute inset-0 -z-10 rounded-xl bg-white/80 shadow-inner-glow dark:border dark:border-brand-400/20 dark:bg-brand-500/15 dark:shadow-none"
                       />
                     )}
-                    {l.label}
+                    {t(`nav.${l.id}`)}
                   </Link>
                 );
               })}
             </div>
 
             <div className="hidden items-center gap-2 md:flex">
+              <LanguageToggle />
               <Button asChild variant="ghost" size="sm">
                 <Link href="/track">
-                  <Search className="h-4 w-4" /> Track Case
+                  <Search className="h-4 w-4" /> {t("nav.trackCase")}
                 </Link>
               </Button>
               <Magnetic strength={0.3}>
                 <Button asChild variant="gradient" size="sm">
-                  <Link href="/#contact">Contact Us</Link>
+                  <Link href="/#contact">{t("nav.contactUs")}</Link>
                 </Button>
               </Magnetic>
             </div>
@@ -128,7 +136,7 @@ export function Navbar() {
             <button
               className="rounded-xl p-2 transition-colors hover:bg-brand-50 dark:text-foreground dark:hover:bg-white/10 md:hidden"
               onClick={() => setOpen((v) => !v)}
-              aria-label="Toggle menu"
+              aria-label={t("nav.toggleMenu")}
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -149,20 +157,23 @@ export function Navbar() {
                     onClick={() => setOpen(false)}
                     className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
                   >
-                    {l.label}
+                    {t(`nav.${l.id}`)}
                   </Link>
                 ))}
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <Button asChild variant="outline" size="sm">
                     <Link href="/track" onClick={() => setOpen(false)}>
-                      Track Case
+                      {t("nav.trackCase")}
                     </Link>
                   </Button>
                   <Button asChild variant="gradient" size="sm">
                     <Link href="/#contact" onClick={() => setOpen(false)}>
-                      Contact
+                      {t("nav.contact")}
                     </Link>
                   </Button>
+                </div>
+                <div className="mt-2 flex justify-center">
+                  <LanguageToggle />
                 </div>
               </motion.div>
             )}

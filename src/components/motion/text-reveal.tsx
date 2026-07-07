@@ -47,6 +47,12 @@ export function TextReveal({
   return (
     <span className={cn("inline", className)}>
       <motion.span
+        // Keying on `text` remounts the reveal whenever the copy changes (e.g. a
+        // locale switch). Without this, the new words mount at `initial="hidden"`
+        // but the parent's `whileInView` has already fired once (its observer is
+        // gone), so the words would stay at opacity 0 — invisible until reload.
+        // A fresh mount re-observes and re-reveals while on screen.
+        key={text}
         variants={container}
         initial="hidden"
         {...trigger}
@@ -57,7 +63,11 @@ export function TextReveal({
         {words.map((w, i) => (
           <span
             key={`${w}-${i}`}
-            className="inline-flex overflow-hidden pb-[0.12em] align-baseline"
+            // `overflow-hidden` masks the word as it slides up. Latin ascenders
+            // fit the default box, but Arabic letters/diacritics sit taller and
+            // get clipped at the top — so add top room in RTL only (the `rtl:`
+            // variant keys off <html dir="rtl">, leaving LTR pixel-identical).
+            className="inline-flex overflow-hidden pb-[0.12em] align-baseline rtl:pt-[0.28em]"
           >
             <motion.span variants={word} className="inline-block will-change-transform">
               {w}

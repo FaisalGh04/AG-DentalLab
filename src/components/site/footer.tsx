@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Phone, MapPin, Instagram } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { useI18n } from "@/components/i18n/language-provider";
 import { SITE } from "@/lib/constants";
 
 export function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="relative isolate px-5 pb-8 pt-6 sm:px-6 lg:px-8">
       {/* Vivid brand light painted directly BEHIND the glass panel so its
@@ -26,39 +30,42 @@ export function Footer() {
                 withWordmark
               />
               <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
-                {SITE.tagline}. A digital dental laboratory delivering precise,
-                reliable, and innovative solutions since 1994.
+                {t("footer.tagline")}
               </p>
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold text-foreground">Explore</h4>
+              <h4 className="text-sm font-semibold text-foreground">
+                {t("footer.explore")}
+              </h4>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/#about" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                    About
+                    {t("nav.about")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/#services" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                    Services
+                    {t("nav.services")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/#work" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                    Our Work
+                    {t("nav.work")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/track" className="transition-colors hover:text-brand-700 dark:hover:text-brand-300">
-                    Track a Case
+                    {t("footer.trackACase")}
                   </Link>
                 </li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold text-foreground">Contact</h4>
+              <h4 className="text-sm font-semibold text-foreground">
+                {t("footer.contact")}
+              </h4>
               <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <li>
                   <a
@@ -69,7 +76,7 @@ export function Footer() {
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" /> {SITE.location}
+                  <MapPin className="h-4 w-4" /> {t("contact.address")}
                 </li>
                 <li>
                   <a
@@ -86,8 +93,8 @@ export function Footer() {
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-xs text-muted-foreground md:flex-row">
-            <p>Copyright {new Date().getFullYear()} {SITE.name}. All rights reserved.</p>
-            <p>Founded by {SITE.founder} - Established 1994</p>
+            <p>{t("footer.rights", { year: new Date().getFullYear() })}</p>
+            <p>{t("footer.founded", { founder: t("footer.founderName") })}</p>
           </div>
 
           {/* Required CC-BY legal attribution — kept fully visible/readable, only de-emphasized as discreet fine print (smaller + more muted). Do not remove. */}

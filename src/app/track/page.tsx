@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { TrackClient } from "@/components/track/track-client";
+import { TrackHeader } from "@/components/track/track-header";
 
 export const metadata: Metadata = {
   title: "Track Your Case",
@@ -27,25 +26,7 @@ export default function TrackPage() {
         </div>
 
         <div className="container-tight">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-brand-100/70 transition-colors hover:text-cream"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
-
-          <div className="mx-auto mt-8 max-w-2xl text-center">
-            <span className="section-eyebrow">
-              Case Tracking
-            </span>
-            <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-cream md:text-5xl">
-              Track your case in seconds
-            </h1>
-            <p className="mt-4 text-brand-50/70">
-              Enter the tracking ID provided by the lab to view real-time status
-              and the full production timeline. No account required.
-            </p>
-          </div>
+          <TrackHeader />
 
           <div className="mt-12">
             <TrackClient />

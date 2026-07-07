@@ -12,6 +12,9 @@ interface StatusStepperProps {
   /** Stages that have at least one image (shown with a small dot). */
   stagesWithImages?: CaseStatus[];
   onSelectStatus?: (status: CaseStatus) => void;
+  /** Optional translated stage labels; each falls back to the English
+   *  STATUS_META label (admin views pass nothing and stay English). */
+  labels?: Partial<Record<CaseStatus, string>>;
 }
 
 /** Horizontal 4-stage lifecycle stepper from received to completed. */
@@ -21,6 +24,7 @@ export function StatusStepper({
   selectedStatus,
   stagesWithImages = [],
   onSelectStatus,
+  labels,
 }: StatusStepperProps) {
   const currentStep = STATUS_META[status].step;
 
@@ -74,7 +78,7 @@ export function StatusStepper({
                       : "text-muted-foreground group-hover:text-brand-700 dark:text-brand-100/55 dark:group-hover:text-brand-100",
                   )}
                 >
-                  {meta.label}
+                  {labels?.[s] ?? meta.label}
                 </span>
               </button>
             ) : (
@@ -93,7 +97,7 @@ export function StatusStepper({
                       : "text-muted-foreground dark:text-brand-100/55",
                   )}
                 >
-                  {meta.label}
+                  {labels?.[s] ?? meta.label}
                 </span>
               </div>
             )}
