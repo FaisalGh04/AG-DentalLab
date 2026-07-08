@@ -9,9 +9,16 @@ import { Card } from "@/components/ui/card";
 import { useUploadImage, useDeleteImage } from "@/hooks/use-progress";
 import { getStage } from "@/lib/production-templates";
 import type { ImageDTO } from "@/types/case";
+import {
+  MAX_IMAGE_BYTES,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_IMAGE_LABEL,
+} from "@/lib/upload-constants";
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8MB
-const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+// Client-side pre-check only (fast feedback); the server enforces the real
+// limits at presign + confirm (S-M6).
+const MAX_BYTES = MAX_IMAGE_BYTES;
+const ACCEPTED = ALLOWED_IMAGE_TYPES as readonly string[];
 
 export function ImageManager({
   caseId,
@@ -38,11 +45,11 @@ export function ImageManager({
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
       if (!ACCEPTED.includes(file.type)) {
-        toast.error(`${file.name}: unsupported format`);
+        toast.error(`${file.name}: unsupported format (use ${ALLOWED_IMAGE_LABEL})`);
         continue;
       }
       if (file.size > MAX_BYTES) {
-        toast.error(`${file.name}: exceeds 8MB`);
+        toast.error(`${file.name}: exceeds 15MB`);
         continue;
       }
       try {
@@ -74,7 +81,7 @@ export function ImageManager({
             Case Images
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            PNG, JPG, WebP or AVIF - up to 8MB each. New uploads are tagged to
+            PNG, JPG, WebP or AVIF - up to 15MB each. New uploads are tagged to
             the current stage:{" "}
             <span className="font-semibold text-brand-700">
               {currentStageLabel}

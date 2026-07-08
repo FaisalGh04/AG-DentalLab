@@ -2,8 +2,13 @@ import type { NextRequest } from "next/server";
 import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
-import { imageProxyPath } from "@/lib/s3";
+import { deleteObject, headObject, imageProxyPath } from "@/lib/s3";
 import { imageAttachSchema } from "@/lib/validations";
+import {
+  MAX_IMAGE_BYTES,
+  ALLOWED_IMAGE_LABEL,
+  isAllowedImageType,
+} from "@/lib/upload-constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +27,26 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
     const body = await req.json();
     const input = imageAttachSchema.parse({ ...body, caseId });
+
+    // Verify the ACTUAL uploaded object against the size/type policy — the
+    // presign check only saw client-declared values, so a client that lied at
+    // presign is caught here. On any violation, delete the object and reject
+    // before writing the DB row (S-M6).
+    let meta: { contentType?: string; contentLength?: number };
+    try {
+      meta = await headObject(input.key);
+    } catch {
+      return apiError("Uploaded file was not found in storage.", 400);
+    }
+    const size = meta.contentLength ?? 0;
+    const type = meta.contentType ?? "";
+    if (size <= 0 || size > MAX_IMAGE_BYTES || !isAllowedImageType(type)) {
+      await deleteObject(input.key).catch(() => {});
+      return apiError(
+        `Uploaded file failed validation — must be a ${ALLOWED_IMAGE_LABEL} image under 15MB.`,
+        422,
+      );
+    }
 
     const image = await prisma.caseImage.create({
       data: {

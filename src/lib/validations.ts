@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { isValidCaseTypeForCategory } from "@/lib/case-types";
+import {
+  MAX_IMAGE_BYTES,
+  ALLOWED_IMAGE_LABEL,
+  isAllowedImageType,
+} from "@/lib/upload-constants";
 
 export const CaseCategoryEnum = z.enum([
   "IMPLANT",
@@ -146,7 +151,14 @@ export const uploadRequestSchema = z.object({
   fileName: z.string().min(1).max(200),
   contentType: z
     .string()
-    .regex(/^image\/(png|jpe?g|webp|avif)$/, "Only image files are allowed"),
+    .refine(isAllowedImageType, `Only ${ALLOWED_IMAGE_LABEL} images are allowed`),
+  // Declared size — validated here to reject before issuing a presigned URL.
+  // The real object size is re-verified at confirm time (S-M6).
+  fileSize: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_IMAGE_BYTES, "Image exceeds the 15MB limit"),
   caseId: z.string().min(1),
 });
 export type UploadRequestInput = z.infer<typeof uploadRequestSchema>;

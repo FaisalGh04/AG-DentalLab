@@ -76,6 +76,7 @@ export function useUploadImage(caseId: string, stageId?: string | null) {
         body: JSON.stringify({
           fileName: file.name,
           contentType: file.type,
+          fileSize: file.size,
           caseId,
         }),
       });

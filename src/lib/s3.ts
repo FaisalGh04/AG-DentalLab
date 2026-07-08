@@ -2,6 +2,7 @@ import {
   S3Client,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -87,6 +88,21 @@ export async function createDownloadUrl(
     Key: key,
   });
   return getSignedUrl(s3, command, { expiresIn });
+}
+
+/**
+ * Fetch an object's stored metadata (size + content type) without downloading
+ * it. Used at confirm time to verify the ACTUAL upload against the size/type
+ * policy, since the presign check only sees client-declared values (S-M6).
+ */
+export async function headObject(
+  key: string,
+): Promise<{ contentType?: string; contentLength?: number }> {
+  if (!s3) throw new Error("Storage is not configured");
+  const res = await s3.send(
+    new HeadObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }),
+  );
+  return { contentType: res.ContentType, contentLength: res.ContentLength };
 }
 
 export async function deleteObject(key: string): Promise<void> {
