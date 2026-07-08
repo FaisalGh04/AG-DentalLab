@@ -1,4 +1,5 @@
 import { Ratelimit } from "@upstash/ratelimit";
+import * as Sentry from "@sentry/nextjs";
 import { redis } from "./redis";
 
 /**
@@ -126,13 +127,48 @@ export function getClientIp(headers: Headers): string {
 
 /**
  * Enforce a limiter. Returns `{ success, remaining, reset }`.
- * Fails open when the limiter is null (Redis not configured).
+ *
+ * Fail policy when the distributed limiter is unavailable (Redis not configured,
+ * or a runtime error talking to Upstash) — same posture as checkAuthRateLimit:
+ *   - production  -> FAIL CLOSED (success:false). A rate limit that silently
+ *                    disables itself in prod is worse than a brief outage, so we
+ *                    deny rather than let unbounded traffic through unthrottled.
+ *   - development -> FAIL OPEN (success:true), so local dev works without Upstash.
+ * Callers treat success:false as a 429 (see `rateLimited`).
  */
 export async function limit(
   limiter: Ratelimit | null,
   identifier: string,
 ): Promise<{ success: boolean; remaining: number; reset: number }> {
-  if (!limiter) return { success: true, remaining: 999, reset: 0 };
-  const { success, remaining, reset } = await limiter.limit(identifier);
-  return { success, remaining, reset };
+  const isProd = process.env.NODE_ENV === "production";
+  // Back off ~60s on the fail-closed path so clients don't hammer every second.
+  const denied = { success: false, remaining: 0, reset: Date.now() + 60_000 };
+  const allowed = { success: true, remaining: 999, reset: 0 };
+
+  if (!limiter) {
+    if (isProd) {
+      const msg =
+        "[ratelimit] Upstash not configured — denying request (fail-closed). " +
+        "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.";
+      console.error(msg);
+      // Alert: fail-closed means /track and the admin panel are down until fixed.
+      Sentry.captureMessage(msg, "error");
+      return denied;
+    }
+    return allowed;
+  }
+
+  try {
+    const { success, remaining, reset } = await limiter.limit(identifier);
+    return { success, remaining, reset };
+  } catch (err) {
+    console.error("[ratelimit] limiter error:", err);
+    if (isProd) {
+      // Alert: same fail-closed outage, but from a live Upstash error mid-flight.
+      Sentry.captureException(err, { tags: { area: "ratelimit", failClosed: "true" } });
+      return denied;
+    }
+    console.warn("[ratelimit] allowing request despite limiter error (dev only)");
+    return allowed;
+  }
 }
