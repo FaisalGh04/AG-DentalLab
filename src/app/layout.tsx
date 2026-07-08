@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SITE } from "@/lib/constants";
@@ -75,9 +76,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // CSP nonce set per-request by middleware (S-M4); stamped on our inline script.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -91,6 +94,7 @@ export default function RootLayout({
             only — admin/login stay English + LTR (kept in sync with
             isLocalizedPath in lib/i18n/config). */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html:
               "(function(){try{var l=localStorage.getItem('ag-lang');var p=location.pathname;var pub=(p==='/'||p==='/track'||p.indexOf('/track/')===0);if(l==='ar'&&pub){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();",
