@@ -36,7 +36,15 @@ export function LoginForm() {
     setPending(false);
 
     if (res?.error) {
-      toast.error("Invalid email or password.");
+      // Generic, non-leaking messages: none reveal whether the account exists.
+      const code = (res as { code?: string }).code;
+      const message =
+        code === "rate_limited"
+          ? "Too many attempts. Please wait a few minutes and try again."
+          : code === "auth_unavailable"
+            ? "Sign-in is temporarily unavailable. Please try again shortly."
+            : "Invalid email or password.";
+      toast.error(message);
       return;
     }
     toast.success("Welcome back!");
