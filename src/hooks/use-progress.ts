@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/fetcher";
 import type { ProgressCreateInput, ProgressUpdateInput } from "@/lib/validations";
 import type { ImageDTO } from "@/types/case";
-import type { CaseStatus } from "@prisma/client";
 
 export function useAddProgress(caseId: string) {
   const qc = useQueryClient();
@@ -62,10 +61,10 @@ export function useDeleteImage(caseId: string) {
 
 /**
  * Full image upload flow: request a presigned URL, PUT the file to storage,
- * then attach the resulting URL to the case, tagged with the given lifecycle
- * stage (defaults server-side to the case's current status).
+ * then attach the resulting URL to the case, tagged with the given stage id
+ * (defaults server-side to the case's current stage; null = General).
  */
-export function useUploadImage(caseId: string, stage?: CaseStatus) {
+export function useUploadImage(caseId: string, stageId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (file: File): Promise<ImageDTO> => {
@@ -91,7 +90,7 @@ export function useUploadImage(caseId: string, stage?: CaseStatus) {
 
       return apiFetch<ImageDTO>(`/api/admin/cases/${caseId}/images`, {
         method: "POST",
-        body: JSON.stringify({ imageUrl: publicUrl, key, stage }),
+        body: JSON.stringify({ imageUrl: publicUrl, key, stageId }),
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),

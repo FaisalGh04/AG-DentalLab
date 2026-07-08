@@ -26,14 +26,10 @@ model Admin {
 }
 
 // ------------------------------------------------------------------
-// Case status lifecycle.
+// A case's lifecycle is defined by its selected production Collection and the
+// ordered Stages within it (see src/lib/production-templates.ts). There is no
+// fixed status enum anymore — progress is a stage id within a collection.
 // ------------------------------------------------------------------
-enum CaseStatus {
-  RECEIVED
-  IN_PROGRESS
-  PRODUCTION
-  COMPLETED
-}
 
 enum CaseCategory {
   IMPLANT
@@ -61,7 +57,15 @@ model PatientCase {
   doctorName             String       @map("doctor_name")
   caseType               String       @map("case_type")
   category               CaseCategory
-  currentStatus          CaseStatus   @default(RECEIVED) @map("current_status")
+  // Selected production template (src/lib/production-templates.ts). Both nullable:
+  // a case can exist before a collection/stage is chosen.
+  collectionId           String?      @map("collection_id")
+  currentStageId         String?      @map("current_stage_id")
+  // Stage ids hidden for THIS case (excluded from its stepper). Default: none.
+  hiddenStageIds         String[]     @default([]) @map("hidden_stage_ids")
+  // Derived + persisted whenever collection/stage/hidden changes: true when the
+  // current stage is the last VISIBLE stage. Drives archive + dashboard queries.
+  isCompleted            Boolean      @default(false) @map("is_completed")
   estimatedCompletionDate DateTime?   @map("estimated_completion_date")
   notes                  String?
   createdAt              DateTime     @default(now()) @map("created_at")
@@ -73,7 +77,7 @@ model PatientCase {
   // Indexes tuned for the two hot paths: public tracking lookup + admin list.
   @@index([patientFullNameNorm])
   @@index([trackingId])
-  @@index([currentStatus])
+  @@index([isCompleted])
   @@index([createdAt])
   @@index([doctorName])
   @@map("patient_cases")
@@ -88,6 +92,11 @@ model CaseProgress {
   stepTitle   String   @map("step_title")
   description String?
   completed   Boolean  @default(false)
+  // Which production stage this step belongs to — a stage id from the case's
+  // collection (src/lib/production-templates.ts). Nullable: steps added before a
+  // collection/stage was chosen are treated as "General" / unscoped. Mirrors
+  // CaseImage.stageId so the case detail + tracker can scope steps per stage.
+  stageId     String?  @map("stage_id")
   order       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -95,6 +104,7 @@ model CaseProgress {
   case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId])
+  @@index([caseId, stageId])
   @@map("case_progress")
 }
 
@@ -107,14 +117,42 @@ model CaseImage {
   imageUrl  String      @map("image_url")
   key       String?     // storage object key, for deletion
   caption   String?
-  // Which lifecycle stage this image documents. Nullable so pre-existing rows
-  // stay valid; new uploads are tagged with the case's status at upload time.
-  stage     CaseStatus?
+  // Which production stage this image documents — a stage id from the case's
+  // collection (src/lib/production-templates.ts). Nullable: images uploaded
+  // before a collection/stage was chosen are treated as "General".
+  stageId   String?     @map("stage_id")
   createdAt DateTime    @default(now()) @map("created_at")
 
   case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId])
-  @@index([caseId, stage])
+  @@index([caseId, stageId])
   @@map("case_images")
+}
+
+// ------------------------------------------------------------------
+// The SINGLE SOURCE OF TRUTH for per-stage Quick-Add step chips. Seeded once
+// from production-templates.ts's built-in step lists (see the accompanying
+// migration), then fully admin-editable: add / rename (labelEn+labelAr) / delete
+// any chip. Collections & Stages themselves stay static in production-templates.ts
+// (id/en/ar) — only these Quick-Add step LISTS are DB-backed now.
+//
+// Scoped to a (collectionId, stageId); a chip is shared by every case using that
+// collection+stage. Editing/deleting a chip only changes the suggestion list going
+// forward — it never touches CaseProgress rows already logged on real cases.
+// ------------------------------------------------------------------
+model StageQuickAddStep {
+  id           String   @id @default(cuid())
+  collectionId String   @map("collection_id")
+  stageId      String   @map("stage_id")
+  labelEn      String   @map("label_en")
+  labelAr      String   @map("label_ar")
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // One chip per English label within a stage (prevents duplicate chips).
+  @@unique([collectionId, stageId, labelEn])
+  @@index([collectionId, stageId])
+  @@map("stage_quick_add_steps")
 }

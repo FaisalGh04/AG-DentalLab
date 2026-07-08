@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           input.description !== undefined ? input.description : step.description,
         completed: input.completed ?? step.completed,
         order: input.order ?? step.order,
+        stageId: input.stageId !== undefined ? input.stageId : step.stageId,
       },
     });
 

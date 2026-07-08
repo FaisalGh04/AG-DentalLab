@@ -28,8 +28,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         imageUrl: input.imageUrl,
         key: input.key,
         caption: input.caption ?? null,
-        // Tag with the requested stage, or the case's current stage by default.
-        stage: input.stage ?? kase.currentStatus,
+        // Tag with the requested stage, or the case's current stage by default
+        // (null when no collection/stage is chosen yet → shown as "General").
+        stageId: input.stageId ?? kase.currentStageId,
       },
     });
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         id: image.id,
         imageUrl: image.imageUrl,
         caption: image.caption,
-        stage: image.stage,
+        stageId: image.stageId,
         createdAt: image.createdAt.toISOString(),
       },
       201,

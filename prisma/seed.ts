@@ -1,6 +1,7 @@
-import { PrismaClient, CaseCategory, CaseStatus } from "@prisma/client";
+import { PrismaClient, CaseCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { generateUniqueTrackingId } from "../src/lib/tracking-id";
+import { computeIsCompleted } from "../src/lib/production-templates";
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,10 @@ async function main() {
   });
 
   if (!existing) {
+    // Demo case mid-way through the "Zirconia Crown & Bridge" collection.
+    const collectionId = "zirconia-crown-bridge";
+    const currentStageId = "cad-cam";
+    const hiddenStageIds: string[] = [];
     const demo = await prisma.patientCase.create({
       data: {
         patientFirstName: "Sara",
@@ -36,19 +41,38 @@ async function main() {
         doctorName: "Dr. Omar Haddad",
         caseType: "Ivoclar Prime ZiR",
         category: CaseCategory.C_AND_B,
-        currentStatus: CaseStatus.PRODUCTION,
+        collectionId,
+        currentStageId,
+        hiddenStageIds,
+        isCompleted: computeIsCompleted(
+          collectionId,
+          currentStageId,
+          hiddenStageIds,
+        ),
         estimatedCompletionDate: new Date(Date.now() + 5 * 24 * 3600 * 1000),
         notes: "Shade A2. Deliver before the weekend if possible.",
         progress: {
+          // Each step is tagged with the stage it belongs to, so the case detail
+          // + public tracker scope steps per stage.
           create: [
-            { stepTitle: "Digital Scan Completed", completed: true, order: 1 },
-            { stepTitle: "Design Started", completed: true, order: 2 },
-            { stepTitle: "Design Approved", completed: true, order: 3 },
-            { stepTitle: "Milling Started", completed: true, order: 4 },
-            { stepTitle: "Zirconia Production", completed: false, order: 5 },
-            { stepTitle: "Ceramic Layering", completed: false, order: 6 },
-            { stepTitle: "Quality Check", completed: false, order: 7 },
-            { stepTitle: "Final Polishing", completed: false, order: 8 },
+            {
+              stepTitle: "Received / الاستلام",
+              stageId: "received",
+              completed: true,
+              order: 1,
+            },
+            {
+              stepTitle: "Cast impression (type4) / صب القياس (type4)",
+              stageId: "casting-prep",
+              completed: true,
+              order: 2,
+            },
+            {
+              stepTitle: "CAD design + try-in / مرحلة التصميم (CAD) + بروفا",
+              stageId: "cad-cam",
+              completed: false,
+              order: 3,
+            },
           ],
         },
       },

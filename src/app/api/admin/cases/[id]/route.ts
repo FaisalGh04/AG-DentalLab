@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { caseUpdateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
 import { deleteObject } from "@/lib/s3";
+import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,28 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const lastName = input.patientLastName ?? existing.patientLastName;
     const norm = normalizeName(firstName, lastName);
 
+    // Resolve the lifecycle selection. Switching collection resets the current
+    // stage (to the new collection's first) and hidden list unless the client
+    // sent explicit values. Everything is validated + isCompleted re-derived.
+    const collectionId =
+      input.collectionId !== undefined ? input.collectionId : existing.collectionId;
+    const collectionChanged =
+      input.collectionId !== undefined &&
+      input.collectionId !== existing.collectionId;
+    const currentStageId =
+      input.currentStageId !== undefined
+        ? input.currentStageId
+        : collectionChanged
+          ? firstStageId(collectionId)
+          : existing.currentStageId;
+    const hiddenStageIds =
+      input.hiddenStageIds !== undefined
+        ? input.hiddenStageIds
+        : collectionChanged
+          ? []
+          : existing.hiddenStageIds;
+    const life = normalizeLifecycle(collectionId, currentStageId, hiddenStageIds);
+
     const updated = await prisma.patientCase.update({
       where: { id },
       data: {
@@ -51,7 +74,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         doctorName: input.doctorName ?? existing.doctorName,
         caseType: input.caseType ?? existing.caseType,
         category: input.category ?? existing.category,
-        currentStatus: input.currentStatus ?? existing.currentStatus,
+        collectionId: life.collectionId,
+        currentStageId: life.currentStageId,
+        hiddenStageIds: life.hiddenStageIds,
+        isCompleted: life.isCompleted,
         estimatedCompletionDate:
           input.estimatedCompletionDate !== undefined
             ? input.estimatedCompletionDate

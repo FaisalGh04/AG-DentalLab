@@ -25,12 +25,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
-import { CASE_CATEGORY_ORDER, CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { CASE_CATEGORY_ORDER, CATEGORY_META } from "@/lib/constants";
 import { getCaseTypesForCategory } from "@/lib/case-types";
+import { PRODUCTION_COLLECTIONS } from "@/lib/production-templates";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
-import type { CaseCategory, CaseStatus } from "@prisma/client";
+import type { CaseCategory } from "@prisma/client";
 
 interface Props {
   open: boolean;
@@ -61,8 +62,8 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   } = useForm<CaseCreateInput>({
     resolver: zodResolver(caseCreateSchema),
     defaultValues: {
-      currentStatus: "RECEIVED",
       category: undefined as unknown as CaseCategory,
+      collectionId: null,
     },
   });
 
@@ -75,7 +76,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         doctorName: existing.doctorName,
         caseType: existing.caseType,
         category: existing.category,
-        currentStatus: existing.currentStatus,
+        collectionId: existing.collectionId,
         estimatedCompletionDate: existing.estimatedCompletionDate
           ? existing.estimatedCompletionDate.slice(0, 10)
           : "",
@@ -89,7 +90,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         doctorName: "",
         caseType: "",
         category: undefined as unknown as CaseCategory,
-        currentStatus: "RECEIVED",
+        collectionId: null,
         estimatedCompletionDate: "",
         notes: "",
       });
@@ -128,7 +129,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   }
 
   const category = watch("category");
-  const status = watch("currentStatus");
+  const collectionId = watch("collectionId");
   const caseType = watch("caseType");
   const availableCaseTypes = getCaseTypesForCategory(category);
 
@@ -225,27 +226,31 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Status" error={errors.currentStatus?.message}>
-              <Select
-                value={status}
-                onValueChange={(v) =>
-                  setValue("currentStatus", v as CaseStatus)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_ORDER.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {STATUS_META[s].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
+          <Field
+            label="Collection (optional)"
+            error={errors.collectionId?.message}
+          >
+            <Select
+              value={collectionId ?? ""}
+              onValueChange={(v) =>
+                setValue("collectionId", v, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pick a production collection (can set later)" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCTION_COLLECTIONS.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.en}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field

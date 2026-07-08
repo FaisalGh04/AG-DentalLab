@@ -1,10 +1,9 @@
 import Link from "next/link";
 import {
   FolderKanban,
-  Inbox,
   Loader,
-  Factory,
   CheckCircle2,
+  CircleDashed,
   ArrowRight,
   Plus,
   ClipboardList,
@@ -12,9 +11,9 @@ import {
 import { getDashboardStats, listRecentCases } from "@/lib/case-service";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/case/status-badge";
+import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatEstCompletion } from "@/lib/utils";
 import { CATEGORY_META } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +26,9 @@ export default async function AdminDashboard() {
 
   const cards = [
     { label: "Total Cases", value: stats.total, icon: FolderKanban, tint: "bg-brand-50 text-brand-600 ring-brand-100" },
-    { label: "Received", value: stats.received, icon: Inbox, tint: "bg-slate-100 text-slate-600 ring-slate-200" },
-    { label: "In Progress", value: stats.inProgress, icon: Loader, tint: "bg-sky-50 text-sky-600 ring-sky-100" },
-    { label: "Production", value: stats.production, icon: Factory, tint: "bg-brand-100 text-brand-700 ring-brand-200" },
+    { label: "Active", value: stats.active, icon: Loader, tint: "bg-sky-50 text-sky-600 ring-sky-100" },
     { label: "Completed", value: stats.completed, icon: CheckCircle2, tint: "bg-green-50 text-green-600 ring-green-100" },
+    { label: "No Collection", value: stats.unassigned, icon: CircleDashed, tint: "bg-slate-100 text-slate-600 ring-slate-200" },
   ];
 
   return (
@@ -51,7 +49,7 @@ export default async function AdminDashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
@@ -110,12 +108,19 @@ export default async function AdminDashboard() {
                 <p className="truncate text-sm text-muted-foreground">
                   {c.caseType} / {CATEGORY_META[c.category].label} / {c.doctorName}
                 </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground/80">
+                  Est. completion: {formatEstCompletion(c.estimatedCompletionDate)}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-4">
                 <span className="hidden text-sm text-muted-foreground sm:block">
                   {formatDate(c.updatedAt)}
                 </span>
-                <StatusBadge status={c.currentStatus} />
+                <CaseStateBadge
+                  collectionId={c.collectionId}
+                  currentStageId={c.currentStageId}
+                  isCompleted={c.isCompleted}
+                />
               </div>
             </Link>
           ))}

@@ -22,26 +22,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { StatusStepper } from "@/components/case/status-stepper";
-import { StatusBadge } from "@/components/case/status-badge";
+import { StageStepper } from "@/components/case/stage-stepper";
+import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { ProgressTimeline } from "@/components/case/progress-timeline";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useI18n } from "@/components/i18n/language-provider";
 import { searchSchema, type SearchInput } from "@/lib/validations";
 import { apiFetch, ApiError } from "@/lib/fetcher";
-import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import {
+  getProductionCollection,
+  getVisibleStages,
+  localizedLabel,
+} from "@/lib/production-templates";
 import { formatEstCompletion } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
-import type { CaseStatus } from "@prisma/client";
 
 export function TrackClient() {
-  const { t } = useI18n();
-
-  // Translated stage labels for the shared status components (which default to
-  // English STATUS_META labels for the admin views).
-  const statusLabels = Object.fromEntries(
-    STATUS_ORDER.map((s) => [s, t(`status.${s}`)]),
-  ) as Record<CaseStatus, string>;
+  const { t, locale } = useI18n();
 
   const {
     register,
@@ -62,28 +59,52 @@ export function TrackClient() {
   const onSubmit = (data: SearchInput) => mutation.mutate(data);
   const result = mutation.data;
 
+  // The case's collection + its visible stages (hidden ones filtered out).
+  const collection = getProductionCollection(result?.collectionId);
+  const visibleStages = result
+    ? getVisibleStages(result.collectionId, result.hiddenStageIds)
+    : [];
+  const stepperStages = visibleStages.map((s) => ({
+    id: s.id,
+    label: localizedLabel(s, locale),
+  }));
+
   // Which stage's photos are shown; defaults to the case's current stage.
-  const [selectedStage, setSelectedStage] = React.useState<CaseStatus | null>(
-    null,
-  );
+  const [selectedStage, setSelectedStage] = React.useState<string | null>(null);
   React.useEffect(() => {
-    setSelectedStage(result ? result.currentStatus : null);
+    setSelectedStage(result?.currentStageId ?? null);
   }, [result]);
 
-  const activeStage = selectedStage ?? result?.currentStatus ?? null;
+  const activeStage = selectedStage ?? result?.currentStageId ?? null;
   const stagesWithImages = result
     ? (Array.from(
-        new Set(result.images.map((i) => i.stage).filter(Boolean)),
-      ) as CaseStatus[])
+        new Set(result.images.map((i) => i.stageId).filter(Boolean)),
+      ) as string[])
     : [];
   const stageImages =
     result && activeStage
-      ? result.images.filter((i) => i.stage === activeStage)
+      ? result.images.filter((i) => i.stageId === activeStage)
       : [];
-  const stageReached =
-    result && activeStage
-      ? STATUS_META[activeStage].step <= STATUS_META[result.currentStatus].step
-      : false;
+  const activeStageLabel =
+    activeStage && collection
+      ? (visibleStages.find((s) => s.id === activeStage)
+          ? localizedLabel(
+              visibleStages.find((s) => s.id === activeStage)!,
+              locale,
+            )
+          : "")
+      : "";
+  // Images uploaded before a collection/stage was chosen (stageId null).
+  const generalImages = result
+    ? result.images.filter((i) => !i.stageId)
+    : [];
+
+  // Production steps scoped to the viewed stage — same interaction as the photo
+  // gallery above. When no stage is active (collection-less case) this surfaces
+  // the unscoped (General) steps.
+  const stageProgress = result
+    ? result.progress.filter((p) => (p.stageId ?? null) === activeStage)
+    : [];
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -171,29 +192,48 @@ export function TrackClient() {
                     {result.patientName}
                   </h2>
                 </div>
-                <StatusBadge
-                  status={result.currentStatus}
-                  label={statusLabels[result.currentStatus]}
+                <CaseStateBadge
+                  collectionId={result.collectionId}
+                  currentStageId={result.currentStageId}
+                  isCompleted={result.isCompleted}
+                  locale={locale}
+                  labels={{
+                    completed: t("track.completed"),
+                    noCollection: t("track.inProcess"),
+                  }}
                 />
               </div>
 
-              <div className="p-6">
-                <StatusStepper
-                  status={result.currentStatus}
-                  interactive
-                  selectedStatus={activeStage}
-                  stagesWithImages={stagesWithImages}
-                  onSelectStatus={setSelectedStage}
-                  labels={statusLabels}
-                />
-              </div>
+              {collection && stepperStages.length > 0 ? (
+                <div className="p-6">
+                  <StageStepper
+                    stages={stepperStages}
+                    currentStageId={result.currentStageId}
+                    interactive
+                    selectedStageId={activeStage}
+                    stagesWithImages={stagesWithImages}
+                    onSelectStage={setSelectedStage}
+                  />
+                </div>
+              ) : (
+                <div className="p-6">
+                  <div className="rounded-xl border border-brand-400/20 bg-brand-500/10 p-5 text-center">
+                    <p className="font-semibold text-cream">
+                      {t("track.processingTitle")}
+                    </p>
+                    <p className="mt-1 text-sm text-brand-50/68">
+                      {t("track.processingBody")}
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              {activeStage && (
+              {collection && activeStage && (
                 <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
                   <div className="flex items-center gap-2 text-brand-100/60">
                     <ImageIcon className="h-4 w-4" />
                     <span className="text-xs font-semibold uppercase tracking-wider">
-                      {statusLabels[activeStage]} — {t("track.stagePhotos")}
+                      {activeStageLabel} — {t("track.stagePhotos")}
                     </span>
                   </div>
                   {stageImages.length > 0 ? (
@@ -208,7 +248,7 @@ export function TrackClient() {
                         >
                           <Image
                             src={img.imageUrl}
-                            alt={img.caption ?? statusLabels[activeStage]}
+                            alt={img.caption ?? activeStageLabel}
                             fill
                             sizes="(max-width: 640px) 50vw, 220px"
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -218,11 +258,39 @@ export function TrackClient() {
                     </div>
                   ) : (
                     <p className="mt-3 text-sm text-brand-50/68">
-                      {stageReached
-                        ? t("track.noStagePhotos")
-                        : t("track.stageNotReached")}
+                      {t("track.noStagePhotos")}
                     </p>
                   )}
+                </div>
+              )}
+
+              {generalImages.length > 0 && (
+                <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
+                  <div className="flex items-center gap-2 text-brand-100/60">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      {t("track.generalPhotos")}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {generalImages.map((img) => (
+                      <a
+                        key={img.id}
+                        href={img.imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-brand-400/20"
+                      >
+                        <Image
+                          src={img.imageUrl}
+                          alt={img.caption ?? t("track.generalPhotos")}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 220px"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -256,9 +324,14 @@ export function TrackClient() {
             <Card className="border-brand-400/20 bg-brand-950/55 p-6 text-cream">
               <h3 className="mb-6 font-display text-lg font-semibold text-cream">
                 {t("track.productionTimeline")}
+                {activeStageLabel && (
+                  <span className="ml-2 text-base font-medium text-brand-100/60">
+                    — {activeStageLabel}
+                  </span>
+                )}
               </h3>
               <ProgressTimeline
-                steps={result.progress}
+                steps={stageProgress}
                 emptyLabel={t("track.noSteps")}
               />
             </Card>

@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { Prisma, type CaseStatus, type CaseCategory } from "@prisma/client";
+import { Prisma, type CaseCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import type {
@@ -33,7 +33,10 @@ export async function searchByTrackingId(
     doctorName: found.doctorName,
     caseType: found.caseType,
     category: found.category,
-    currentStatus: found.currentStatus,
+    collectionId: found.collectionId,
+    currentStageId: found.currentStageId,
+    hiddenStageIds: found.hiddenStageIds,
+    isCompleted: found.isCompleted,
     estimatedCompletionDate:
       found.estimatedCompletionDate?.toISOString() ?? null,
     notes: found.notes,
@@ -43,13 +46,14 @@ export async function searchByTrackingId(
       description: p.description,
       completed: p.completed,
       order: p.order,
+      stageId: p.stageId,
       createdAt: p.createdAt.toISOString(),
     })),
     images: found.images.map((i) => ({
       id: i.id,
       imageUrl: i.imageUrl,
       caption: i.caption,
-      stage: i.stage,
+      stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),
     })),
   };
@@ -62,12 +66,30 @@ export async function searchByTrackingId(
 
 export interface AdminListParams {
   q?: string;
-  status?: CaseStatus;
   category?: CaseCategory;
   page?: number;
   pageSize?: number;
   archived?: boolean; // completed archive
 }
+
+// Columns selected for admin list rows (list + recent share this shape).
+const ADMIN_LIST_SELECT = {
+  id: true,
+  trackingId: true,
+  patientFirstName: true,
+  patientLastName: true,
+  doctorName: true,
+  caseType: true,
+  category: true,
+  collectionId: true,
+  currentStageId: true,
+  hiddenStageIds: true,
+  isCompleted: true,
+  estimatedCompletionDate: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: { select: { progress: true, images: true } },
+} satisfies Prisma.PatientCaseSelect;
 
 export async function listCases(
   params: AdminListParams,
@@ -79,13 +101,7 @@ export async function listCases(
   if (params.category) where.category = params.category;
 
   // Completed cases live ONLY in the Archive; "All Cases" never shows them.
-  if (params.archived) {
-    where.currentStatus = "COMPLETED";
-  } else if (params.status && params.status !== "COMPLETED") {
-    where.currentStatus = params.status;
-  } else {
-    where.currentStatus = { not: "COMPLETED" };
-  }
+  where.isCompleted = params.archived === true;
 
   if (params.q) {
     const q = params.q.trim();
@@ -103,20 +119,7 @@ export async function listCases(
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      select: {
-        id: true,
-        trackingId: true,
-        patientFirstName: true,
-        patientLastName: true,
-        doctorName: true,
-        caseType: true,
-        category: true,
-        currentStatus: true,
-        estimatedCompletionDate: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: { select: { progress: true, images: true } },
-      },
+      select: ADMIN_LIST_SELECT,
     }),
     prisma.patientCase.count({ where }),
   ]);
@@ -153,7 +156,10 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
     doctorName: c.doctorName,
     caseType: c.caseType,
     category: c.category,
-    currentStatus: c.currentStatus,
+    collectionId: c.collectionId,
+    currentStageId: c.currentStageId,
+    hiddenStageIds: c.hiddenStageIds,
+    isCompleted: c.isCompleted,
     estimatedCompletionDate: c.estimatedCompletionDate?.toISOString() ?? null,
     notes: c.notes,
     createdAt: c.createdAt.toISOString(),
@@ -164,32 +170,31 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       description: p.description,
       completed: p.completed,
       order: p.order,
+      stageId: p.stageId,
       createdAt: p.createdAt.toISOString(),
     })),
     images: c.images.map((i) => ({
       id: i.id,
       imageUrl: i.imageUrl,
       caption: i.caption,
-      stage: i.stage,
+      stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),
     })),
   };
 }
 
 async function computeDashboardStats() {
-  // One grouped query instead of five separate COUNTs.
-  const grouped = await prisma.patientCase.groupBy({
-    by: ["currentStatus"],
-    _count: { _all: true },
-  });
-  const countOf = (s: CaseStatus) =>
-    grouped.find((g) => g.currentStatus === s)?._count._all ?? 0;
-  const received = countOf("RECEIVED");
-  const inProgress = countOf("IN_PROGRESS");
-  const production = countOf("PRODUCTION");
-  const completed = countOf("COMPLETED");
-  const total = received + inProgress + production + completed;
-  return { total, received, inProgress, production, completed };
+  // Buckets for the dynamic collection/stage model:
+  //  - completed:   isCompleted = true
+  //  - unassigned:  no collection chosen yet
+  //  - active:      everything else (in a collection, not yet completed)
+  const [total, completed, unassigned] = await Promise.all([
+    prisma.patientCase.count(),
+    prisma.patientCase.count({ where: { isCompleted: true } }),
+    prisma.patientCase.count({ where: { collectionId: null } }),
+  ]);
+  const active = total - completed - unassigned;
+  return { total, active, completed, unassigned };
 }
 
 /**
@@ -214,20 +219,7 @@ export async function listRecentCases(
   const items = await prisma.patientCase.findMany({
     orderBy: { updatedAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      trackingId: true,
-      patientFirstName: true,
-      patientLastName: true,
-      doctorName: true,
-      caseType: true,
-      category: true,
-      currentStatus: true,
-      estimatedCompletionDate: true,
-      createdAt: true,
-      updatedAt: true,
-      _count: { select: { progress: true, images: true } },
-    },
+    select: ADMIN_LIST_SELECT,
   });
   return items.map((c) => ({
     ...c,

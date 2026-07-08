@@ -2,13 +2,6 @@ import { z } from "zod";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { isValidCaseTypeForCategory } from "@/lib/case-types";
 
-export const CaseStatusEnum = z.enum([
-  "RECEIVED",
-  "IN_PROGRESS",
-  "PRODUCTION",
-  "COMPLETED",
-]);
-
 export const CaseCategoryEnum = z.enum([
   "IMPLANT",
   "C_AND_B",
@@ -60,7 +53,23 @@ const caseInputBaseSchema = z.object({
   doctorName: z.string().trim().min(2, "Doctor name is required").max(120),
   caseType: z.string().trim().min(2, "Case type is required").max(160),
   category: CaseCategoryEnum,
-  currentStatus: CaseStatusEnum.default("RECEIVED"),
+  // Production-template selection. The route validates that the stage belongs to
+  // the collection and derives isCompleted; empty string is normalized to null.
+  collectionId: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
+  currentStageId: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
+  hiddenStageIds: z.array(z.string().trim().max(80)).max(50).optional(),
   estimatedCompletionDate: dateInputSchema.nullable().optional(),
   notes: z.string().trim().max(2000).optional().nullable(),
 });
@@ -99,6 +108,9 @@ export const progressCreateSchema = z.object({
   description: z.string().trim().max(1000).optional().nullable(),
   completed: z.boolean().default(false),
   order: z.number().int().min(0).optional(),
+  // Stage id this step documents; server falls back to the case's current stage
+  // when omitted (and null = General / unscoped). Same shape as image stageId.
+  stageId: z.string().trim().max(80).optional().nullable(),
 });
 export type ProgressCreateInput = z.infer<typeof progressCreateSchema>;
 
@@ -107,8 +119,27 @@ export const progressUpdateSchema = z.object({
   description: z.string().trim().max(1000).optional().nullable(),
   completed: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
+  stageId: z.string().trim().max(80).optional().nullable(),
 });
 export type ProgressUpdateInput = z.infer<typeof progressUpdateSchema>;
+
+// --- Quick-Add steps (DB-backed per-stage chips) --------------------
+export const quickAddStepCreateSchema = z.object({
+  collectionId: z.string().trim().min(1).max(80),
+  stageId: z.string().trim().min(1).max(80),
+  labelEn: z.string().trim().min(1, "English label is required").max(160),
+  labelAr: z.string().trim().min(1, "Arabic label is required").max(160),
+});
+export type QuickAddStepCreateInput = z.infer<typeof quickAddStepCreateSchema>;
+
+export const quickAddStepUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1, "English label is required").max(160).optional(),
+    labelAr: z.string().trim().min(1, "Arabic label is required").max(160).optional(),
+    order: z.number().int().min(0).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type QuickAddStepUpdateInput = z.infer<typeof quickAddStepUpdateSchema>;
 
 // --- Image upload ---------------------------------------------------
 export const uploadRequestSchema = z.object({
@@ -125,8 +156,8 @@ export const imageAttachSchema = z.object({
   imageUrl: z.string().url(),
   key: z.string().min(1),
   caption: z.string().trim().max(200).optional().nullable(),
-  // Lifecycle stage this image documents; server falls back to the case's
-  // current status when omitted.
-  stage: CaseStatusEnum.optional().nullable(),
+  // Stage id this image documents; server falls back to the case's current
+  // stage when omitted (and null = General).
+  stageId: z.string().trim().max(80).optional().nullable(),
 });
 export type ImageAttachInput = z.infer<typeof imageAttachSchema>;

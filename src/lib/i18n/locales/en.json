@@ -127,13 +127,12 @@
     "stagePhotos": "Photos",
     "noStagePhotos": "No photos were uploaded for this stage.",
     "stageNotReached": "This stage hasn't been reached yet.",
+    "generalPhotos": "General photos",
+    "completed": "Completed",
+    "inProcess": "In process",
+    "processingTitle": "Case received",
+    "processingBody": "Your case has been received and is being processed.",
     "noSteps": "No production steps have been recorded yet."
-  },
-  "status": {
-    "RECEIVED": "Received",
-    "IN_PROGRESS": "In Progress",
-    "PRODUCTION": "Production",
-    "COMPLETED": "Completed"
   },
   "category": {
     "IMPLANT": "Implant",

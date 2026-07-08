@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { caseCreateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
-import type { CaseStatus, CaseCategory } from "@prisma/client";
+import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
+import type { CaseCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,6 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const data = await listCases({
       q: sp.get("q") ?? undefined,
-      status: (sp.get("status") as CaseStatus) || undefined,
       category: (sp.get("category") as CaseCategory) || undefined,
       archived: sp.get("archived") === "true",
       page: sp.get("page") ? Number(sp.get("page")) : 1,
@@ -44,6 +44,15 @@ export async function POST(req: NextRequest) {
 
     const norm = normalizeName(input.patientFirstName, input.patientLastName);
     const trackingId = await generateUniqueTrackingId();
+
+    // If a collection is chosen, default the current stage to its first stage
+    // (unless the client sent one). Normalize + derive isCompleted server-side.
+    const life = normalizeLifecycle(
+      input.collectionId,
+      input.currentStageId ?? firstStageId(input.collectionId),
+      input.hiddenStageIds,
+    );
+
     const created = await prisma.patientCase.create({
       data: {
         trackingId,
@@ -53,7 +62,10 @@ export async function POST(req: NextRequest) {
         doctorName: input.doctorName,
         caseType: input.caseType,
         category: input.category,
-        currentStatus: input.currentStatus,
+        collectionId: life.collectionId,
+        currentStageId: life.currentStageId,
+        hiddenStageIds: life.hiddenStageIds,
+        isCompleted: life.isCompleted,
         estimatedCompletionDate: input.estimatedCompletionDate
           ? new Date(input.estimatedCompletionDate)
           : null,

@@ -126,14 +126,13 @@
     "productionTimeline": "الجدول الزمني للإنتاج",
     "stagePhotos": "الصور",
     "noStagePhotos": "لم تُرفع أي صور لهذه المرحلة.",
+    "generalPhotos": "صور عامة",
+    "completed": "مكتملة",
+    "inProcess": "قيد المعالجة",
+    "processingTitle": "تم استلام الحالة",
+    "processingBody": "تم استلام حالتك وجاري العمل عليها.",
     "stageNotReached": "لم يتم الوصول إلى هذه المرحلة بعد.",
     "noSteps": "لم تُسجَّل أي خطوات إنتاج بعد."
-  },
-  "status": {
-    "RECEIVED": "مستلمة",
-    "IN_PROGRESS": "قيد التنفيذ",
-    "PRODUCTION": "قيد الإنتاج",
-    "COMPLETED": "مكتملة"
   },
   "category": {
     "IMPLANT": "زراعة",

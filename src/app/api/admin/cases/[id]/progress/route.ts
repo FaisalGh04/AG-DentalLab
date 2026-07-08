@@ -32,6 +32,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       order = (last?.order ?? 0) + 1;
     }
 
+    // Tag with the requested stage, or the case's current stage by default
+    // (null when no collection/stage is chosen yet → shown as "General").
+    const stageId =
+      input.stageId !== undefined ? input.stageId : kase.currentStageId;
+
     const step = await prisma.caseProgress.create({
       data: {
         caseId,
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         description: input.description ?? null,
         completed: input.completed,
         order,
+        stageId,
       },
     });
 

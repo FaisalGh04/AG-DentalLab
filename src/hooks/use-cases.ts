@@ -15,7 +15,6 @@ import type { CaseCreateInput, CaseUpdateInput } from "@/lib/validations";
 
 export interface CaseListQuery {
   q?: string;
-  status?: string;
   category?: string;
   archived?: boolean;
   page?: number;
@@ -25,7 +24,6 @@ export interface CaseListQuery {
 function toParams(query: CaseListQuery): string {
   const sp = new URLSearchParams();
   if (query.q) sp.set("q", query.q);
-  if (query.status && query.status !== "ALL") sp.set("status", query.status);
   if (query.category && query.category !== "ALL")
     sp.set("category", query.category);
   if (query.archived) sp.set("archived", "true");

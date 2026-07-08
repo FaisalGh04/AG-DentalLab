@@ -12,6 +12,9 @@ import {
   Package,
   Tag,
   Hash,
+  Eye,
+  EyeOff,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,17 +27,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StatusStepper } from "@/components/case/status-stepper";
-import { StatusBadge } from "@/components/case/status-badge";
+import { StageStepper } from "@/components/case/stage-stepper";
+import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { ProgressManager } from "@/components/admin/progress-manager";
 import { ImageManager } from "@/components/admin/image-manager";
 import { useCase, useDeleteCase, useUpdateCase } from "@/hooks/use-cases";
-import { CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { formatDate, formatEstCompletion } from "@/lib/utils";
-import type { CaseStatus } from "@prisma/client";
+import { CATEGORY_META } from "@/lib/constants";
+import {
+  PRODUCTION_COLLECTIONS,
+  getProductionCollection,
+  getVisibleStages,
+  firstStageId,
+} from "@/lib/production-templates";
+import { formatDate, formatEstCompletion, cn } from "@/lib/utils";
 
 export function CaseDetailClient({ id }: { id: string }) {
   const router = useRouter();
@@ -46,12 +54,37 @@ export function CaseDetailClient({ id }: { id: string }) {
   const [editOpen, setEditOpen] = React.useState(params.get("edit") === "true");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
 
-  async function changeStatus(status: CaseStatus) {
+  async function changeCollection(collectionId: string) {
     try {
-      await update.mutateAsync({ currentStatus: status });
-      toast.success(`Status set to ${STATUS_META[status].label}`);
+      // Switching collection resets the current stage (to the new first stage)
+      // and clears hidden stages — stage ids don't carry across collections.
+      await update.mutateAsync({
+        collectionId,
+        currentStageId: firstStageId(collectionId),
+        hiddenStageIds: [],
+      });
+      toast.success("Collection updated");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update status");
+      toast.error(e instanceof Error ? e.message : "Failed to update collection");
+    }
+  }
+
+  async function changeStage(currentStageId: string) {
+    try {
+      await update.mutateAsync({ currentStageId });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update stage");
+    }
+  }
+
+  async function toggleHidden(stageId: string, hidden: string[]) {
+    const next = hidden.includes(stageId)
+      ? hidden.filter((s) => s !== stageId)
+      : [...hidden, stageId];
+    try {
+      await update.mutateAsync({ hiddenStageIds: next });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update stages");
     }
   }
 
@@ -88,6 +121,10 @@ export function CaseDetailClient({ id }: { id: string }) {
     );
   }
 
+  const collection = getProductionCollection(kase.collectionId);
+  const visibleStages = getVisibleStages(kase.collectionId, kase.hiddenStageIds);
+  const stepperStages = visibleStages.map((s) => ({ id: s.id, label: s.en }));
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -113,7 +150,7 @@ export function CaseDetailClient({ id }: { id: string }) {
 
       {/* Header card */}
       <Card className="overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-border/80 bg-brand-50/60 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border/80 bg-brand-50/60 p-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Patient
@@ -124,31 +161,133 @@ export function CaseDetailClient({ id }: { id: string }) {
             <p className="mt-0.5 text-sm text-muted-foreground">
               Created {formatDate(kase.createdAt)}
             </p>
-            <TrackingIdCopy trackingId={kase.trackingId} className="mt-3" />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <TrackingIdCopy trackingId={kase.trackingId} />
+              <CaseStateBadge
+                collectionId={kase.collectionId}
+                currentStageId={kase.currentStageId}
+                isCompleted={kase.isCompleted}
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <StatusBadge status={kase.currentStatus} />
-            <Select
-              value={kase.currentStatus}
-              onValueChange={(v) => changeStatus(v as CaseStatus)}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_ORDER.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          {/* Collection + Stage pickers (replaces the old status badge + select) */}
+          <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-auto">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Collection
+              </label>
+              <Select
+                value={kase.collectionId ?? ""}
+                onValueChange={changeCollection}
+              >
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue placeholder="Select collection" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCTION_COLLECTIONS.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Stage
+              </label>
+              <Select
+                value={kase.currentStageId ?? ""}
+                disabled={!collection}
+                onValueChange={changeStage}
+              >
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue
+                    placeholder={collection ? "Select stage" : "Pick a collection"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {visibleStages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
+        {/* Dynamic stepper for the selected collection's visible stages */}
         <div className="p-6">
-          <StatusStepper status={kase.currentStatus} />
+          {collection ? (
+            stepperStages.length > 0 ? (
+              <StageStepper
+                stages={stepperStages}
+                currentStageId={kase.currentStageId}
+                interactive
+                clickable="all"
+                onSelectStage={changeStage}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                All stages are hidden. Show at least one below.
+              </p>
+            )
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-5 text-sm text-muted-foreground">
+              <Layers className="h-5 w-5 text-brand-400" />
+              Select a collection above to build this case&apos;s stage timeline.
+            </div>
+          )}
         </div>
+
+        {/* Per-stage hide/show management */}
+        {collection && (
+          <div className="border-t border-border/80 bg-white/50 p-6">
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Layers className="h-3.5 w-3.5" /> Stages in this case
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {collection.stages.map((s) => {
+                const hidden = kase.hiddenStageIds.includes(s.id);
+                const isCurrent = kase.currentStageId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleHidden(s.id, kase.hiddenStageIds)}
+                    disabled={update.isPending || isCurrent}
+                    title={
+                      isCurrent
+                        ? "Can't hide the current stage"
+                        : hidden
+                          ? "Show this stage"
+                          : "Hide this stage for this case"
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                      hidden
+                        ? "border-border bg-muted/40 text-muted-foreground line-through"
+                        : "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100",
+                    )}
+                  >
+                    {hidden ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                    {s.en}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground/70">
+              Hidden stages don&apos;t appear in the case timeline (admin or public).
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-5">
           <Detail icon={Stethoscope} label="Doctor" value={kase.doctorName} />
@@ -177,11 +316,18 @@ export function CaseDetailClient({ id }: { id: string }) {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ProgressManager caseId={id} steps={kase.progress} />
+        <ProgressManager
+          caseId={id}
+          steps={kase.progress}
+          collectionId={kase.collectionId}
+          currentStageId={kase.currentStageId}
+          hiddenStageIds={kase.hiddenStageIds}
+        />
         <ImageManager
           caseId={id}
           images={kase.images}
-          currentStatus={kase.currentStatus}
+          collectionId={kase.collectionId}
+          currentStageId={kase.currentStageId}
         />
       </div>
 

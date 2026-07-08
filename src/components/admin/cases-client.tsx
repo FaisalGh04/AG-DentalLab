@@ -33,15 +33,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StatusBadge } from "@/components/case/status-badge";
+import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAdminUI } from "@/store/admin-ui";
 import { useCaseList, useDeleteCase } from "@/hooks/use-cases";
-import { CASE_CATEGORY_ORDER, CATEGORY_META, STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
-import type { CaseCategory, CaseStatus } from "@prisma/client";
+import { CASE_CATEGORY_ORDER, CATEGORY_META } from "@/lib/constants";
+import { formatDate, formatEstCompletion } from "@/lib/utils";
+import type { CaseCategory } from "@prisma/client";
 
 export function CasesClient() {
   const params = useSearchParams();
@@ -50,12 +50,10 @@ export function CasesClient() {
 
   const {
     search,
-    status,
     category,
     page,
     archived,
     setSearch,
-    setStatus,
     setCategory,
     setPage,
     setArchived,
@@ -78,7 +76,6 @@ export function CasesClient() {
 
   const { data, isLoading, isFetching } = useCaseList({
     q: debounced || undefined,
-    status,
     category,
     archived,
     page,
@@ -127,26 +124,6 @@ export function CasesClient() {
               className="pl-10"
             />
           </div>
-          {/* Archive is all-completed, so the status filter only applies to
-              "All Cases", where COMPLETED is intentionally excluded. */}
-          {!archived && (
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as CaseStatus | "ALL")}
-            >
-              <SelectTrigger className="md:w-44">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All statuses</SelectItem>
-                {STATUS_ORDER.filter((s) => s !== "COMPLETED").map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <Select
             value={category}
             onValueChange={(v) => setCategory(v as CaseCategory | "ALL")}
@@ -176,7 +153,8 @@ export function CasesClient() {
                 <th className="px-5 py-3 font-semibold">Tracking ID</th>
                 <th className="px-5 py-3 font-semibold">Doctor</th>
                 <th className="px-5 py-3 font-semibold">Case Type</th>
-                <th className="px-5 py-3 font-semibold">Status</th>
+                <th className="px-5 py-3 font-semibold">Stage</th>
+                <th className="px-5 py-3 font-semibold">Est. Completion</th>
                 <th className="px-5 py-3 font-semibold">Updated</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -202,6 +180,9 @@ export function CasesClient() {
                       <Skeleton className="h-7 w-24 rounded-full" />
                     </td>
                     <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-28" />
+                    </td>
+                    <td className="px-5 py-4">
                       <Skeleton className="h-5 w-24" />
                     </td>
                     <td className="px-5 py-4">
@@ -212,7 +193,7 @@ export function CasesClient() {
 
               {!isLoading && data?.items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16">
+                  <td colSpan={8} className="px-5 py-16">
                     <div className="mx-auto flex max-w-sm flex-col items-center text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
                         <ClipboardList className="h-6 w-6" />
@@ -245,7 +226,14 @@ export function CasesClient() {
                   <td className="px-5 py-4 text-muted-foreground">{c.doctorName}</td>
                   <td className="px-5 py-4 text-muted-foreground">{c.caseType}</td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={c.currentStatus} />
+                    <CaseStateBadge
+                      collectionId={c.collectionId}
+                      currentStageId={c.currentStageId}
+                      isCompleted={c.isCompleted}
+                    />
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">
+                    {formatEstCompletion(c.estimatedCompletionDate)}
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">
                     {formatDate(c.updatedAt)}
