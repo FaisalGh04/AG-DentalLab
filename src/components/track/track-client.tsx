@@ -310,15 +310,6 @@ export function TrackClient() {
                   value={formatEstCompletion(result.estimatedCompletionDate)}
                 />
               </div>
-
-              {result.notes && (
-                <div className="border-t border-brand-400/20 bg-brand-950/30 p-6">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-100/60">
-                    {t("track.notes")}
-                  </p>
-                  <p className="mt-2 text-sm text-brand-50/78">{result.notes}</p>
-                </div>
-              )}
             </Card>
 
             <Card className="border-brand-400/20 bg-brand-950/55 p-6 text-cream">

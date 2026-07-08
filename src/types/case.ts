@@ -50,7 +50,7 @@ export interface PublicCaseDTO extends CaseLifecycleFields {
   caseType: string;
   category: CaseCategory;
   estimatedCompletionDate: string | null;
-  notes: string | null;
+  // Internal lab `notes` are intentionally NOT part of the public DTO (S-M2).
   progress: ProgressDTO[];
   images: ImageDTO[];
 }

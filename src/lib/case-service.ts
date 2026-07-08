@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { Prisma, type CaseCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { formatTrackingId } from "@/lib/tracking-id-format";
+import { redactName } from "@/lib/utils";
 import type {
   PublicCaseDTO,
   AdminCaseListResponse,
@@ -29,7 +30,9 @@ export async function searchByTrackingId(
 
   const dto: PublicCaseDTO = {
     trackingId: found.trackingId,
-    patientName: `${found.patientFirstName} ${found.patientLastName}`,
+    // Redacted to "First L." server-side (S-M2): the full surname must never
+    // leave the server for an unauthenticated tracking-ID lookup.
+    patientName: redactName(found.patientFirstName, found.patientLastName),
     doctorName: found.doctorName,
     caseType: found.caseType,
     category: found.category,
@@ -39,7 +42,8 @@ export async function searchByTrackingId(
     isCompleted: found.isCompleted,
     estimatedCompletionDate:
       found.estimatedCompletionDate?.toISOString() ?? null,
-    notes: found.notes,
+    // Internal lab `notes` (shade/special instructions) are intentionally NOT
+    // exposed on the public tracker (S-M2).
     progress: found.progress.map((p) => ({
       id: p.id,
       stepTitle: p.stepTitle,

@@ -57,6 +57,19 @@ export function formatEstCompletion(
   }).format(d);
 }
 
+/**
+ * Redact a patient name for PUBLIC exposure: full first name + last initial
+ * (e.g. "Mohamed G."). Enough for the doctor/patient to confirm the right case
+ * without publishing the full surname to anyone holding the tracking ID. Must be
+ * applied server-side so the full surname never reaches the client (S-M2).
+ */
+export function redactName(first: string, last: string): string {
+  const f = first.trim();
+  const lastInitial = last.trim().charAt(0).toUpperCase();
+  if (!lastInitial) return f;
+  return `${f} ${lastInitial}.`;
+}
+
 export function initials(name: string): string {
   return name
     .split(" ")
