@@ -114,8 +114,9 @@ model CaseProgress {
 model CaseImage {
   id        String      @id @default(cuid())
   caseId    String      @map("case_id")
-  imageUrl  String      @map("image_url")
-  key       String?     // storage object key, for deletion
+  // Storage object key. Images are NEVER served by a public bucket URL — the
+  // key is signed on demand into a short-lived URL via /api/images/[id] (S-M3).
+  key       String
   caption   String?
   // Which production stage this image documents — a stage id from the case's
   // collection (src/lib/production-templates.ts). Nullable: images uploaded

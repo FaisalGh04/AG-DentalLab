@@ -9,12 +9,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [
-      // Cloudflare R2 / S3 public bucket. Replace host with your own.
-      { protocol: "https", hostname: "**.r2.dev" },
-      { protocol: "https", hostname: "**.amazonaws.com" },
-      { protocol: "https", hostname: "**.supabase.co" },
-    ],
+    // No remotePatterns: case images are never loaded from a public bucket URL.
+    // They render through the same-origin /api/images/[id] proxy (unoptimized),
+    // which authorizes and 302s to a short-lived signed URL (S-M3). All other
+    // images are local assets under /public.
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   experimental: {

@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { Prisma, type CaseCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { formatTrackingId } from "@/lib/tracking-id-format";
+import { imageProxyPath } from "@/lib/s3";
 import { redactName } from "@/lib/utils";
 import type {
   PublicCaseDTO,
@@ -55,7 +56,8 @@ export async function searchByTrackingId(
     })),
     images: found.images.map((i) => ({
       id: i.id,
-      imageUrl: i.imageUrl,
+      // Public proxy path scoped to this case's tracking id (S-M3).
+      imageUrl: imageProxyPath(i.id, found.trackingId),
       caption: i.caption,
       stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),
@@ -179,7 +181,8 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
     })),
     images: c.images.map((i) => ({
       id: i.id,
-      imageUrl: i.imageUrl,
+      // Admin proxy path (no tracking id — authorized by session) (S-M3).
+      imageUrl: imageProxyPath(i.id),
       caption: i.caption,
       stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),

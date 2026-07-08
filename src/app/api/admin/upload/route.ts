@@ -7,7 +7,6 @@ import {
   STORAGE_ENABLED,
   buildObjectKey,
   createUploadUrl,
-  publicUrlForKey,
 } from "@/lib/s3";
 
 export const runtime = "nodejs";
@@ -45,7 +44,6 @@ export async function POST(req: NextRequest) {
     return apiOk({
       uploadUrl,
       key,
-      publicUrl: publicUrlForKey(key),
     });
   } catch (err) {
     return handleApiError(err);

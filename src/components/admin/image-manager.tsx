@@ -126,6 +126,10 @@ export function ImageManager({
               fill
               sizes="(max-width: 640px) 50vw, 200px"
               className="object-cover"
+              // Served via the auth'd /api/images proxy → signed URL (S-M3);
+              // bypass the Next optimizer so the browser hits the proxy
+              // directly (carries the admin cookie, keeps per-IP rate limiting).
+              unoptimized
             />
             <div className="absolute inset-0 bg-ink/0 transition-colors group-hover:bg-ink/40" />
             <span className="absolute bottom-2 left-2 rounded-md bg-ink/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">

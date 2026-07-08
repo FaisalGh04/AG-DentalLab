@@ -1,6 +1,7 @@
 import {
   S3Client,
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -50,9 +51,15 @@ export function buildObjectKey(caseId: string, fileName: string): string {
   return `cases/${caseId}/${crypto.randomUUID()}-${safe}`;
 }
 
-export function publicUrlForKey(key: string): string {
-  const base = process.env.S3_PUBLIC_URL?.replace(/\/$/, "") ?? "";
-  return `${base}/${key}`;
+/**
+ * Same-origin path the client renders for a case image. The bucket is private;
+ * this route (see /api/images/[id]) authorizes the caller and 302-redirects to
+ * a short-lived signed URL. Public callers must pass the case's tracking id as
+ * `t`; admin callers are authorized by session (no `t`). (S-M3)
+ */
+export function imageProxyPath(imageId: string, trackingId?: string): string {
+  const base = `/api/images/${imageId}`;
+  return trackingId ? `${base}?t=${encodeURIComponent(trackingId)}` : base;
 }
 
 /** Create a presigned PUT URL so the browser uploads directly to storage. */
@@ -67,6 +74,19 @@ export async function createUploadUrl(params: {
     ContentType: params.contentType,
   });
   return getSignedUrl(s3, command, { expiresIn: 60 * 5 });
+}
+
+/** Create a short-lived presigned GET URL for reading a private object. */
+export async function createDownloadUrl(
+  key: string,
+  expiresIn = 60 * 10,
+): Promise<string> {
+  if (!s3) throw new Error("Storage is not configured");
+  const command = new GetObjectCommand({
+    Bucket: process.env.S3_BUCKET,
+    Key: key,
+  });
+  return getSignedUrl(s3, command, { expiresIn });
 }
 
 export async function deleteObject(key: string): Promise<void> {

@@ -252,6 +252,9 @@ export function TrackClient() {
                             fill
                             sizes="(max-width: 640px) 50vw, 220px"
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            // Served via the tracking-id-scoped /api/images proxy
+                            // → signed URL (S-M3); browser hits the proxy directly.
+                            unoptimized
                           />
                         </a>
                       ))}
@@ -287,6 +290,7 @@ export function TrackClient() {
                           fill
                           sizes="(max-width: 640px) 50vw, 220px"
                           className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          unoptimized
                         />
                       </a>
                     ))}

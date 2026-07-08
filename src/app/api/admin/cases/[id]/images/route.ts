@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
+import { imageProxyPath } from "@/lib/s3";
 import { imageAttachSchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
@@ -25,7 +26,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const image = await prisma.caseImage.create({
       data: {
         caseId,
-        imageUrl: input.imageUrl,
         key: input.key,
         caption: input.caption ?? null,
         // Tag with the requested stage, or the case's current stage by default
@@ -37,7 +37,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return apiOk(
       {
         id: image.id,
-        imageUrl: image.imageUrl,
+        // Admin proxy path (authorized by session) (S-M3).
+        imageUrl: imageProxyPath(image.id),
         caption: image.caption,
         stageId: image.stageId,
         createdAt: image.createdAt.toISOString(),

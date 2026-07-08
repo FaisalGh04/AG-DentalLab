@@ -153,7 +153,8 @@ export type UploadRequestInput = z.infer<typeof uploadRequestSchema>;
 
 export const imageAttachSchema = z.object({
   caseId: z.string().min(1),
-  imageUrl: z.string().url(),
+  // The public URL is no longer stored/sent — the client only reports the
+  // storage object key, which the server signs on demand (S-M3).
   key: z.string().min(1),
   caption: z.string().trim().max(200).optional().nullable(),
   // Stage id this image documents; server falls back to the case's current

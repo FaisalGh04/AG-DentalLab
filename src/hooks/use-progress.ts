@@ -68,10 +68,9 @@ export function useUploadImage(caseId: string, stageId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (file: File): Promise<ImageDTO> => {
-      const { uploadUrl, key, publicUrl } = await apiFetch<{
+      const { uploadUrl, key } = await apiFetch<{
         uploadUrl: string;
         key: string;
-        publicUrl: string;
       }>("/api/admin/upload", {
         method: "POST",
         body: JSON.stringify({
@@ -90,7 +89,7 @@ export function useUploadImage(caseId: string, stageId?: string | null) {
 
       return apiFetch<ImageDTO>(`/api/admin/cases/${caseId}/images`, {
         method: "POST",
-        body: JSON.stringify({ imageUrl: publicUrl, key, stageId }),
+        body: JSON.stringify({ key, stageId }),
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
