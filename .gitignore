@@ -55,6 +55,4 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 
-# local-only video master (173MB) — kept on disk for re-encoding, must never
-# be committed (exceeds GitHub's 100MB file limit and would break pushes)
-/public/videos/الفيديو التعريفي.mp4
+
