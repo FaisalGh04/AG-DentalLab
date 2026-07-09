@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Search, ArrowRight, Sparkles } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { HeroVideo } from "@/components/landing/hero-video";
 import { AuroraBackground } from "@/components/motion/aurora-background";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { Magnetic } from "@/components/motion/magnetic";
@@ -53,25 +54,32 @@ export function Hero() {
             aria-hidden
             className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-brand-700/30 blur-3xl"
           />
+          {/* Background intro video (behind content; overlay keeps contrast). */}
+          <HeroVideo />
+
           {/* Top sheen. */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.06] to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-white/[0.06] to-transparent" />
 
-          <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-10 text-center">
-            {/* LOGO */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1, ease: easeOut }}
-              className="flex justify-center"
-            >
-              <LogoMark
-                priority
-                className="w-[240px] max-w-full brightness-0 invert drop-shadow-[0_0_26px_rgba(123,183,157,0.28)] sm:w-[300px]"
-              />
-            </motion.div>
+          {/* Layout mirrors purely off the <html> dir attribute: the text block
+              is DOM-first (start edge → left in LTR, right in RTL) and the CTAs
+              are DOM-second (end edge). No isRtl branching needed for the split. */}
+          <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-10 text-center lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:text-start">
+            {/* ── TEXT BLOCK: logo + eyebrow + heading (start edge) ─────── */}
+            <div className="flex flex-col items-center lg:items-start">
+              {/* LOGO */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1, ease: easeOut }}
+                className="mb-6 flex"
+              >
+                <LogoMark
+                  priority
+                  className="w-[220px] max-w-full brightness-0 invert drop-shadow-[0_0_26px_rgba(123,183,157,0.28)] sm:w-[280px]"
+                />
+              </motion.div>
 
-            {/* MESSAGE — cream, high-contrast, centered */}
-            <div className="flex flex-col items-center text-center">
+              {/* MESSAGE — cream, high-contrast */}
               <motion.span
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -103,38 +111,39 @@ export function Hero() {
                   ),
                 )}
               </h1>
-
-              <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.45, ease: easeOut }}
-                className="mt-10 flex flex-col justify-center gap-3 sm:flex-row"
-              >
-                <Magnetic strength={0.35}>
-                  <Button
-                    asChild
-                    size="lg"
-                    className="bg-[#F5F5F0] text-brand-900 shadow-glow hover:-translate-y-0.5 hover:bg-white"
-                  >
-                    <Link href="/track">
-                      <Search className="h-5 w-5" /> {t("hero.trackCase")}
-                    </Link>
-                  </Button>
-                </Magnetic>
-                <Magnetic strength={0.35}>
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="outline"
-                    className="border-brand-300/40 bg-brand-900/30 text-foreground hover:border-brand-300/70 hover:bg-brand-800/50 hover:text-white"
-                  >
-                    <Link href="/#contact">
-                      {t("hero.contactUs")} <ArrowRight className="h-5 w-5" />
-                    </Link>
-                  </Button>
-                </Magnetic>
-              </motion.div>
             </div>
+
+            {/* ── CTA BLOCK: two buttons (end edge; mirrors via dir) ────── */}
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.45, ease: easeOut }}
+              className="flex w-full max-w-xs flex-col gap-3 sm:max-w-sm lg:w-auto lg:shrink-0"
+            >
+              <Magnetic strength={0.35} className="w-full">
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full bg-[#F5F5F0] text-brand-900 shadow-glow hover:-translate-y-0.5 hover:bg-white"
+                >
+                  <Link href="/track">
+                    <Search className="h-5 w-5" /> {t("hero.trackCase")}
+                  </Link>
+                </Button>
+              </Magnetic>
+              <Magnetic strength={0.35} className="w-full">
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-brand-300/40 bg-brand-900/30 text-foreground hover:border-brand-300/70 hover:bg-brand-800/50 hover:text-white"
+                >
+                  <Link href="/#contact">
+                    {t("hero.contactUs")} <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </Magnetic>
+            </motion.div>
           </div>
         </motion.div>
       </motion.div>
