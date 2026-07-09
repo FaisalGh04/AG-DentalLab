@@ -1,9 +1,9 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npx prisma generate && npx next build"
+buildCommand = "npx --yes prisma@6.19.3 generate && npx next build"
 
 [deploy]
-preDeployCommand = "npx prisma migrate deploy"
+preDeployCommand = "npx --yes prisma@6.19.3 migrate deploy"
 startCommand = "npm run start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
