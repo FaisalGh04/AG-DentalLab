@@ -5,7 +5,7 @@
   "description": "AG Dental Lab — premium company website + dental case tracking system.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -71,6 +71,6 @@
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   }
 }
