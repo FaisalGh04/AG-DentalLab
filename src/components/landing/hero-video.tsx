@@ -34,14 +34,17 @@ type Decision = "pending" | "auto" | "manual";
 /**
  * Decide, on the client, whether to autoplay and which source file to use.
  *
- * - Autoplay fires for both desktop and mobile — only two things suppress it:
- *   `prefers-reduced-motion` (an accessibility preference) and a genuinely
- *   constrained connection (`saveData`, or effectiveType 2g/slow-2g, where
- *   auto-downloading video would burn a metered data plan). Both fall back to
- *   poster + explicit tap-to-play. 3g/4g/wifi autoplay normally.
- * - File choice is about weight, not autoplay: the light 1.5 MB mobile clip is
- *   used on small screens and on any sub-4g / data-saver connection; the 8 MB
- *   desktop clip only on a wide screen with a good link.
+ * - File choice is by VIEWPORT WIDTH ONLY: wide screens (>=768px) always get
+ *   the full 8 MB desktop clip, phones always get the compressed 1.5 MB one.
+ *   It deliberately does NOT consult navigator.connection.effectiveType —
+ *   that value is an unreliable early-load estimate (it commonly reports "3g"
+ *   on good wired/wifi desktops before enough samples exist) and was
+ *   downgrading desktops to the low-res mobile file.
+ * - Connection/motion signals only gate AUTOPLAY, never file choice: autoplay
+ *   is suppressed under `prefers-reduced-motion` (accessibility) or a genuinely
+ *   constrained link (`saveData`, or effectiveType 2g/slow-2g, where
+ *   auto-downloading video would burn a metered data plan). Those fall back to
+ *   poster + explicit tap-to-play; everything else autoplays.
  */
 function decidePlayback(): { autoplay: boolean; src: string } {
   if (typeof window === "undefined") return { autoplay: false, src: MOBILE_SRC };
@@ -58,7 +61,7 @@ function decidePlayback(): { autoplay: boolean; src: string } {
 
   return {
     autoplay: !reduced && !veryConstrained,
-    src: !wide || veryConstrained || et === "3g" ? MOBILE_SRC : DESKTOP_SRC,
+    src: wide ? DESKTOP_SRC : MOBILE_SRC,
   };
 }
 
