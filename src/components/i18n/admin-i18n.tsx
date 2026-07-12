@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { DirectionProvider } from "@radix-ui/react-direction";
 import { useI18n } from "@/components/i18n/language-provider";
 import { createTranslator, type Translator } from "@/lib/i18n/translate";
 import type { Locale } from "@/lib/i18n/config";
@@ -51,9 +52,12 @@ export function AdminI18nProvider({ children }: { children: React.ReactNode }) {
     };
   }, [base]);
 
+  // DirectionProvider makes Radix primitives (Select, DropdownMenu, Dialog)
+  // align + keyboard-navigate correctly in RTL — the CSS logical props handle
+  // the rest. Scoped to admin; the public site doesn't use these primitives.
   return (
     <AdminI18nContext.Provider value={value}>
-      {children}
+      <DirectionProvider dir={value.dir}>{children}</DirectionProvider>
     </AdminI18nContext.Provider>
   );
 }

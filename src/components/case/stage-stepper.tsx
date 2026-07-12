@@ -66,7 +66,7 @@ export function StageStepper({
           >
             {done ? <Check className="h-4 w-4" /> : i + 1}
             {hasImages && (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-brand-400 ring-2 ring-brand-950" />
+              <span className="absolute -end-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-brand-400 ring-2 ring-brand-950" />
             )}
           </div>
         );

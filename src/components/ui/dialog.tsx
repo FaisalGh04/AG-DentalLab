@@ -45,7 +45,7 @@ const DialogContent = React.forwardRef<
           lightbox) since hover never fires on touch. From `sm:` up it collapses
           back to the subtle desktop X. z-10 keeps it above dialog content like
           the lightbox video + its native controls. */}
-      <DialogPrimitive.Close className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground opacity-95 backdrop-blur transition-all hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 sm:right-4 sm:top-4 sm:h-8 sm:w-8 sm:border-transparent sm:bg-transparent sm:opacity-70 sm:backdrop-blur-none sm:hover:bg-brand-50 sm:hover:text-brand-800 sm:hover:opacity-100">
+      <DialogPrimitive.Close className="absolute end-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground opacity-95 backdrop-blur transition-all hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 sm:end-4 sm:top-4 sm:h-8 sm:w-8 sm:border-transparent sm:bg-transparent sm:opacity-70 sm:backdrop-blur-none sm:hover:bg-brand-50 sm:hover:text-brand-800 sm:hover:opacity-100">
         <X className="h-5 w-5 sm:h-4 sm:w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
