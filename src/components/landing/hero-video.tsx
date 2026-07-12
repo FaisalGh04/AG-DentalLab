@@ -15,13 +15,12 @@ const HeroVideoLightbox = dynamic(
   { ssr: false },
 );
 
-// Desktop source: original web-optimized portrait clip (H.264 + AAC, 9:16,
-// ~8 MB). Mobile source: a 480x854 / ~1.5 MB variant used on phones and
-// constrained connections so cellular visitors never auto-download 8 MB.
-// ASCII filenames so a Linux build serves them without URL-encoding surprises.
-// Poster is a first-frame JPG for instant paint; the portrait (9:16) frame is
-// filled with object-cover + a top-biased object-position (keeps the face in
-// view) below.
+// Desktop source: full 1080x1920 clip (H.264 + AAC, 9:16, ~22 MB). Mobile
+// source: a 720x1280 / ~6 MB variant used on phones so cellular visitors get a
+// sharp clip without the ~22 MB desktop download. ASCII filenames so a Linux
+// build serves them without URL-encoding surprises. Poster is a first-frame JPG
+// for instant paint; the portrait (9:16) frame is filled with object-cover + a
+// top-biased object-position (keeps the face in view) below.
 const DESKTOP_SRC = "/videos/main-video.mp4";
 const MOBILE_SRC = "/videos/main-video-mobile.mp4";
 const POSTER_SRC = "/videos/hero-poster.jpg";
@@ -35,16 +34,17 @@ type Decision = "pending" | "auto" | "manual";
  * Decide, on the client, whether to autoplay and which source file to use.
  *
  * - File choice is by VIEWPORT WIDTH ONLY: wide screens (>=768px) always get
- *   the full 8 MB desktop clip, phones always get the compressed 1.5 MB one.
- *   It deliberately does NOT consult navigator.connection.effectiveType —
- *   that value is an unreliable early-load estimate (it commonly reports "3g"
- *   on good wired/wifi desktops before enough samples exist) and was
- *   downgrading desktops to the low-res mobile file.
- * - Connection/motion signals only gate AUTOPLAY, never file choice: autoplay
+ *   the full 1080p desktop clip, phones always get the 720p mobile one. It
+ *   deliberately does NOT consult navigator.connection.effectiveType for file
+ *   choice — that value is an unreliable early-load estimate (it commonly
+ *   reports "3g" on good wired/wifi desktops before enough samples exist) and
+ *   was downgrading desktops to the low-res mobile file.
+ * - Connection/motion signals only gate AUTOPLAY, never file choice. Autoplay
  *   is suppressed under `prefers-reduced-motion` (accessibility) or a genuinely
- *   constrained link (`saveData`, or effectiveType 2g/slow-2g, where
- *   auto-downloading video would burn a metered data plan). Those fall back to
- *   poster + explicit tap-to-play; everything else autoplays.
+ *   constrained link (`saveData` / 2g / slow-2g). Additionally, since the mobile
+ *   clip is ~6 MB, autoplay is suppressed on 3g **only on phones** — a desktop
+ *   that misreports "3g" (see above) must still autoplay. Suppressed cases fall
+ *   back to poster + explicit tap-to-play; everything else autoplays.
  */
 function decidePlayback(): { autoplay: boolean; src: string } {
   if (typeof window === "undefined") return { autoplay: false, src: MOBILE_SRC };
@@ -58,22 +58,25 @@ function decidePlayback(): { autoplay: boolean; src: string } {
   const saveData = !!conn?.saveData;
   const et = conn?.effectiveType;
   const veryConstrained = saveData || et === "2g" || et === "slow-2g";
+  // Phones only: 3g auto-downloading the ~6 MB mobile clip is a lot of unasked
+  // data. Scoped to narrow viewports so a desktop misreporting "3g" is unaffected.
+  const mobile3g = !wide && et === "3g";
 
   return {
-    autoplay: !reduced && !veryConstrained,
+    autoplay: !reduced && !veryConstrained && !mobile3g,
     src: wide ? DESKTOP_SRC : MOBILE_SRC,
   };
 }
 
 /**
  * Background intro video for the hero panel. It autoplays muted and looping
- * (iOS-safe via playsInline) on both desktop and mobile — desktop pulls the
- * full 8 MB clip, phones and sub-4g/data-saver connections pull the compressed
- * 1.5 MB variant instead, so cellular visitors get motion without an 8 MB
- * download. Autoplay is suppressed only under prefers-reduced-motion or a
- * genuinely constrained link (saveData / 2g / slow-2g), which fall back to the
- * poster + a tap-to-play control. A dark gradient overlay keeps foreground text
- * legible; mute/unmute + expand-to-lightbox controls appear once playing.
+ * (iOS-safe via playsInline) — desktop (>=768px) pulls the full 1080p clip,
+ * phones pull the ~6 MB 720p variant. Autoplay is suppressed under
+ * prefers-reduced-motion, a genuinely constrained link (saveData / 2g / slow-2g),
+ * or 3g on phones (where the ~6 MB clip is a lot of unprompted data) — those
+ * fall back to the poster + a tap-to-play control. A dark gradient overlay keeps
+ * foreground text legible; mute/unmute + expand-to-lightbox controls appear once
+ * playing.
  */
 export function HeroVideo() {
   const { t } = useI18n();
