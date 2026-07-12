@@ -34,17 +34,19 @@ import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { ProgressManager } from "@/components/admin/progress-manager";
 import { ImageManager } from "@/components/admin/image-manager";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { useCase, useDeleteCase, useUpdateCase } from "@/hooks/use-cases";
-import { CATEGORY_META } from "@/lib/constants";
 import {
   PRODUCTION_COLLECTIONS,
   getProductionCollection,
   getVisibleStages,
   firstStageId,
+  localizedLabel,
 } from "@/lib/production-templates";
 import { formatDate, formatEstCompletion, cn } from "@/lib/utils";
 
 export function CaseDetailClient({ id }: { id: string }) {
+  const { t, locale } = useAdminI18n();
   const router = useRouter();
   const params = useSearchParams();
   const { data: kase, isLoading } = useCase(id);
@@ -53,6 +55,11 @@ export function CaseDetailClient({ id }: { id: string }) {
 
   const [editOpen, setEditOpen] = React.useState(params.get("edit") === "true");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+  const badgeLabels = {
+    completed: t("state.completed"),
+    noCollection: t("state.noCollection"),
+  };
 
   async function changeCollection(collectionId: string) {
     try {
@@ -63,9 +70,11 @@ export function CaseDetailClient({ id }: { id: string }) {
         currentStageId: firstStageId(collectionId),
         hiddenStageIds: [],
       });
-      toast.success("Collection updated");
+      toast.success(t("detail.toastCollectionUpdated"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update collection");
+      toast.error(
+        e instanceof Error ? e.message : t("detail.toastCollectionFailed"),
+      );
     }
   }
 
@@ -73,7 +82,7 @@ export function CaseDetailClient({ id }: { id: string }) {
     try {
       await update.mutateAsync({ currentStageId });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update stage");
+      toast.error(e instanceof Error ? e.message : t("detail.toastStageFailed"));
     }
   }
 
@@ -84,17 +93,17 @@ export function CaseDetailClient({ id }: { id: string }) {
     try {
       await update.mutateAsync({ hiddenStageIds: next });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update stages");
+      toast.error(e instanceof Error ? e.message : t("detail.toastStagesFailed"));
     }
   }
 
   async function confirmDelete() {
     try {
       await del.mutateAsync(id);
-      toast.success("Case deleted");
+      toast.success(t("detail.toastDeleted"));
       router.push("/admin/cases");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : t("detail.toastDeleteFailed"));
     }
   }
 
@@ -112,9 +121,9 @@ export function CaseDetailClient({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-5xl">
         <Card className="p-10 text-center">
-          <p className="text-muted-foreground">Case not found.</p>
+          <p className="text-muted-foreground">{t("detail.caseNotFound")}</p>
           <Button asChild variant="outline" className="mt-4">
-            <Link href="/admin/cases">Back to cases</Link>
+            <Link href="/admin/cases">{t("detail.backToCases")}</Link>
           </Button>
         </Card>
       </div>
@@ -123,7 +132,10 @@ export function CaseDetailClient({ id }: { id: string }) {
 
   const collection = getProductionCollection(kase.collectionId);
   const visibleStages = getVisibleStages(kase.collectionId, kase.hiddenStageIds);
-  const stepperStages = visibleStages.map((s) => ({ id: s.id, label: s.en }));
+  const stepperStages = visibleStages.map((s) => ({
+    id: s.id,
+    label: localizedLabel(s, locale),
+  }));
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -132,18 +144,18 @@ export function CaseDetailClient({ id }: { id: string }) {
           href="/admin/cases"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-700"
         >
-          <ArrowLeft className="h-4 w-4" /> All cases
+          <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t("detail.allCases")}
         </Link>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" /> Edit
+            <Pencil className="h-4 w-4" /> {t("detail.edit")}
           </Button>
           <Button
             variant="ghost"
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => setDeleteOpen(true)}
           >
-            <Trash2 className="h-4 w-4" /> Delete
+            <Trash2 className="h-4 w-4" /> {t("detail.delete")}
           </Button>
         </div>
       </div>
@@ -153,13 +165,13 @@ export function CaseDetailClient({ id }: { id: string }) {
         <div className="flex flex-col gap-4 border-b border-border/80 bg-brand-50/60 p-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Patient
+              {t("detail.patient")}
             </p>
             <h1 className="mt-1 font-display text-2xl font-bold text-ink">
               {kase.patientFirstName} {kase.patientLastName}
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Created {formatDate(kase.createdAt)}
+              {t("detail.created", { date: formatDate(kase.createdAt) })}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <TrackingIdCopy trackingId={kase.trackingId} />
@@ -167,27 +179,29 @@ export function CaseDetailClient({ id }: { id: string }) {
                 collectionId={kase.collectionId}
                 currentStageId={kase.currentStageId}
                 isCompleted={kase.isCompleted}
+                locale={locale}
+                labels={badgeLabels}
               />
             </div>
           </div>
 
-          {/* Collection + Stage pickers (replaces the old status badge + select) */}
+          {/* Collection + Stage pickers */}
           <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-auto">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Collection
+                {t("detail.collection")}
               </label>
               <Select
                 value={kase.collectionId ?? ""}
                 onValueChange={changeCollection}
               >
                 <SelectTrigger className="w-full sm:w-52">
-                  <SelectValue placeholder="Select collection" />
+                  <SelectValue placeholder={t("detail.selectCollection")} />
                 </SelectTrigger>
                 <SelectContent>
                   {PRODUCTION_COLLECTIONS.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.en}
+                      {localizedLabel(c, locale)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -195,7 +209,7 @@ export function CaseDetailClient({ id }: { id: string }) {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Stage
+                {t("detail.stage")}
               </label>
               <Select
                 value={kase.currentStageId ?? ""}
@@ -204,13 +218,17 @@ export function CaseDetailClient({ id }: { id: string }) {
               >
                 <SelectTrigger className="w-full sm:w-52">
                   <SelectValue
-                    placeholder={collection ? "Select stage" : "Pick a collection"}
+                    placeholder={
+                      collection
+                        ? t("detail.selectStage")
+                        : t("detail.pickCollection")
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {visibleStages.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.en}
+                      {localizedLabel(s, locale)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -232,13 +250,13 @@ export function CaseDetailClient({ id }: { id: string }) {
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                All stages are hidden. Show at least one below.
+                {t("detail.allStagesHidden")}
               </p>
             )
           ) : (
             <div className="flex items-center gap-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-5 text-sm text-muted-foreground">
               <Layers className="h-5 w-5 text-brand-400" />
-              Select a collection above to build this case&apos;s stage timeline.
+              {t("detail.buildTimeline")}
             </div>
           )}
         </div>
@@ -247,7 +265,7 @@ export function CaseDetailClient({ id }: { id: string }) {
         {collection && (
           <div className="border-t border-border/80 bg-white/50 p-6">
             <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Layers className="h-3.5 w-3.5" /> Stages in this case
+              <Layers className="h-3.5 w-3.5" /> {t("detail.stagesInCase")}
             </p>
             <div className="flex flex-wrap gap-2">
               {collection.stages.map((s) => {
@@ -261,10 +279,10 @@ export function CaseDetailClient({ id }: { id: string }) {
                     disabled={update.isPending || isCurrent}
                     title={
                       isCurrent
-                        ? "Can't hide the current stage"
+                        ? t("detail.cantHideCurrent")
                         : hidden
-                          ? "Show this stage"
-                          : "Hide this stage for this case"
+                          ? t("detail.showStage")
+                          : t("detail.hideStage")
                     }
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
@@ -278,29 +296,29 @@ export function CaseDetailClient({ id }: { id: string }) {
                     ) : (
                       <Eye className="h-3.5 w-3.5" />
                     )}
-                    {s.en}
+                    {localizedLabel(s, locale)}
                   </button>
                 );
               })}
             </div>
             <p className="mt-2 text-xs text-muted-foreground/70">
-              Hidden stages don&apos;t appear in the case timeline (admin or public).
+              {t("detail.hiddenStagesNote")}
             </p>
           </div>
         )}
 
         <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-5">
-          <Detail icon={Stethoscope} label="Doctor" value={kase.doctorName} />
-          <Detail icon={Hash} label="Tracking ID" value={kase.trackingId} />
-          <Detail icon={Package} label="Case Type" value={kase.caseType} />
+          <Detail icon={Stethoscope} label={t("detail.doctor")} value={kase.doctorName} />
+          <Detail icon={Hash} label={t("detail.trackingId")} value={kase.trackingId} />
+          <Detail icon={Package} label={t("detail.caseType")} value={kase.caseType} />
           <Detail
             icon={Tag}
-            label="Category"
-            value={CATEGORY_META[kase.category].label}
+            label={t("detail.category")}
+            value={t(`category.${kase.category}`)}
           />
           <Detail
             icon={CalendarClock}
-            label="Est. Completion"
+            label={t("detail.estCompletion")}
             value={formatEstCompletion(kase.estimatedCompletionDate)}
           />
         </div>
@@ -308,7 +326,7 @@ export function CaseDetailClient({ id }: { id: string }) {
         {kase.notes && (
           <div className="border-t border-border/80 bg-white/50 p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Notes
+              {t("detail.notes")}
             </p>
             <p className="mt-2 text-sm text-foreground/80">{kase.notes}</p>
           </div>
@@ -339,9 +357,9 @@ export function CaseDetailClient({ id }: { id: string }) {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete this case?"
-        description="This permanently removes the case, its progress steps and images."
-        confirmLabel="Delete"
+        title={t("detail.deleteTitle")}
+        description={t("detail.deleteBody")}
+        confirmLabel={t("detail.delete")}
         destructive
         loading={del.isPending}
         onConfirm={confirmDelete}
