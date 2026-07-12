@@ -40,8 +40,13 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg p-1 opacity-70 transition-all hover:bg-brand-50 hover:text-brand-800 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30">
-        <X className="h-4 w-4" />
+      {/* Close control. On mobile it's a clearly visible 44x44 chip (solid
+          backdrop + border so it reads over any content, incl. the dark video
+          lightbox) since hover never fires on touch. From `sm:` up it collapses
+          back to the subtle desktop X. z-10 keeps it above dialog content like
+          the lightbox video + its native controls. */}
+      <DialogPrimitive.Close className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground opacity-95 backdrop-blur transition-all hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 sm:right-4 sm:top-4 sm:h-8 sm:w-8 sm:border-transparent sm:bg-transparent sm:opacity-70 sm:backdrop-blur-none sm:hover:bg-brand-50 sm:hover:text-brand-800 sm:hover:opacity-100">
+        <X className="h-5 w-5 sm:h-4 sm:w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

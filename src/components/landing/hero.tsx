@@ -103,9 +103,16 @@ export function Hero() {
                   { key: "hero.title3", delay: 0.2, gold: !isRtl },
                 ].map(({ key, delay, gold }) =>
                   gold ? (
-                    <span key={key} className="text-shine-gold font-display">
-                      <TextReveal text={t(key)} delay={delay} inView={false} />
-                    </span>
+                    // Gradient sits on the animated word span itself (not a
+                    // wrapping ancestor) so mobile WebKit doesn't paint the
+                    // background-clip:text word transparent. See TextReveal.
+                    <TextReveal
+                      key={key}
+                      text={t(key)}
+                      delay={delay}
+                      inView={false}
+                      wordClassName="text-shine-gold"
+                    />
                   ) : (
                     <TextReveal key={key} text={t(key)} delay={delay} inView={false} />
                   ),

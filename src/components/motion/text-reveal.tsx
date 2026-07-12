@@ -31,6 +31,7 @@ export function TextReveal({
   delay = 0,
   once = true,
   inView = true,
+  wordClassName,
 }: {
   text: string;
   className?: string;
@@ -39,6 +40,10 @@ export function TextReveal({
   /** When false, reveal fires on mount instead of on scroll-into-view.
    *  Use for above-the-fold content (e.g. the hero headline). */
   inView?: boolean;
+  /** Applied to each animated word span. Needed for gradient (background-clip:
+   *  text) words: the clip must live on the SAME element that framer transforms,
+   *  or mobile WebKit paints the transformed text transparent (invisible). */
+  wordClassName?: string;
 }) {
   const words = text.split(" ");
   const trigger = inView
@@ -69,7 +74,10 @@ export function TextReveal({
             // variant keys off <html dir="rtl">, leaving LTR pixel-identical).
             className="inline-flex overflow-hidden pb-[0.12em] align-baseline rtl:pt-[0.28em]"
           >
-            <motion.span variants={word} className="inline-block will-change-transform">
+            <motion.span
+              variants={word}
+              className={cn("inline-block will-change-transform", wordClassName)}
+            >
               {w}
             </motion.span>
             {i < words.length - 1 && <span>&nbsp;</span>}
