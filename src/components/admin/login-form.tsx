@@ -10,9 +10,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 
 export function LoginForm() {
+  const { t } = useAdminI18n();
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/admin";
@@ -40,14 +42,14 @@ export function LoginForm() {
       const code = (res as { code?: string }).code;
       const message =
         code === "rate_limited"
-          ? "Too many attempts. Please wait a few minutes and try again."
+          ? t("login.errorRateLimited")
           : code === "auth_unavailable"
-            ? "Sign-in is temporarily unavailable. Please try again shortly."
-            : "Invalid email or password.";
+            ? t("login.errorUnavailable")
+            : t("login.errorInvalid");
       toast.error(message);
       return;
     }
-    toast.success("Welcome back!");
+    toast.success(t("login.welcomeBack"));
     router.push(callbackUrl);
     router.refresh();
   }
@@ -56,16 +58,16 @@ export function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="email" className="text-brand-50/80">
-          Email
+          {t("login.email")}
         </Label>
         <div className="relative">
-          <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
+          <Mail className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
           <Input
             id="email"
             type="email"
             autoComplete="username"
-            placeholder="owner@agdentallab.com"
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 pl-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            placeholder={t("login.emailPlaceholder")}
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("email")}
           />
         </div>
@@ -76,16 +78,16 @@ export function LoginForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="password" className="text-brand-50/80">
-          Password
+          {t("login.password")}
         </Label>
         <div className="relative">
-          <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
+          <Lock className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
           <Input
             id="password"
             type="password"
             autoComplete="current-password"
-            placeholder="Password"
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 pl-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            placeholder={t("login.passwordPlaceholder")}
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("password")}
           />
         </div>
@@ -101,7 +103,7 @@ export function LoginForm() {
         disabled={pending}
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Sign In
+        {t("login.signIn")}
       </Button>
     </form>
   );
