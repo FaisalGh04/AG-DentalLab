@@ -1,9 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Volume2, VolumeX, Maximize2 } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/components/i18n/language-provider";
+
+// Code-split the expanded lightbox (Radix Dialog) out of the initial landing
+// bundle — it's only needed once a visitor taps "expand".
+const HeroVideoLightbox = dynamic(
+  () =>
+    import("@/components/landing/hero-video-lightbox").then(
+      (m) => m.HeroVideoLightbox,
+    ),
+  { ssr: false },
+);
 
 // Original web-optimized portrait clip (H.264 + AAC, 9:16, ~8 MB). ASCII
 // filename so Vercel's Linux build serves it without URL-encoding surprises.
@@ -92,22 +102,16 @@ export function HeroVideo() {
         </button>
       </div>
 
-      {/* Expanded lightbox — full controls, audio on by default. */}
-      <Dialog open={expanded} onOpenChange={setExpanded}>
-        <DialogContent className="w-auto max-w-[95vw] border-brand-400/20 bg-ink/95 p-2 sm:p-3">
-          <DialogTitle className="sr-only">{t("hero.videoTitle")}</DialogTitle>
-          {expanded && (
-            <video
-              className="mx-auto h-[78vh] max-h-[78vh] w-auto rounded-[1rem]"
-              src={VIDEO_SRC}
-              poster={POSTER_SRC}
-              controls
-              autoPlay
-              playsInline
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Expanded lightbox — full controls, audio on by default. Dynamically
+          imported, so it (and Radix Dialog) only loads when actually opened. */}
+      {expanded && (
+        <HeroVideoLightbox
+          src={VIDEO_SRC}
+          poster={POSTER_SRC}
+          title={t("hero.videoTitle")}
+          onClose={() => setExpanded(false)}
+        />
+      )}
     </>
   );
 }

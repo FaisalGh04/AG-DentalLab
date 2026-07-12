@@ -17,13 +17,13 @@ export function Logo({
       )}
     >
       <Image
-        src="/ag-dental-lab-logo.png"
+        src="/ag-dental-lab-logo.svg"
         alt="AG Dental Lab"
-        width={1477}
-        height={885}
+        width={1567}
+        height={974}
         priority
+        unoptimized
         className="h-full w-auto object-contain"
-        sizes="(max-width: 768px) 160px, 220px"
       />
     </span>
   );

@@ -381,3 +381,37 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-brand-300;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobile performance guards (mobile perf pass).
+   Phones repaint `background-attachment: fixed` on every scroll frame and
+   struggle with large-radius backdrop-filter + perpetual blurred-orb
+   animations — this showed up as scroll jank on real devices while desktop
+   felt fine. Under the mobile viewport we pin the fixed backgrounds, lighten
+   the frosted-glass blur, and pause the ambient motion. Desktop is untouched.
+   Left unlayered on purpose so these win over the @layer component rules.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body,
+  .landing-dark-shell {
+    background-attachment: scroll;
+  }
+
+  /* Pause the drifting mesh + aurora orbs — pure ambiance, not worth the
+     per-frame compositing cost on mobile GPUs. */
+  .landing-dark-shell::before,
+  .landing-dark-shell::after,
+  .animate-aurora-1,
+  .animate-aurora-2 {
+    animation: none !important;
+  }
+
+  /* Lighten the frosted-glass blur (was 22–40px) — still reads as glass but
+     far cheaper for the mobile compositor to composite each frame. */
+  .glass,
+  .premium-panel,
+  .footer-glass {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
