@@ -25,10 +25,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
-import { CASE_CATEGORY_ORDER, CATEGORY_META } from "@/lib/constants";
+import { CASE_CATEGORY_ORDER } from "@/lib/constants";
 import { getCaseTypesForCategory } from "@/lib/case-types";
-import { PRODUCTION_COLLECTIONS } from "@/lib/production-templates";
+import { PRODUCTION_COLLECTIONS, localizedLabel } from "@/lib/production-templates";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
 import type { CaseCategory } from "@prisma/client";
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
+  const { t, locale } = useAdminI18n();
   const isEdit = !!existing;
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
@@ -112,19 +114,19 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     try {
       if (isEdit) {
         const res = await update.mutateAsync(payload);
-        toast.success("Case updated");
+        toast.success(t("form.toastUpdated"));
         onOpenChange(false);
         onSaved?.(res.id);
         return;
       }
 
       const res = await create.mutateAsync(payload);
-      toast.success(isEdit ? "Case updated" : "Case created");
+      toast.success(t("form.toastCreated"));
       onOpenChange(false);
       setCreatedTrackingId(res.trackingId);
       onSaved?.(res.id);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      toast.error(e instanceof Error ? e.message : t("form.toastError"));
     }
   }
 
@@ -138,11 +140,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Case" : "New Case"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? t("form.editTitle") : t("form.newTitle")}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Update the case details."
-              : "Create a case when it arrives at the lab."}
+            {isEdit ? t("form.editDesc") : t("form.newDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -150,27 +152,27 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
           {existing && (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Tracking ID
+                {t("form.trackingId")}
               </p>
               <TrackingIdCopy trackingId={existing.trackingId} className="mt-2" />
             </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Patient First Name" error={errors.patientFirstName?.message}>
-              <Input {...register("patientFirstName")} placeholder="Sara" />
+            <Field label={t("form.firstName")} error={errors.patientFirstName?.message}>
+              <Input {...register("patientFirstName")} placeholder={t("form.firstNamePlaceholder")} />
             </Field>
-            <Field label="Patient Last Name" error={errors.patientLastName?.message}>
-              <Input {...register("patientLastName")} placeholder="Khalil" />
+            <Field label={t("form.lastName")} error={errors.patientLastName?.message}>
+              <Input {...register("patientLastName")} placeholder={t("form.lastNamePlaceholder")} />
             </Field>
           </div>
 
-          <Field label="Doctor Name" error={errors.doctorName?.message}>
-            <Input {...register("doctorName")} placeholder="Dr. Omar Haddad" />
+          <Field label={t("form.doctorName")} error={errors.doctorName?.message}>
+            <Input {...register("doctorName")} placeholder={t("form.doctorPlaceholder")} />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category" error={errors.category?.message}>
+            <Field label={t("form.category")} error={errors.category?.message}>
               <Select
                 value={category ?? ""}
                 onValueChange={(v) => {
@@ -185,19 +187,19 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("form.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CASE_CATEGORY_ORDER.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {CATEGORY_META[c].label}
+                      {t(`category.${c}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
 
-            <Field label="Case Type" error={errors.caseType?.message}>
+            <Field label={t("form.caseType")} error={errors.caseType?.message}>
               <Select
                 value={caseType || ""}
                 disabled={!category}
@@ -211,7 +213,9 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      category ? "Select case type" : "Select category first"
+                      category
+                        ? t("form.selectCaseType")
+                        : t("form.selectCategoryFirst")
                     }
                   />
                 </SelectTrigger>
@@ -227,7 +231,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
           </div>
 
           <Field
-            label="Collection (optional)"
+            label={t("form.collectionOptional")}
             error={errors.collectionId?.message}
           >
             <Select
@@ -240,12 +244,12 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Pick a production collection (can set later)" />
+                <SelectValue placeholder={t("form.pickCollection")} />
               </SelectTrigger>
               <SelectContent>
                 {PRODUCTION_COLLECTIONS.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.en}
+                    {localizedLabel(c, locale)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -254,12 +258,12 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="Estimated Completion Date"
+              label={t("form.estDate")}
               error={errors.estimatedCompletionDate?.message}
             >
               <Input type="date" {...register("estimatedCompletionDate")} />
             </Field>
-            <Field label="Estimated Completion Time">
+            <Field label={t("form.estTime")}>
               <Input
                 type="time"
                 value={estTime}
@@ -268,10 +272,10 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          <Field label="Notes" error={errors.notes?.message}>
+          <Field label={t("form.notes")} error={errors.notes?.message}>
             <Textarea
               {...register("notes")}
-              placeholder="Shade, special instructions, etc."
+              placeholder={t("form.notesPlaceholder")}
               rows={3}
             />
           </Field>
@@ -282,11 +286,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
               variant="ghost"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("form.cancel")}
             </Button>
             <Button type="submit" variant="gradient" disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Create Case"}
+              {isEdit ? t("form.saveChanges") : t("form.createCase")}
             </Button>
           </DialogFooter>
         </form>
@@ -303,15 +307,13 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
           <CheckCircle2 className="h-7 w-7" />
         </div>
         <DialogHeader>
-          <DialogTitle>Case Created Successfully</DialogTitle>
-          <DialogDescription>
-            Share this tracking ID with the doctor for public case tracking.
-          </DialogDescription>
+          <DialogTitle>{t("form.createdTitle")}</DialogTitle>
+          <DialogDescription>{t("form.createdDesc")}</DialogDescription>
         </DialogHeader>
         {createdTrackingId && (
           <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Tracking ID
+              {t("form.trackingId")}
             </p>
             <TrackingIdCopy
               trackingId={createdTrackingId}
@@ -321,7 +323,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         )}
         <DialogFooter>
           <Button type="button" onClick={() => setCreatedTrackingId(null)}>
-            Close
+            {t("form.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

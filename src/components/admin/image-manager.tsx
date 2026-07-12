@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadImage, useDeleteImage } from "@/hooks/use-progress";
-import { getStage } from "@/lib/production-templates";
+import { getStage, localizedLabel } from "@/lib/production-templates";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import type { ImageDTO } from "@/types/case";
 import {
   MAX_IMAGE_BYTES,
@@ -31,33 +32,42 @@ export function ImageManager({
   collectionId: string | null;
   currentStageId: string | null;
 }) {
+  const { t, locale } = useAdminI18n();
   // Uploads are tagged with the case's current stage (null → "General").
   const upload = useUploadImage(caseId, currentStageId);
   const remove = useDeleteImage(caseId);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const currentStageLabel =
-    getStage(collectionId, currentStageId)?.stage.en ?? "General";
-  const labelForStage = (stageId: string | null) =>
-    getStage(collectionId, stageId)?.stage.en ?? "General";
+  const labelForStage = (stageId: string | null) => {
+    const stage = getStage(collectionId, stageId)?.stage;
+    return stage ? localizedLabel(stage, locale) : t("image.general");
+  };
+  const currentStageLabel = labelForStage(currentStageId);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
       if (!ACCEPTED.includes(file.type)) {
-        toast.error(`${file.name}: unsupported format (use ${ALLOWED_IMAGE_LABEL})`);
+        toast.error(
+          t("image.toastUnsupported", {
+            name: file.name,
+            formats: ALLOWED_IMAGE_LABEL,
+          }),
+        );
         continue;
       }
       if (file.size > MAX_BYTES) {
-        toast.error(`${file.name}: exceeds 15MB`);
+        toast.error(t("image.toastTooLarge", { name: file.name }));
         continue;
       }
       try {
         await upload.mutateAsync(file);
-        toast.success(`${file.name} uploaded`);
+        toast.success(t("image.toastUploaded", { name: file.name }));
       } catch (e) {
         toast.error(
-          e instanceof Error ? e.message : `Failed to upload ${file.name}`,
+          e instanceof Error
+            ? e.message
+            : t("image.toastUploadFailed", { name: file.name }),
         );
       }
     }
@@ -67,9 +77,9 @@ export function ImageManager({
   async function del(id: string) {
     try {
       await remove.mutateAsync(id);
-      toast.success("Image removed");
+      toast.success(t("image.toastRemoved"));
     } catch {
-      toast.error("Failed to remove image");
+      toast.error(t("image.toastRemoveFailed"));
     }
   }
 
@@ -78,11 +88,10 @@ export function ImageManager({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="font-display text-lg font-semibold text-ink">
-            Case Images
+            {t("image.title")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            PNG, JPG, WebP or AVIF - up to 15MB each. New uploads are tagged to
-            the current stage:{" "}
+            {t("image.hint")}{" "}
             <span className="font-semibold text-brand-700">
               {currentStageLabel}
             </span>
@@ -107,7 +116,7 @@ export function ImageManager({
           ) : (
             <Upload className="h-4 w-4" />
           )}
-          Upload
+          {t("image.upload")}
         </Button>
       </div>
 
@@ -118,7 +127,7 @@ export function ImageManager({
             className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/35 py-12 text-muted-foreground transition-colors hover:border-brand-300 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             <ImagePlus className="h-8 w-8" />
-            <span className="text-sm font-medium">Click to add images</span>
+            <span className="text-sm font-medium">{t("image.clickToAdd")}</span>
           </button>
         )}
 
@@ -129,7 +138,7 @@ export function ImageManager({
           >
             <Image
               src={img.imageUrl}
-              alt={img.caption ?? "Case image"}
+              alt={img.caption ?? t("image.title")}
               fill
               sizes="(max-width: 640px) 50vw, 200px"
               className="object-cover"
@@ -139,14 +148,15 @@ export function ImageManager({
               unoptimized
             />
             <div className="absolute inset-0 bg-ink/0 transition-colors group-hover:bg-ink/40" />
-            <span className="absolute bottom-2 left-2 rounded-md bg-ink/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+            <span className="absolute bottom-2 start-2 rounded-md bg-ink/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
               {labelForStage(img.stageId)}
             </span>
+            {/* Visible on touch (hover never fires); hover-reveal from sm: up. */}
             <Button
               variant="destructive"
               size="icon"
               onClick={() => del(img.id)}
-              className="absolute right-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute end-2 top-2 h-8 w-8 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

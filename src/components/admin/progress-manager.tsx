@@ -34,6 +34,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import {
   useAddProgress,
   useUpdateProgress,
@@ -49,6 +50,7 @@ import {
   getStage,
   getVisibleStages,
   bilingualLabel,
+  localizedLabel,
 } from "@/lib/production-templates";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { ProgressDTO, QuickAddStepDTO } from "@/types/case";
@@ -70,6 +72,7 @@ export function ProgressManager({
   currentStageId: string | null;
   hiddenStageIds: string[];
 }) {
+  const { t, locale } = useAdminI18n();
   const add = useAddProgress(caseId);
   const update = useUpdateProgress(caseId);
   const remove = useDeleteProgress(caseId);
@@ -109,8 +112,8 @@ export function ProgressManager({
   const stage = getStage(collectionId, activeStageId)?.stage;
 
   const stageOptions = [
-    ...visibleStages.map((s) => ({ value: s.id, label: s.en })),
-    ...(hasGeneralSteps ? [{ value: GENERAL, label: "General (no stage)" }] : []),
+    ...visibleStages.map((s) => ({ value: s.id, label: localizedLabel(s, locale) })),
+    ...(hasGeneralSteps ? [{ value: GENERAL, label: t("progress.general") }] : []),
   ];
 
   // Steps shown are ONLY those tagged with the stage being viewed (null = General).
@@ -125,7 +128,7 @@ export function ProgressManager({
 
   async function addStep(stepTitle: string, desc?: string, completed = false) {
     if (stepTitle.trim().length < 2) {
-      toast.error("Step title is too short");
+      toast.error(t("progress.toastShort"));
       return;
     }
     await add.mutateAsync({
@@ -141,18 +144,18 @@ export function ProgressManager({
   async function addFromChip(chip: QuickAddStepDTO) {
     try {
       await addStep(bilingualLabel({ en: chip.labelEn, ar: chip.labelAr }));
-      toast.success("Step added");
+      toast.success(t("progress.toastStepAdded"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to add step");
+      toast.error(e instanceof Error ? e.message : t("progress.toastAddFailed"));
     }
   }
 
   // Custom form → create a reusable chip AND log the step, so custom entries are
   // first-class editable/deletable chips like any built-in one.
   async function addCustom() {
-    const t = title.trim();
-    if (t.length < 2) {
-      toast.error("Step title is too short");
+    const trimmed = title.trim();
+    if (trimmed.length < 2) {
+      toast.error(t("progress.toastShort"));
       return;
     }
     if (!collectionId || !activeStageId) return;
@@ -162,16 +165,16 @@ export function ProgressManager({
         .mutateAsync({
           collectionId,
           stageId: activeStageId,
-          labelEn: t,
-          labelAr: t,
+          labelEn: trimmed,
+          labelAr: trimmed,
         })
         .catch(() => {});
-      await addStep(t, description);
+      await addStep(trimmed, description);
       setTitle("");
       setDescription("");
-      toast.success("Step added");
+      toast.success(t("progress.toastStepAdded"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to add step");
+      toast.error(e instanceof Error ? e.message : t("progress.toastAddFailed"));
     }
   }
 
@@ -186,7 +189,7 @@ export function ProgressManager({
     const en = editEn.trim();
     const ar = editAr.trim();
     if (!en || !ar) {
-      toast.error("Both English and Arabic labels are required");
+      toast.error(t("progress.toastLabelsRequired"));
       return;
     }
     try {
@@ -194,10 +197,12 @@ export function ProgressManager({
         id: editing.id,
         input: { labelEn: en, labelAr: ar },
       });
-      toast.success("Chip updated");
+      toast.success(t("progress.toastChipUpdated"));
       setEditing(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update chip");
+      toast.error(
+        e instanceof Error ? e.message : t("progress.toastChipUpdateFailed"),
+      );
     }
   }
 
@@ -205,10 +210,12 @@ export function ProgressManager({
     if (!deleting) return;
     try {
       await deleteChip.mutateAsync(deleting.id);
-      toast.success("Chip removed");
+      toast.success(t("progress.toastChipRemoved"));
       setDeleting(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to remove chip");
+      toast.error(
+        e instanceof Error ? e.message : t("progress.toastChipRemoveFailed"),
+      );
     }
   }
 
@@ -219,16 +226,16 @@ export function ProgressManager({
         input: { completed: !step.completed },
       });
     } catch {
-      toast.error("Failed to update step");
+      toast.error(t("progress.toastStepUpdateFailed"));
     }
   }
 
   async function del(id: string) {
     try {
       await remove.mutateAsync(id);
-      toast.success("Step removed");
+      toast.success(t("progress.toastStepRemoved"));
     } catch {
-      toast.error("Failed to remove step");
+      toast.error(t("progress.toastStepRemoveFailed"));
     }
   }
 
@@ -237,21 +244,20 @@ export function ProgressManager({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="font-display text-lg font-semibold text-ink">
-            Production Steps
+            {t("progress.title")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Steps are logged per stage. Pick a stage to view and add its steps —
-            doctors see each stage&apos;s steps when they open that stage.
+            {t("progress.desc")}
           </p>
         </div>
         {stageOptions.length > 0 && (
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Layers className="h-3.5 w-3.5" /> Stage
+              <Layers className="h-3.5 w-3.5" /> {t("progress.stage")}
             </label>
             <Select value={selected} onValueChange={setSelected}>
               <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="Select stage" />
+                <SelectValue placeholder={t("progress.selectStage")} />
               </SelectTrigger>
               <SelectContent>
                 {stageOptions.map((o) => (
@@ -268,10 +274,10 @@ export function ProgressManager({
       {/* Quick add: DB-backed chips for the viewed stage, each editable/deletable. */}
       <div className="mt-6 rounded-xl border border-border/80 bg-brand-50/40 p-4">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" /> Quick add
+          <Sparkles className="h-3.5 w-3.5" /> {t("progress.quickAdd")}
           {stage && (
             <span className="font-medium normal-case tracking-normal text-brand-700">
-              — {stage.en}
+              — {localizedLabel(stage, locale)}
             </span>
           )}
         </p>
@@ -287,12 +293,16 @@ export function ProgressManager({
                 return (
                   <span
                     key={chip.id}
-                    className="group inline-flex items-center rounded-full border border-brand-200 bg-brand-50 py-1 pl-3 pr-1 text-xs shadow-inner-glow"
+                    className="group inline-flex items-center rounded-full border border-brand-200 bg-brand-50 py-1 pe-1 ps-3 text-xs shadow-inner-glow"
                   >
                     <button
                       onClick={() => addFromChip(chip)}
                       disabled={added || add.isPending}
-                      title={added ? "Already added to this stage" : "Add this step"}
+                      title={
+                        added
+                          ? t("progress.alreadyAdded")
+                          : t("progress.addThisStep")
+                      }
                       className={cn(
                         "font-medium text-brand-700 transition-colors hover:text-brand-900 disabled:cursor-not-allowed",
                         added && "line-through opacity-50",
@@ -302,14 +312,14 @@ export function ProgressManager({
                     </button>
                     <button
                       onClick={() => openEdit(chip)}
-                      aria-label={`Edit ${chip.labelEn}`}
-                      className="ml-1.5 rounded-full p-1 text-brand-400 transition-colors hover:bg-brand-100 hover:text-brand-700"
+                      aria-label={t("progress.editChipAria", { label: chip.labelEn })}
+                      className="ms-1.5 rounded-full p-1 text-brand-400 transition-colors hover:bg-brand-100 hover:text-brand-700"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => setDeleting(chip)}
-                      aria-label={`Delete chip ${chip.labelEn}`}
+                      aria-label={t("progress.deleteChipAria", { label: chip.labelEn })}
                       className="rounded-full p-1 text-brand-400 transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
@@ -319,14 +329,11 @@ export function ProgressManager({
               })}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">
-              No quick-add steps for this stage yet. Add one with the form below.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("progress.noChips")}</p>
           )
         ) : (
           <p className="text-xs text-muted-foreground">
-            Choose a collection and stage for this case to see stage-specific
-            quick-add steps.
+            {t("progress.chooseStageChips")}
           </p>
         )}
       </div>
@@ -336,10 +343,10 @@ export function ProgressManager({
         {stageSteps.length === 0 && (
           <li className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-5 text-sm text-muted-foreground">
             {stage
-              ? "No steps for this stage yet. Add one below or use a quick-add chip."
+              ? t("progress.noStepsStage")
               : activeStageId === null && stageOptions.length > 0
-                ? "No general (unscoped) steps."
-                : "Choose a collection and stage to start logging steps."}
+                ? t("progress.noGeneralSteps")
+                : t("progress.chooseStageSteps")}
           </li>
         )}
         {stageSteps.map((step) => (
@@ -355,7 +362,11 @@ export function ProgressManager({
                   ? "border-brand-600 bg-brand-600 text-white"
                   : "border-border text-muted-foreground hover:border-brand-400",
               )}
-              aria-label={step.completed ? "Mark incomplete" : "Mark complete"}
+              aria-label={
+                step.completed
+                  ? t("progress.markIncomplete")
+                  : t("progress.markComplete")
+              }
             >
               {step.completed ? (
                 <Check className="h-3.5 w-3.5" />
@@ -385,8 +396,8 @@ export function ProgressManager({
               variant="ghost"
               size="icon"
               onClick={() => del(step.id)}
-                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                aria-label={`Delete ${step.stepTitle}`}
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              aria-label={t("progress.deleteStepAria", { title: step.stepTitle })}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -401,12 +412,12 @@ export function ProgressManager({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Custom step title (e.g. Try-in appointment)"
+            placeholder={t("progress.customPlaceholder")}
           />
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description..."
+            placeholder={t("progress.descPlaceholder")}
             rows={2}
           />
           <Button
@@ -419,12 +430,12 @@ export function ProgressManager({
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            Add Step
+            {t("progress.addStep")}
           </Button>
         </div>
       ) : (
         <p className="mt-6 rounded-xl border border-dashed border-border/80 bg-white/[0.4] p-4 text-xs text-muted-foreground">
-          Select a collection and stage for this case to add production steps.
+          {t("progress.chooseStageAdd")}
         </p>
       )}
 
@@ -432,19 +443,16 @@ export function ProgressManager({
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Quick-Add step</DialogTitle>
-            <DialogDescription>
-              Renaming updates this chip for every case using this collection &
-              stage. Steps already logged on cases keep their original text.
-            </DialogDescription>
+            <DialogTitle>{t("progress.editChipTitle")}</DialogTitle>
+            <DialogDescription>{t("progress.editChipDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label>English label</Label>
-              <Input value={editEn} onChange={(e) => setEditEn(e.target.value)} />
+              <Label>{t("progress.englishLabel")}</Label>
+              <Input value={editEn} onChange={(e) => setEditEn(e.target.value)} dir="ltr" />
             </div>
             <div className="space-y-1.5">
-              <Label>Arabic label</Label>
+              <Label>{t("progress.arabicLabel")}</Label>
               <Input
                 value={editAr}
                 onChange={(e) => setEditAr(e.target.value)}
@@ -454,11 +462,11 @@ export function ProgressManager({
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Cancel
+              {t("progress.cancel")}
             </Button>
             <Button onClick={saveEdit} disabled={updateChip.isPending}>
               {updateChip.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
+              {t("progress.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -468,9 +476,9 @@ export function ProgressManager({
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Remove this quick-add chip?"
-        description="It disappears from the quick-add list for this collection & stage. Steps already logged on cases are not affected."
-        confirmLabel="Remove"
+        title={t("progress.removeChipTitle")}
+        description={t("progress.removeChipDesc")}
+        confirmLabel={t("progress.remove")}
         destructive
         loading={deleteChip.isPending}
         onConfirm={confirmDelete}
