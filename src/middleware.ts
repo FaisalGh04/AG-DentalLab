@@ -12,7 +12,7 @@ const { auth } = NextAuth(authConfig);
 // the statically-generated public routes, so it can't read a per-request value.
 // The nonce-based admin CSP therefore allows it by hash, keeping the Report-Only
 // stream clean. Recompute (sha256, base64) if that inline script ever changes.
-const LANG_SCRIPT_HASH = "'sha256-rjqu5NZLMMsp5iLiH1ErIVTD1X5WzdrYLOBHXhR3FWc='";
+const LANG_SCRIPT_HASH = "'sha256-THbS/dRzpnJcU1ie06awMdA8t47jSmIfY8TZjVSBtVo='";
 
 const isDev = process.env.NODE_ENV !== "production";
 

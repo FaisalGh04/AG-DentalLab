@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useAdminI18n } from "@/components/i18n/admin-i18n";
 
 export function ConfirmDialog({
   open,
@@ -30,6 +31,7 @@ export function ConfirmDialog({
   loading?: boolean;
   onConfirm: () => void;
 }) {
+  const { t } = useAdminI18n();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -39,7 +41,7 @@ export function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}

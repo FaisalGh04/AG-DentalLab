@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "cases": "All Cases",
+    "archive": "Archive",
+    "viewWebsite": "View Website",
+    "signedInAs": "Signed in as",
+    "signOut": "Sign Out",
+    "signOutConfirmTitle": "Sign out?",
+    "signOutConfirmBody": "You'll need to sign in again to access the management console.",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "language": "Language"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of all lab cases and their current status.",
+    "newCase": "New Case",
+    "totalCases": "Total Cases",
+    "active": "Active",
+    "completed": "Completed",
+    "noCollection": "No Collection",
+    "recentCases": "Recent Cases",
+    "viewAll": "View all",
+    "noCasesTitle": "No cases yet",
+    "noCasesBody": "Create the first case and it will appear here for quick access.",
+    "estCompletion": "Est. completion"
+  },
+  "common": {
+    "cancel": "Cancel"
+  },
+  "login": {
+    "backToHome": "Back to home",
+    "title": "Admin Sign In",
+    "email": "Email",
+    "password": "Password",
+    "emailPlaceholder": "owner@agdentallab.com",
+    "passwordPlaceholder": "Password",
+    "signIn": "Sign In",
+    "welcomeBack": "Welcome back!",
+    "errorRateLimited": "Too many attempts. Please wait a few minutes and try again.",
+    "errorUnavailable": "Sign-in is temporarily unavailable. Please try again shortly.",
+    "errorInvalid": "Invalid email or password."
+  }
+}

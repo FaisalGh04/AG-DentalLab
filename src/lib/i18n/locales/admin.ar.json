@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "cases": "جميع الحالات",
+    "archive": "الأرشيف",
+    "viewWebsite": "عرض الموقع",
+    "signedInAs": "مُسجّل الدخول باسم",
+    "signOut": "تسجيل الخروج",
+    "signOutConfirmTitle": "تسجيل الخروج؟",
+    "signOutConfirmBody": "ستحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى لوحة الإدارة.",
+    "menu": "القائمة",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "language": "اللغة"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "subtitle": "نظرة عامة على جميع حالات المعمل وحالتها الحالية.",
+    "newCase": "حالة جديدة",
+    "totalCases": "إجمالي الحالات",
+    "active": "نشطة",
+    "completed": "مكتملة",
+    "noCollection": "بدون مجموعة",
+    "recentCases": "أحدث الحالات",
+    "viewAll": "عرض الكل",
+    "noCasesTitle": "لا توجد حالات بعد",
+    "noCasesBody": "أنشئ أول حالة وستظهر هنا للوصول السريع.",
+    "estCompletion": "الإنجاز المتوقع"
+  },
+  "common": {
+    "cancel": "إلغاء"
+  },
+  "login": {
+    "backToHome": "العودة إلى الصفحة الرئيسية",
+    "title": "تسجيل دخول المسؤول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "emailPlaceholder": "owner@agdentallab.com",
+    "passwordPlaceholder": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "welcomeBack": "مرحباً بعودتك!",
+    "errorRateLimited": "محاولات كثيرة جداً. يرجى الانتظار بضع دقائق ثم المحاولة مرة أخرى.",
+    "errorUnavailable": "تسجيل الدخول غير متاح مؤقتاً. يرجى المحاولة بعد قليل.",
+    "errorInvalid": "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+  }
+}

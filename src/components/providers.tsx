@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
+import { AdminI18nProvider } from "@/components/i18n/admin-i18n";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -44,14 +45,17 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
 /**
  * Everything the authenticated admin area needs: NextAuth session context,
- * React Query, and the toast surface. Kept out of the root layout so none of
- * this (next-auth/react, react-query) loads on the public site.
+ * React Query, the toast surface, and admin-scoped i18n. Kept out of the root
+ * layout so none of this (next-auth/react, react-query, the admin dictionaries)
+ * loads on the public site.
  */
 export function AdminProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <QueryProvider>{children}</QueryProvider>
-      <Toaster />
+      <AdminI18nProvider>
+        <QueryProvider>{children}</QueryProvider>
+        <Toaster />
+      </AdminI18nProvider>
     </SessionProvider>
   );
 }

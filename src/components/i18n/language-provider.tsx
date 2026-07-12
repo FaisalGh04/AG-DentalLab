@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import en from "@/lib/i18n/locales/en.json";
 import ar from "@/lib/i18n/locales/ar.json";
+import { createTranslator } from "@/lib/i18n/translate";
 import {
   DEFAULT_LOCALE,
   DIRECTION,
@@ -27,16 +28,6 @@ interface I18nContextValue {
 }
 
 const I18nContext = React.createContext<I18nContextValue | null>(null);
-
-/** Walk a dot-path (e.g. "about.timeline.founded.title") into a dictionary. */
-function resolve(dict: unknown, key: string): unknown {
-  return key.split(".").reduce<unknown>((acc, part) => {
-    if (acc && typeof acc === "object") {
-      return (acc as Record<string, unknown>)[part];
-    }
-    return undefined;
-  }, dict);
-}
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   // Start from the default so SSR and the first client render match (keeps the
@@ -74,28 +65,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = React.useMemo<I18nContextValue>(() => {
-    const dict = DICTIONARIES[locale];
-    const fallback = DICTIONARIES[DEFAULT_LOCALE];
-
-    const t = (key: string, vars?: Record<string, string | number>) => {
-      let node = resolve(dict, key);
-      if (typeof node !== "string") node = resolve(fallback, key);
-      if (typeof node !== "string") return key;
-      let out = node;
-      if (vars) {
-        for (const [k, v] of Object.entries(vars)) {
-          out = out.split(`{${k}}`).join(String(v));
-        }
-      }
-      return out;
-    };
-
-    const tList = <T,>(key: string): T[] => {
-      let node = resolve(dict, key);
-      if (!Array.isArray(node)) node = resolve(fallback, key);
-      return Array.isArray(node) ? (node as T[]) : [];
-    };
-
+    const { t, tList } = createTranslator(
+      DICTIONARIES[locale],
+      DICTIONARIES[DEFAULT_LOCALE],
+    );
     return {
       locale,
       dir: DIRECTION[locale],

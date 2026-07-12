@@ -87,8 +87,8 @@ export default function RootLayout({
     >
       <head>
         {/* Apply the saved language direction before first paint to avoid an
-            LTR→RTL flash for returning Arabic visitors. Scoped to public routes
-            only — admin/login stay English + LTR (kept in sync with
+            LTR→RTL flash for returning Arabic visitors. Covers the localized
+            routes — public site AND admin/login (kept in sync with
             isLocalizedPath in lib/i18n/config).
 
             No nonce: the layout is shared by the statically-generated public
@@ -99,7 +99,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var l=localStorage.getItem('ag-lang');var p=location.pathname;var pub=(p==='/'||p==='/track'||p.indexOf('/track/')===0);if(l==='ar'&&pub){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();",
+              "(function(){try{var l=localStorage.getItem('ag-lang');var p=location.pathname;var loc=(p==='/'||p==='/track'||p.indexOf('/track/')===0||p==='/admin'||p.indexOf('/admin/')===0||p==='/login');if(l==='ar'&&loc){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();",
           }}
         />
       </head>

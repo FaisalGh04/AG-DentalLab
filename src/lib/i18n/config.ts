@@ -26,13 +26,18 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 /**
- * Routes where the selected locale (and its RTL direction) is applied. Only the
- * public-facing site is localized; admin, login and API routes always stay
- * English + LTR regardless of the visitor's saved language. Keep this in sync
- * with the pre-paint script in `app/layout.tsx`.
+ * Routes where the selected locale (and its RTL direction) is applied. The
+ * public site AND the admin panel (incl. /login) are localized; only API routes
+ * (which don't render HTML) stay direction-agnostic. Keep this in sync with the
+ * pre-paint script in `app/layout.tsx`.
  */
 export function isLocalizedPath(pathname: string): boolean {
   return (
-    pathname === "/" || pathname === "/track" || pathname.startsWith("/track/")
+    pathname === "/" ||
+    pathname === "/track" ||
+    pathname.startsWith("/track/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/login"
   );
 }
