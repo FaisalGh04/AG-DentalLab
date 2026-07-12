@@ -25,6 +25,23 @@ function generateNonce(): string {
   return btoa(bin);
 }
 
+/**
+ * Public-facing origin for the CSP report endpoint. On public routes the
+ * middleware runs outside NextAuth's host normalization (only /admin + /login
+ * go through `auth()`), so `req.nextUrl.origin` is the internal Railway bind
+ * (e.g. `https://0.0.0.0:8080`) — which made `report-uri` unreachable and, being
+ * off-origin, also blocked by `connect-src 'self'`. Prefer the configured public
+ * site URL, then the proxy's forwarded host/proto, then fall back to
+ * `nextUrl.origin` (correct for local dev, where none of the above are set).
+ */
+function publicOrigin(req: NextRequest): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  const host = req.headers.get("x-forwarded-host");
+  if (host) return `${req.headers.get("x-forwarded-proto") ?? "https"}://${host}`;
+  return req.nextUrl.origin;
+}
+
 /** Directives shared by the public + admin policies (everything but script-src). */
 function commonDirectives(origin: string): string[] {
   return [
@@ -165,12 +182,15 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     return authGated(req, event);
   }
 
+  // Public routes skip NextAuth, so derive the public origin explicitly rather
+  // than trusting req.nextUrl.origin (the internal Railway bind here).
+  const origin = publicOrigin(req);
   const res = NextResponse.next();
   res.headers.set(
     "Content-Security-Policy-Report-Only",
-    buildPublicCsp(req.nextUrl.origin),
+    buildPublicCsp(origin),
   );
-  return withReporting(res, req.nextUrl.origin);
+  return withReporting(res, origin);
 }
 
 export const config = {
