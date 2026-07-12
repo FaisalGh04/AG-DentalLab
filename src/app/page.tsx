@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { Hero } from "@/components/landing/hero";
@@ -32,13 +31,14 @@ const jsonLd = {
   sameAs: [SITE.instagramHref],
 };
 
-export default async function HomePage() {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+export default function HomePage() {
   return (
     <div className="dark landing-dark-shell text-foreground">
+      {/* JSON-LD is a static, non-executable data block; no nonce needed. The
+          landing page is statically generated, so it can't read a per-request
+          nonce anyway — the public CSP allows this via 'unsafe-inline'. */}
       <script
         type="application/ld+json"
-        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Navbar />

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
-import { Providers } from "@/components/providers";
+import { LanguageProvider } from "@/components/i18n/language-provider";
 import { SITE } from "@/lib/constants";
 
 const inter = Inter({
@@ -76,11 +75,9 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // CSP nonce set per-request by middleware (S-M4); stamped on our inline script.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -92,9 +89,14 @@ export default async function RootLayout({
         {/* Apply the saved language direction before first paint to avoid an
             LTR→RTL flash for returning Arabic visitors. Scoped to public routes
             only — admin/login stay English + LTR (kept in sync with
-            isLocalizedPath in lib/i18n/config). */}
+            isLocalizedPath in lib/i18n/config).
+
+            No nonce: the layout is shared by the statically-generated public
+            routes, so it can't read a per-request value. On public routes the
+            CSP allows it via 'unsafe-inline'; on the nonce-based admin CSP it's
+            allowed by hash (see LANG_SCRIPT_HASH in middleware.ts). If you edit
+            this script, recompute that hash. */}
         <script
-          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html:
               "(function(){try{var l=localStorage.getItem('ag-lang');var p=location.pathname;var pub=(p==='/'||p==='/track'||p.indexOf('/track/')===0);if(l==='ar'&&pub){document.documentElement.lang='ar';document.documentElement.dir='rtl';}}catch(e){}})();",
@@ -102,7 +104,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-dvh antialiased">
-        <Providers>{children}</Providers>
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

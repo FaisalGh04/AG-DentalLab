@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { LoginForm } from "@/components/admin/login-form";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Admin Login",
@@ -48,6 +49,10 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast surface for sign-in errors (previously provided by the root
+          layout; now scoped here since the landing page doesn't need it). */}
+      <Toaster />
     </main>
   );
 }

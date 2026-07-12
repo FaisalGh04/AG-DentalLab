@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
-import { LanguageProvider } from "@/components/i18n/language-provider";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -31,14 +30,28 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const queryClient = getQueryClient();
+/**
+ * React Query only. Scoped to the routes that actually query/mutate — /track
+ * and /admin — so the public landing page never ships @tanstack/react-query.
+ */
+export function QueryProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={getQueryClient()}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+
+/**
+ * Everything the authenticated admin area needs: NextAuth session context,
+ * React Query, and the toast surface. Kept out of the root layout so none of
+ * this (next-auth/react, react-query) loads on the public site.
+ */
+export function AdminProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        <LanguageProvider>{children}</LanguageProvider>
-        <Toaster />
-      </QueryClientProvider>
+      <QueryProvider>{children}</QueryProvider>
+      <Toaster />
     </SessionProvider>
   );
 }
