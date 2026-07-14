@@ -80,14 +80,14 @@
     "less": "Less",
     "cases": [
       { "title": "Full-Arch Implant-Supported Prosthesis", "description": "Complete full-mouth rehabilitation: screw-retained, implant-supported fixed prostheses for both the upper and lower arches, built on a precision titanium framework." },
-      { "title": "Implant-Supported Anterior Bridge with Gingival Ceramic", "description": "Implant-supported anterior bridge combining natural tooth shade with pink ceramic gingiva to restore both teeth and soft-tissue contour for a natural smile line." },
-      { "title": "Anterior Restoration, Bisque Stage", "description": "Anterior restoration on the working model at the bisque stage, highlighting layered porcelain translucency prior to final characterization and glazing." },
+      { "title": "Implant-Supported Interior Bridge with Gingival Ceramic", "description": "Implant-supported interior bridge combining natural tooth shade with pink ceramic gingiva to restore both teeth and soft-tissue contour for a natural smile line." },
+      { "title": "Interior Restoration, Bisque Stage", "description": "Interior restoration on the working model at the bisque stage, highlighting layered porcelain translucency prior to final characterization and glazing." },
       { "title": "Final Clinical Result", "description": "Final clinical outcome: the cemented restoration in the patient's mouth, showing natural shade matching, contour, and a confident, healthy smile." },
-      { "title": "Anterior Veneers, Final Result", "description": "Ultra-thin porcelain veneers bonded to the upper front teeth, delivering a bright, uniform shade and natural tooth proportions for a confident, healthy smile." },
-      { "title": "Anterior Crowns/Veneers on Master Model", "description": "Anterior crown and veneer case on the master model, showing bright, uniform shade selection and precise anatomical contouring." },
+      { "title": "Interior Veneers, Final Result", "description": "Ultra-thin porcelain veneers bonded to the upper front teeth, delivering a bright, uniform shade and natural tooth proportions for a confident, healthy smile." },
+      { "title": "Interior Crowns/Veneers on Master Model", "description": "Interior crown and veneer case on the master model, showing bright, uniform shade selection and precise anatomical contouring." },
       { "title": "Full-Arch Implant Bridge", "description": "Side profile of a full-arch implant bridge, revealing the internal metal substructure that provides rigidity and long-term stability." },
       { "title": "Anterior Zirconia Bridge", "description": "Anterior zirconia bridge showcasing fine surface texture and gradient shading from the gumline to the incisal edge, finished with a natural, glossy surface." },
-      { "title": "Lower Anterior Zirconia Bridge", "description": "Full-contour zirconia bridge for the lower anterior teeth, featuring natural incisal translucency and a precisely blended pink gingival shade for a seamless, lifelike restoration." },
+      { "title": "Lower Interior Zirconia Bridge", "description": "Full-contour zirconia bridge for the lower interior teeth, featuring natural incisal translucency and a precisely blended pink gingival shade for a seamless, lifelike restoration." },
       { "title": "Posterior PFM Crowns", "description": "Posterior porcelain-fused-to-metal (PFM) crown unit, built on a precious-metal coping and layered with porcelain for high durability and a natural chewing-surface finish." }
     ]
   },
