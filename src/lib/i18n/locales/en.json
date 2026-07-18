@@ -63,12 +63,12 @@
   },
   "mission": {
     "title": "Our Mission",
-    "p1": "We are committed to providing integrated digital dental services including dental restorations, zirconia milling, precision metal fabrication, 3D printing, and technical support for dentists.",
-    "p2": "Built on 35+ years of expertise and global quality standards, we deliver precise, reliable, and innovative solutions that improve clinical success and patient satisfaction."
+    "p1": "We are committed to providing integrated dental services including dental restorations, zirconia milling, precision metal fabrication, 3D printing, and technical support for dentists.",
+    "p2": "Built on 30+ years of expertise and global quality standards, we deliver precise, reliable, and innovative solutions that improve clinical success and patient satisfaction."
   },
   "vision": {
     "title": "Our Vision",
-    "p1": "To become the leading regional reference in integrated digital dental solutions by combining 30+ years of expertise with advanced digital manufacturing technologies.",
+    "p1": "To become the leading regional reference in integrated dental solutions by combining 30+ years of expertise with advanced manufacturing technologies.",
     "p2": "We aim to elevate dental care quality and deliver better outcomes for dentists and patients."
   },
   "work": {
@@ -98,7 +98,7 @@
     "reasons": [
       { "title": "Predictable Quality", "body": "Consistent, repeatable results on every single case." },
       { "title": "Pioneer in Jordan", "body": "First lab in Jordan to adopt digital CAD/CAM zirconia." },
-      { "title": "35+ Years Experience", "body": "Decades of refined dental craftsmanship." },
+      { "title": "30+ Years Experience", "body": "Decades of refined dental craftsmanship." },
       { "title": "Trusted Warranty", "body": "Confidence backed by a dependable guarantee." },
       { "title": "Direct Communication", "body": "Talk straight to the lab, no middlemen." },
       { "title": "Ongoing Follow-up", "body": "We stay with each case until it's perfect." },
