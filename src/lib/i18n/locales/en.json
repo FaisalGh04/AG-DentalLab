@@ -12,7 +12,7 @@
     "toggleMenu": "Toggle menu"
   },
   "hero": {
-    "badge": "Digital Dental Laboratory • Established 1994",
+    "badge": "Dental Laboratory • Established 1994",
     "title1": "Your Partner in",
     "title2": "Perfect ",
     "title3": "Smiles",
@@ -42,8 +42,8 @@
   },
   "services": {
     "eyebrow": "What We Do",
-    "title": "A complete digital dental portfolio",
-    "subtitle": "Every restoration produced in-house with an integrated digital workflow - from scan to delivery.",
+    "title": "A complete dental portfolio",
+    "subtitle": "Every restoration produced in-house, combining traditional craftsmanship with digital workflows - from impression or scan to delivery.",
     "fixed": {
       "title": "Fixed Restorations",
       "items": ["Crowns", "Bridges", "Veneers", "Zirconia", "E.max", "PFM", "Inlay", "Onlay", "PMMA"]
@@ -63,12 +63,12 @@
   },
   "mission": {
     "title": "Our Mission",
-    "p1": "We are committed to providing integrated dental services including dental restorations, zirconia milling, precision metal fabrication, 3D printing, and technical support for dentists.",
+    "p1": "We are committed to providing integrated dental services — combining traditional techniques with digital technology — including dental restorations, zirconia milling, precision metal fabrication, 3D printing, and technical support for dentists.",
     "p2": "Built on 30+ years of expertise and global quality standards, we deliver precise, reliable, and innovative solutions that improve clinical success and patient satisfaction."
   },
   "vision": {
     "title": "Our Vision",
-    "p1": "To become the leading regional reference in integrated dental solutions by combining 30+ years of expertise with advanced manufacturing technologies.",
+    "p1": "To become the leading regional reference in integrated dental solutions by combining 30+ years of expertise with both traditional craftsmanship and advanced digital manufacturing technologies.",
     "p2": "We aim to elevate dental care quality and deliver better outcomes for dentists and patients."
   },
   "work": {
@@ -118,7 +118,7 @@
     "callLab": "Call the Lab"
   },
   "footer": {
-    "tagline": "Your Partner in Perfect Smiles. A digital dental laboratory delivering precise, reliable, and innovative solutions since 1994.",
+    "tagline": "Your Partner in Perfect Smiles. A dental laboratory delivering precise, reliable, and innovative solutions since 1994.",
     "explore": "Explore",
     "trackACase": "Track a Case",
     "contact": "Contact",
