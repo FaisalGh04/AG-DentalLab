@@ -46,7 +46,7 @@
     "subtitle": "Every restoration produced in-house, combining traditional craftsmanship with digital workflows - from impression or scan to delivery.",
     "fixed": {
       "title": "Fixed Restorations",
-      "items": ["Crowns", "Bridges", "Veneers", "Zirconia", "E.max", "PFM", "Inlay", "Onlay", "PMMA"]
+      "items": ["Zirconia Crowns", "Zirconia Bridges", "Veneers", "PFM", "Inlay", "Onlay", "PMMA"]
     },
     "implant": {
       "title": "Implant Solutions",
@@ -76,8 +76,24 @@
     "title": "Craftsmanship you can see",
     "subtitle": "A curated selection of real cases — from single restorations to full-arch rehabilitations.",
     "openCase": "View case details",
+    "openFolder": "View {name} cases",
     "more": "More",
     "less": "Less",
+    "folders": {
+      "zirconiaCrowns": "Zirconia Crowns",
+      "zirconiaBridges": "Zirconia Bridges",
+      "veneers": "Veneers",
+      "pfm": "PFM",
+      "inlay": "Inlay",
+      "onlay": "Onlay",
+      "pmma": "PMMA",
+      "case": "case",
+      "cases": "cases"
+    },
+    "gallery": {
+      "subtitle": "A selection of real cases from our lab.",
+      "empty": "No cases uploaded yet."
+    },
     "cases": [
       { "title": "Full-Arch Implant-Supported Prosthesis", "description": "Complete full-mouth rehabilitation: screw-retained, implant-supported fixed prostheses for both the upper and lower arches, built on a precision titanium framework." },
       { "title": "Implant-Supported Interior Bridge with Gingival Ceramic", "description": "Implant-supported interior bridge combining natural tooth shade with pink ceramic gingiva to restore both teeth and soft-tissue contour for a natural smile line." },

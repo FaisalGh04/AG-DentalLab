@@ -4,64 +4,32 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { Reveal } from "@/components/motion/reveal";
+import { Images, ImageOff } from "lucide-react";
+import { Reveal, staggerContainer, staggerItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
-import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n/language-provider";
+import { WORK_FOLDERS, type WorkFolderId } from "@/lib/gallery";
 import { cn } from "@/lib/utils";
 
-// Code-split the lightbox (Radix Dialog) out of the initial landing bundle —
-// it's only needed once a visitor opens a case photo.
-const WorkGalleryLightbox = dynamic(
+// Code-split the category grid (Radix Dialog) out of the initial landing
+// bundle — it's only needed once a visitor opens a folder. It hosts the zoom
+// lightbox internally.
+const WorkCategoryLightbox = dynamic(
   () =>
-    import("@/components/landing/work-gallery-lightbox").then(
-      (m) => m.WorkGalleryLightbox,
+    import("@/components/landing/work-category-lightbox").then(
+      (m) => m.WorkCategoryLightbox,
     ),
   { ssr: false },
 );
 
-// Real portfolio photos, indexed 1:1 with the localized `work.cases` array.
-// Intrinsic width/height let next/image reserve the right box and render each
-// image at its true aspect in the lightbox (they aren't all 4:3). Static public
-// assets → optimized directly by next/image (no DB-backed signed-URL proxy
-// needed here, unlike admin case images).
-// Display order is a deliberate reorder of the original case identities
-// (4,5,8,9,10,6,7,3,1,2). Kept in lockstep with the `work.cases` arrays in
-// en.json/ar.json — index i here pairs with cases[i], so both must use the
-// same order or images and captions desync.
-const GALLERY = [
-  { src: "/images/gallery/case-4-full-arch-implant-prosthesis.jpeg", w: 1447, h: 1087 },
-  { src: "/images/gallery/case-5-implant-anterior-bridge-gingival-ceramic.jpeg", w: 1280, h: 960 },
-  { src: "/images/gallery/case-8-anterior-restoration-bisque-stage.jpeg", w: 1280, h: 960 },
-  { src: "/images/gallery/case-9-final-clinical-result.jpeg", w: 1280, h: 960 },
-  { src: "/images/gallery/case-10-anterior-veneers-final-result.jpeg", w: 1600, h: 970 },
-  { src: "/images/gallery/case-6-anterior-crowns-veneers-master-model.jpeg", w: 1280, h: 960 },
-  { src: "/images/gallery/case-7-full-arch-implant-bridge-side-view.jpeg", w: 1280, h: 960 },
-  { src: "/images/gallery/case-3-anterior-zirconia-bridge-detail.jpeg", w: 1600, h: 1200 },
-  { src: "/images/gallery/case-1-lower-anterior-zirconia-bridge.jpeg", w: 1600, h: 1200 },
-  { src: "/images/gallery/case-2-posterior-pfm-crowns.jpeg", w: 1600, h: 1200 },
-];
-
-// Show a clean 3×3 preview; "More" reveals the rest in place. Scales to any
-// future case count without ever breaking the grid.
-const PREVIEW_COUNT = 9;
-
-interface CaseText {
-  title: string;
-  description: string;
-}
-
 export function WorkGallery() {
-  const { t, tList } = useI18n();
-  const cases = tList<CaseText>("work.cases");
-  const [expanded, setExpanded] = useState(false);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { t } = useI18n();
+  const [openFolderId, setOpenFolderId] = useState<WorkFolderId | null>(null);
 
-  const visibleItems = expanded ? GALLERY : GALLERY.slice(0, PREVIEW_COUNT);
-  const hasMore = GALLERY.length > PREVIEW_COUNT;
-  const active = openIndex === null ? null : cases[openIndex];
-  const activeItem = openIndex === null ? null : GALLERY[openIndex];
+  const activeFolder =
+    openFolderId === null
+      ? null
+      : (WORK_FOLDERS.find((f) => f.id === openFolderId) ?? null);
 
   return (
     <section id="work" className="relative py-24 md:py-36">
@@ -76,81 +44,97 @@ export function WorkGallery() {
           <p className="mt-4 text-muted-foreground">{t("work.subtitle")}</p>
         </Reveal>
 
-        {/* 3 cols on desktop, 2 on mobile. Auto-placement follows the <html> dir
-            attribute, so RTL mirrors the flow with no special-casing. */}
-        <div className="mt-16 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
-          {visibleItems.map((item, i) => {
-            const label = cases[i]?.title ?? "";
-            const isLast = i === visibleItems.length - 1;
+        {/* Folder cards. 3 cols on desktop, 2 on mobile. Auto-placement follows
+            the <html> dir attribute, so RTL mirrors the flow with no
+            special-casing. Only non-empty folders reach here — empty Fixed tags
+            are dropped in gallery.ts. */}
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          className="mt-16 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5"
+        >
+          {WORK_FOLDERS.map((folder, i) => {
+            const name = t(folder.labelKey);
+            const count = folder.images.length;
+            // Empty folders (Inlay, Onlay, PMMA) have no cover photo yet
+            // → they render the muted placeholder branch below.
+            const cover = folder.images[0] ?? null;
+            const isLast = i === WORK_FOLDERS.length - 1;
             return (
-              <motion.figure
-                key={item.src}
-                initial={{ opacity: 0, scale: 0.96 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: (i % 3) * 0.06, duration: 0.5 }}
+              <motion.button
+                key={folder.id}
+                type="button"
+                variants={staggerItem}
+                whileHover={{ y: -4 }}
+                onClick={() => setOpenFolderId(folder.id)}
+                aria-label={t("work.openFolder", { name })}
                 className={cn(
-                  "group relative overflow-hidden rounded-[1.5rem] border border-brand-400/20 shadow-inner-glow transition-all duration-300 hover:-translate-y-1 hover:shadow-glow",
-                  // An odd number of visible tiles leaves a lonely half-tile on
-                  // the 2-col mobile layout → let the trailing one span both.
-                  isLast && visibleItems.length % 2 === 1 && "col-span-2 md:col-span-1",
+                  "group relative block overflow-hidden rounded-[1.5rem] border border-brand-400/20 text-start shadow-inner-glow transition-all duration-300 hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  // An odd number of folders leaves a lonely half-tile on the
+                  // 2-col mobile layout → let the trailing one span both.
+                  isLast && WORK_FOLDERS.length % 2 === 1 && "col-span-2 md:col-span-1",
                 )}
               >
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(i)}
-                  aria-label={t("work.openCase")}
-                  className="block aspect-[4/3] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  <Image
-                    src={item.src}
-                    alt={label}
-                    fill
-                    sizes="(min-width: 768px) 30vw, 50vw"
-                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                  />
-                  {/* Legibility wash + always-on title. */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-950/85 via-brand-950/10 to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-90" />
-                  <figcaption className="absolute inset-x-0 bottom-0 p-3 text-start text-xs font-semibold text-brand-50/95 sm:p-4 sm:text-sm">
-                    {label}
-                  </figcaption>
-                </button>
-              </motion.figure>
+                {cover ? (
+                  <div className="relative aspect-[4/3] w-full">
+                    <Image
+                      src={cover.src}
+                      alt=""
+                      fill
+                      sizes="(min-width: 768px) 30vw, 50vw"
+                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    />
+                    {/* Legibility wash — kept strong so the folder name + count
+                        stay readable over any cover photo. */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-950/90 via-brand-950/35 to-brand-950/10 transition-opacity duration-300 group-hover:from-brand-950/95" />
+                    {/* Photo-count pill, top-start (mirrors in RTL via `start`). */}
+                    <div className="absolute start-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-brand-950/50 px-2.5 py-1 text-xs font-medium text-brand-50/90 backdrop-blur">
+                      <Images className="h-3.5 w-3.5" />
+                      <span>
+                        {count}{" "}
+                        {count === 1
+                          ? t("work.folders.case")
+                          : t("work.folders.cases")}
+                      </span>
+                    </div>
+                    {/* Folder name. */}
+                    <div className="absolute inset-x-0 bottom-0 p-4">
+                      <h3 className="font-display text-base font-bold text-white sm:text-lg">
+                        {name}
+                      </h3>
+                    </div>
+                  </div>
+                ) : (
+                  // Empty folder — no photos yet. Muted fill + faint watermark
+                  // icon, no count pill; name kept in the same bottom-start slot
+                  // as photo cards so the grid stays visually aligned.
+                  <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-brand-900/40 to-brand-950/70">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ImageOff className="h-8 w-8 text-brand-200/25 transition-transform duration-300 group-hover:scale-110" />
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 p-4">
+                      <h3 className="font-display text-base font-bold text-brand-50/75 sm:text-lg">
+                        {name}
+                      </h3>
+                    </div>
+                  </div>
+                )}
+              </motion.button>
             );
           })}
-        </div>
-
-        {hasMore && (
-          <div className="mt-8 flex justify-center md:mt-10">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-              className="border-brand-300/40 bg-brand-900/30 text-foreground hover:border-brand-300/70 hover:bg-brand-800/50 hover:text-white"
-            >
-              {expanded ? t("work.less") : t("work.more")}
-              {expanded ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        )}
+        </motion.div>
       </div>
 
-      {/* Shared lightbox — dynamically imported so Radix Dialog only loads when
-          a case is opened. Title/description come from t()/tList so they follow
-          the active locale automatically. */}
-      {active && activeItem && (
-        <WorkGalleryLightbox
-          src={activeItem.src}
-          width={activeItem.w}
-          height={activeItem.h}
-          title={active.title}
-          description={active.description}
-          onClose={() => setOpenIndex(null)}
+      {/* Category grid for the opened folder — dynamically imported so Radix
+          Dialog only loads on first interaction. Photos + title are resolved
+          here from the gallery.ts folder mapping and the active locale. */}
+      {activeFolder && (
+        <WorkCategoryLightbox
+          images={activeFolder.images}
+          title={t(activeFolder.labelKey)}
+          onClose={() => setOpenFolderId(null)}
         />
       )}
     </section>
