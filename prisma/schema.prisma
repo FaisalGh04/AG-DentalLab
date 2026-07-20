@@ -157,3 +157,66 @@ model StageQuickAddStep {
   @@index([collectionId, stageId])
   @@map("stage_quick_add_steps")
 }
+
+// ------------------------------------------------------------------
+// Public "Our Work" portfolio — an admin-managed showcase for the landing page.
+// Deliberately SEPARATE from PatientCase/CaseImage: no patient data, its own
+// taxonomy (PortfolioFolder, matching the landing folders), and its images are
+// public marketing assets (not the private, signed patient-case images).
+// ------------------------------------------------------------------
+
+// The Our Work folders. Values mirror the landing folders one-to-one: the seven
+// Fixed-Restoration types (services.fixed.items order) plus Implant Solutions.
+enum PortfolioFolder {
+  ZIRCONIA_CROWNS
+  ZIRCONIA_BRIDGES
+  VENEERS
+  PFM
+  INLAY
+  ONLAY
+  PMMA
+  IMPLANT_SOLUTIONS
+}
+
+// One showcased case: bilingual copy + a folder + display order, with one or
+// more photos. Replaces a single entry of the old static gallery.ts + the
+// index-matched work.cases arrays in en.json/ar.json.
+model PortfolioItem {
+  id            String          @id @default(cuid())
+  folder        PortfolioFolder
+  titleEn       String          @map("title_en")
+  titleAr       String          @map("title_ar")
+  descriptionEn String          @map("description_en")
+  descriptionAr String          @map("description_ar")
+  // Display order within its folder (ascending). Ties break by createdAt.
+  order         Int             @default(0)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  images PortfolioImage[]
+
+  @@index([folder, order])
+  @@map("portfolio_items")
+}
+
+// A photo belonging to a PortfolioItem.
+model PortfolioImage {
+  id        String   @id @default(cuid())
+  itemId    String   @map("item_id")
+  // Storage object key (R2/S3) for admin-uploaded photos. For assets migrated
+  // from the original static gallery this holds the existing /public path
+  // (e.g. /images/gallery/x.jpeg) until a later phase moves serving to R2.
+  key       String
+  // Intrinsic pixel size, captured at upload — the zoom lightbox needs the true
+  // aspect ratio to lay out non-4:3 photos.
+  width     Int
+  height    Int
+  // Display order within the item (ascending), for multi-photo items.
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  item PortfolioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, order])
+  @@map("portfolio_images")
+}
