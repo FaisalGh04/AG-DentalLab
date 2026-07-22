@@ -1,3 +1,6 @@
+// @ts-nocheck
+// HISTORICAL (pre-Phase-C) — references the removed PortfolioFolder enum and the
+// dropped portfolio_items.folder column. Kept as a migration record. DO NOT RE-RUN.
 /**
  * One-time seed: migrate the original static "Our Work" gallery into the new
  * PortfolioItem / PortfolioImage tables, so nothing is lost when a later phase

@@ -165,25 +165,30 @@ model StageQuickAddStep {
 // public marketing assets (not the private, signed patient-case images).
 // ------------------------------------------------------------------
 
-// The Our Work folders. Values mirror the landing folders one-to-one: the seven
-// Fixed-Restoration types (services.fixed.items order) plus Implant Solutions.
-enum PortfolioFolder {
-  ZIRCONIA_CROWNS
-  ZIRCONIA_BRIDGES
-  VENEERS
-  PFM
-  INLAY
-  ONLAY
-  PMMA
-  IMPLANT_SOLUTIONS
+// DB-backed portfolio folder (Phase C: this replaces the old PortfolioFolder
+// enum, which has been dropped). Bilingual display name + free ordering,
+// admin-managed. Table stays `portfolio_folders` via @@map.
+model PortfolioFolder {
+  id        String   @id @default(cuid())
+  labelEn   String   @map("label_en")
+  labelAr   String   @map("label_ar")
+  // Display order across the whole Work section (ascending).
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  items PortfolioItem[]
+
+  @@index([order])
+  @@map("portfolio_folders")
 }
 
 // One showcased case: bilingual copy + a folder + display order, with one or
-// more photos. Replaces a single entry of the old static gallery.ts + the
-// index-matched work.cases arrays in en.json/ar.json.
+// more photos.
 model PortfolioItem {
   id            String          @id @default(cuid())
-  folder        PortfolioFolder
+  folderId      String          @map("folder_id")
+  folder        PortfolioFolder @relation(fields: [folderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   titleEn       String          @map("title_en")
   titleAr       String          @map("title_ar")
   descriptionEn String          @map("description_en")
@@ -195,7 +200,7 @@ model PortfolioItem {
 
   images PortfolioImage[]
 
-  @@index([folder, order])
+  @@index([folderId, order])
   @@map("portfolio_items")
 }
 
