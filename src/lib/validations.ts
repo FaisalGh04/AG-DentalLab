@@ -174,3 +174,56 @@ export const imageAttachSchema = z.object({
   stageId: z.string().trim().max(80).optional().nullable(),
 });
 export type ImageAttachInput = z.infer<typeof imageAttachSchema>;
+
+// --- Portfolio ("Our Work" showcase) --------------------------------
+
+// Folder CRUD (admin-managed portfolio_folders). Order is server-assigned on
+// create (append) and changed via reorder; not part of the create payload.
+export const folderCreateSchema = z.object({
+  labelEn: z.string().trim().min(1, "English name is required").max(120),
+  labelAr: z.string().trim().min(1, "Arabic name is required").max(120),
+});
+export type FolderCreateInput = z.infer<typeof folderCreateSchema>;
+
+export const folderUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120).optional(),
+    labelAr: z.string().trim().min(1).max(120).optional(),
+    order: z.number().int().min(0).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type FolderUpdateInput = z.infer<typeof folderUpdateSchema>;
+
+export const portfolioItemCreateSchema = z.object({
+  // DB-backed folder link — the folder each item belongs to.
+  folderId: z.string().cuid("A folder is required"),
+  titleEn: z.string().trim().min(1, "English title is required").max(160),
+  titleAr: z.string().trim().min(1, "Arabic title is required").max(160),
+  descriptionEn: z
+    .string()
+    .trim()
+    .min(1, "English description is required")
+    .max(2000),
+  descriptionAr: z
+    .string()
+    .trim()
+    .min(1, "Arabic description is required")
+    .max(2000),
+  // Optional on create — the route appends to the end of the folder when omitted.
+  order: z.number().int().min(0).optional(),
+});
+export type PortfolioItemCreateInput = z.infer<typeof portfolioItemCreateSchema>;
+
+export const portfolioItemUpdateSchema = portfolioItemCreateSchema
+  .partial()
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type PortfolioItemUpdateInput = z.infer<typeof portfolioItemUpdateSchema>;
+
+// Image metadata sent alongside a multipart upload. The file's bytes are
+// validated server-side (size + magic-byte sniff); these dimensions are
+// client-measured and used only for gallery layout.
+export const portfolioImageMetaSchema = z.object({
+  width: z.coerce.number().int().positive().max(20000),
+  height: z.coerce.number().int().positive().max(20000),
+});
+export type PortfolioImageMetaInput = z.infer<typeof portfolioImageMetaSchema>;
