@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-portfolio": "tsx prisma/seed-portfolio.ts",
-    "db:backfill-folders": "tsx prisma/backfill-folders.ts"
+    "db:backfill-folders": "tsx prisma/backfill-folders.ts",
+    "db:seed-case-groups": "tsx prisma/seed-case-groups.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

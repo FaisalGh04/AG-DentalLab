@@ -152,10 +152,91 @@ model StageQuickAddStep {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Phase 1 (case-group migration): nullable link to the DB-backed CaseStage that
+  // (collectionId, stageId) resolves to. Additive — the string columns above stay
+  // the source of truth until a later phase re-parents these chips fully.
+  caseStageId  String?    @map("case_stage_id")
+  caseStage    CaseStage? @relation(fields: [caseStageId], references: [id], onDelete: Cascade)
+
   // One chip per English label within a stage (prevents duplicate chips).
   @@unique([collectionId, stageId, labelEn])
   @@index([collectionId, stageId])
+  @@index([caseStageId])
   @@map("stage_quick_add_steps")
+}
+
+// ------------------------------------------------------------------
+// DB-backed case lifecycle taxonomy (Phase 1 of the case-group migration).
+// Replaces the static PRODUCTION_COLLECTIONS in src/lib/production-templates.ts,
+// preserving every id so live case data keeps resolving:
+//   - a "collection" becomes a CaseStageSet (id = the legacy collection kebab id,
+//     which PatientCase.collection_id points at)
+//   - a CaseGroup is the new parent (Zirconia C&B, Implant, ...) with a Digital
+//     and/or Regular stage-set (independent type axis; <= 1 set per type)
+//   - a CaseStage keeps stage_key = the legacy stage id (what current_stage_id,
+//     hidden_stage_ids, CaseProgress.stage_id and CaseImage.stage_id resolve to)
+// Additive only in Phase 1: seeded to mirror the static config, the app does not
+// read these tables yet.
+// ------------------------------------------------------------------
+
+enum CaseWorkflowType {
+  REGULAR
+  DIGITAL
+}
+
+model CaseGroup {
+  id        String         @id @default(cuid())
+  labelEn   String         @map("label_en")
+  labelAr   String         @map("label_ar")
+  order     Int            @default(0)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt      @map("updated_at")
+
+  stageSets CaseStageSet[]
+
+  @@index([order])
+  @@map("case_groups")
+}
+
+model CaseStageSet {
+  // id has NO @default — seeded with the legacy collection kebab id so that
+  // PatientCase.collection_id keeps resolving. Admin-created sets get a cuid.
+  id        String           @id
+  groupId   String           @map("group_id")
+  group     CaseGroup        @relation(fields: [groupId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  type      CaseWorkflowType
+  labelEn   String           @map("label_en")
+  labelAr   String           @map("label_ar")
+  order     Int              @default(0)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt      @map("updated_at")
+
+  stages CaseStage[]
+
+  // A group has at most one Regular and one Digital stage-set.
+  @@unique([groupId, type])
+  @@index([groupId])
+  @@map("case_stage_sets")
+}
+
+model CaseStage {
+  id         String           @id @default(cuid())
+  stageSetId String           @map("stage_set_id")
+  stageSet   CaseStageSet     @relation(fields: [stageSetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  // stage_key = the legacy stage id, unique within its set — what live case data
+  // (current_stage_id, hidden_stage_ids, CaseProgress/CaseImage.stage_id) resolves to.
+  stageKey   String           @map("stage_key")
+  labelEn    String           @map("label_en")
+  labelAr    String           @map("label_ar")
+  order      Int              @default(0)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt      @map("updated_at")
+
+  quickAddSteps StageQuickAddStep[]
+
+  @@unique([stageSetId, stageKey])
+  @@index([stageSetId, order])
+  @@map("case_stages")
 }
 
 // ------------------------------------------------------------------
