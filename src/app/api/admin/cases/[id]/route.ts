@@ -8,6 +8,7 @@ import { caseUpdateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
 import { deleteObject } from "@/lib/s3";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
+import { getLifecycleConfig } from "@/lib/lifecycle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     // Resolve the lifecycle selection. Switching collection resets the current
     // stage (to the new collection's first) and hidden list unless the client
     // sent explicit values. Everything is validated + isCompleted re-derived.
+    const config = await getLifecycleConfig();
     const collectionId =
       input.collectionId !== undefined ? input.collectionId : existing.collectionId;
     const collectionChanged =
@@ -55,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       input.currentStageId !== undefined
         ? input.currentStageId
         : collectionChanged
-          ? firstStageId(collectionId)
+          ? firstStageId(config, collectionId)
           : existing.currentStageId;
     const hiddenStageIds =
       input.hiddenStageIds !== undefined
@@ -63,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         : collectionChanged
           ? []
           : existing.hiddenStageIds;
-    const life = normalizeLifecycle(collectionId, currentStageId, hiddenStageIds);
+    const life = normalizeLifecycle(config, collectionId, currentStageId, hiddenStageIds);
 
     const updated = await prisma.patientCase.update({
       where: { id },

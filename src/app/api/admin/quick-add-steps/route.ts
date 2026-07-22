@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
 import { quickAddStepCreateSchema } from "@/lib/validations";
 import { getStage } from "@/lib/production-templates";
+import { getLifecycleConfig } from "@/lib/lifecycle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,8 +47,9 @@ export async function POST(req: NextRequest) {
 
     const input = quickAddStepCreateSchema.parse(await req.json());
 
-    // The collection/stage must be a real one from production-templates.ts.
-    if (!getStage(input.collectionId, input.stageId)) {
+    // The collection/stage must be a real one from the (DB-backed) lifecycle config.
+    const config = await getLifecycleConfig();
+    if (!getStage(config, input.collectionId, input.stageId)) {
       return apiError("Unknown collection or stage", 422);
     }
 

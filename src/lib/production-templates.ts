@@ -418,20 +418,36 @@ export const PRODUCTION_COLLECTIONS = [
   },
 ] as const satisfies ReadonlyArray<ProductionCollection>;
 
-/** Ordered list of collection ids for building dropdowns. */
+/**
+ * Ordered list of collection ids — the CANONICAL display order. Retained even
+ * after the DB-backed swap so getLifecycleConfig() can emit collections in this
+ * exact order for byte-identical dropdowns (the group-based reorder is Phase 4).
+ */
 export const COLLECTION_ORDER = PRODUCTION_COLLECTIONS.map((c) => c.id);
 
+// ---------------------------------------------------------------------------
+// Pure lifecycle helpers. Since the case-groups migration (Phase 2) these take
+// the `collections` config as their first argument instead of reading the static
+// array directly — the config is loaded once from the DB (src/lib/lifecycle.ts)
+// and threaded in, so the app reads admin-managed groups/stages while these stay
+// synchronous + pure. The static PRODUCTION_COLLECTIONS remains the outage fallback.
+// ---------------------------------------------------------------------------
+
 /** Look up a collection by its id. */
-export function getProductionCollection(id: string | null | undefined) {
-  return id ? PRODUCTION_COLLECTIONS.find((c) => c.id === id) : undefined;
+export function getProductionCollection(
+  collections: readonly ProductionCollection[],
+  id: string | null | undefined,
+) {
+  return id ? collections.find((c) => c.id === id) : undefined;
 }
 
 /** Find a stage (and its index) within a collection. */
 export function getStage(
+  collections: readonly ProductionCollection[],
   collectionId: string | null | undefined,
   stageId: string | null | undefined,
 ) {
-  const collection = getProductionCollection(collectionId);
+  const collection = getProductionCollection(collections, collectionId);
   if (!collection || !stageId) return undefined;
   const index = collection.stages.findIndex((s) => s.id === stageId);
   const stage = index === -1 ? undefined : collection.stages[index];
@@ -440,18 +456,22 @@ export function getStage(
 
 /** The stages that should be shown for a case (collection order minus hidden). */
 export function getVisibleStages(
+  collections: readonly ProductionCollection[],
   collectionId: string | null | undefined,
   hiddenStageIds: readonly string[] = [],
 ): TemplateStage[] {
-  const collection = getProductionCollection(collectionId);
+  const collection = getProductionCollection(collections, collectionId);
   if (!collection) return [];
   const hidden = new Set(hiddenStageIds);
   return collection.stages.filter((s) => !hidden.has(s.id));
 }
 
 /** First stage id of a collection (used as the default current stage). */
-export function firstStageId(collectionId: string | null | undefined) {
-  return getProductionCollection(collectionId)?.stages[0]?.id ?? null;
+export function firstStageId(
+  collections: readonly ProductionCollection[],
+  collectionId: string | null | undefined,
+) {
+  return getProductionCollection(collections, collectionId)?.stages[0]?.id ?? null;
 }
 
 /**
@@ -459,12 +479,13 @@ export function firstStageId(collectionId: string | null | undefined) {
  * collection. No collection or no current stage → not completed.
  */
 export function computeIsCompleted(
+  collections: readonly ProductionCollection[],
   collectionId: string | null | undefined,
   currentStageId: string | null | undefined,
   hiddenStageIds: readonly string[] = [],
 ): boolean {
   if (!collectionId || !currentStageId) return false;
-  const visible = getVisibleStages(collectionId, hiddenStageIds);
+  const visible = getVisibleStages(collections, collectionId, hiddenStageIds);
   const last = visible[visible.length - 1];
   return !!last && last.id === currentStageId;
 }
@@ -485,11 +506,12 @@ export interface NormalizedLifecycle {
  *  - isCompleted recomputed from the result
  */
 export function normalizeLifecycle(
+  collections: readonly ProductionCollection[],
   collectionId: string | null | undefined,
   currentStageId: string | null | undefined,
   hiddenStageIds: readonly string[] | null | undefined,
 ): NormalizedLifecycle {
-  const collection = getProductionCollection(collectionId);
+  const collection = getProductionCollection(collections, collectionId);
   if (!collection) {
     return {
       collectionId: null,
@@ -508,7 +530,7 @@ export function normalizeLifecycle(
     collectionId: collection.id,
     currentStageId: stage,
     hiddenStageIds: Array.from(new Set(hidden)),
-    isCompleted: computeIsCompleted(collection.id, stage, hidden),
+    isCompleted: computeIsCompleted(collections, collection.id, stage, hidden),
   };
 }
 

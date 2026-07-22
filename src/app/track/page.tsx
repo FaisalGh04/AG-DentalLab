@@ -3,6 +3,7 @@ import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { TrackClient } from "@/components/track/track-client";
 import { TrackHeader } from "@/components/track/track-header";
+import { getLifecycleConfig } from "@/lib/lifecycle";
 
 export const metadata: Metadata = {
   title: "Track Your Case",
@@ -11,7 +12,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/track" },
 };
 
-export default function TrackPage() {
+// ISR: the lifecycle config is loaded at build/revalidate time (not per request),
+// so the page stays statically cached. Rarely changes; refreshed at most hourly.
+export const revalidate = 3600;
+
+export default async function TrackPage() {
+  const lifecycleConfig = await getLifecycleConfig();
   return (
     <div className="dark min-h-dvh bg-background text-foreground">
       <Navbar />
@@ -34,7 +40,7 @@ export default function TrackPage() {
           <TrackHeader />
 
           <div className="mt-12">
-            <TrackClient />
+            <TrackClient config={lifecycleConfig} />
           </div>
         </div>
       </main>

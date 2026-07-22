@@ -52,6 +52,7 @@ import {
   bilingualLabel,
   localizedLabel,
 } from "@/lib/production-templates";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { ProgressDTO, QuickAddStepDTO } from "@/types/case";
 
@@ -73,6 +74,7 @@ export function ProgressManager({
   hiddenStageIds: string[];
 }) {
   const { t, locale } = useAdminI18n();
+  const { data: config = [] } = useLifecycleConfig();
   const add = useAddProgress(caseId);
   const update = useUpdateProgress(caseId);
   const remove = useDeleteProgress(caseId);
@@ -90,7 +92,7 @@ export function ProgressManager({
   const [editAr, setEditAr] = React.useState("");
   const [deleting, setDeleting] = React.useState<QuickAddStepDTO | null>(null);
 
-  const visibleStages = getVisibleStages(collectionId, hiddenStageIds);
+  const visibleStages = getVisibleStages(config, collectionId, hiddenStageIds);
   // Offer a "General" bucket only when the case actually has unscoped steps
   // (e.g. pre-existing test rows), so they stay reachable without cluttering the
   // picker for normal cases.
@@ -109,7 +111,7 @@ export function ProgressManager({
   }, [currentStageId, collectionId]);
 
   const activeStageId = selected === GENERAL ? null : selected;
-  const stage = getStage(collectionId, activeStageId)?.stage;
+  const stage = getStage(config, collectionId, activeStageId)?.stage;
 
   const stageOptions = [
     ...visibleStages.map((s) => ({ value: s.id, label: localizedLabel(s, locale) })),

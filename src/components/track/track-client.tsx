@@ -33,11 +33,18 @@ import {
   getProductionCollection,
   getVisibleStages,
   localizedLabel,
+  type ProductionCollection,
 } from "@/lib/production-templates";
 import { formatEstCompletion } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
 
-export function TrackClient() {
+export function TrackClient({
+  config,
+}: {
+  // DB-backed lifecycle config, fetched server-side in track/page.tsx and passed
+  // down so the public tracker reads admin-managed stages without a client round-trip.
+  config: readonly ProductionCollection[];
+}) {
   const { t, locale } = useI18n();
 
   const {
@@ -60,9 +67,9 @@ export function TrackClient() {
   const result = mutation.data;
 
   // The case's collection + its visible stages (hidden ones filtered out).
-  const collection = getProductionCollection(result?.collectionId);
+  const collection = getProductionCollection(config, result?.collectionId);
   const visibleStages = result
-    ? getVisibleStages(result.collectionId, result.hiddenStageIds)
+    ? getVisibleStages(config, result.collectionId, result.hiddenStageIds)
     : [];
   const stepperStages = visibleStages.map((s) => ({
     id: s.id,
@@ -193,6 +200,7 @@ export function TrackClient() {
                   </h2>
                 </div>
                 <CaseStateBadge
+                  config={config}
                   collectionId={result.collectionId}
                   currentStageId={result.currentStageId}
                   isCompleted={result.isCompleted}

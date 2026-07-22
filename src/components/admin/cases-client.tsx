@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CaseStateBadge } from "@/components/case/case-state-badge";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -46,6 +47,7 @@ import type { CaseCategory } from "@prisma/client";
 
 export function CasesClient() {
   const { t, locale } = useAdminI18n();
+  const { data: lifecycleConfig = [] } = useLifecycleConfig();
   const params = useSearchParams();
   const archivedParam = params.get("archived") === "true";
   const openNew = params.get("new") === "true";
@@ -271,6 +273,7 @@ export function CasesClient() {
                   <td className="px-5 py-4 text-muted-foreground">{c.caseType}</td>
                   <td className="px-5 py-4">
                     <CaseStateBadge
+                      config={lifecycleConfig}
                       collectionId={c.collectionId}
                       currentStageId={c.currentStageId}
                       isCompleted={c.isCompleted}
@@ -324,6 +327,7 @@ export function CasesClient() {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <TrackingIdCopy trackingId={c.trackingId} />
                 <CaseStateBadge
+                  config={lifecycleConfig}
                   collectionId={c.collectionId}
                   currentStageId={c.currentStageId}
                   isCompleted={c.isCompleted}

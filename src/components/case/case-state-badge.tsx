@@ -1,8 +1,14 @@
 import { Badge } from "@/components/ui/badge";
-import { getStage, localizedLabel } from "@/lib/production-templates";
+import {
+  getStage,
+  localizedLabel,
+  type ProductionCollection,
+} from "@/lib/production-templates";
 import type { Locale } from "@/lib/i18n/config";
 
 interface CaseStateBadgeProps {
+  /** DB-backed lifecycle config, supplied by the parent (hook or prop). */
+  config: readonly ProductionCollection[];
   collectionId: string | null;
   currentStageId: string | null;
   isCompleted: boolean;
@@ -17,6 +23,7 @@ interface CaseStateBadgeProps {
  * or "No collection" when none has been chosen. Replaces the old StatusBadge.
  */
 export function CaseStateBadge({
+  config,
   collectionId,
   currentStageId,
   isCompleted,
@@ -36,7 +43,7 @@ export function CaseStateBadge({
     return <Badge variant="neutral">{labels?.noCollection ?? "No collection"}</Badge>;
   }
 
-  const found = getStage(collectionId, currentStageId);
+  const found = getStage(config, collectionId, currentStageId);
   const label = found ? localizedLabel(found.stage, locale) : "In progress";
   return (
     <Badge variant="info">

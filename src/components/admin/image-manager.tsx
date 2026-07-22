@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUploadImage, useDeleteImage } from "@/hooks/use-progress";
 import { getStage, localizedLabel } from "@/lib/production-templates";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import type { ImageDTO } from "@/types/case";
 import {
@@ -33,13 +34,14 @@ export function ImageManager({
   currentStageId: string | null;
 }) {
   const { t, locale } = useAdminI18n();
+  const { data: config = [] } = useLifecycleConfig();
   // Uploads are tagged with the case's current stage (null → "General").
   const upload = useUploadImage(caseId, currentStageId);
   const remove = useDeleteImage(caseId);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const labelForStage = (stageId: string | null) => {
-    const stage = getStage(collectionId, stageId)?.stage;
+    const stage = getStage(config, collectionId, stageId)?.stage;
     return stage ? localizedLabel(stage, locale) : t("image.general");
   };
   const currentStageLabel = labelForStage(currentStageId);

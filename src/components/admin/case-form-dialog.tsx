@@ -27,8 +27,9 @@ import {
 import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
 import { CASE_CATEGORY_ORDER } from "@/lib/constants";
 import { getCaseTypesForCategory } from "@/lib/case-types";
-import { PRODUCTION_COLLECTIONS, localizedLabel } from "@/lib/production-templates";
+import { localizedLabel } from "@/lib/production-templates";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
@@ -43,6 +44,7 @@ interface Props {
 
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
   const { t, locale } = useAdminI18n();
+  const { data: lifecycleConfig = [] } = useLifecycleConfig();
   const isEdit = !!existing;
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
@@ -247,7 +249,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                 <SelectValue placeholder={t("form.pickCollection")} />
               </SelectTrigger>
               <SelectContent>
-                {PRODUCTION_COLLECTIONS.map((c) => (
+                {lifecycleConfig.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {localizedLabel(c, locale)}
                   </SelectItem>

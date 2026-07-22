@@ -8,6 +8,7 @@ import { caseCreateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
+import { getLifecycleConfig } from "@/lib/lifecycle";
 import type { CaseCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -47,9 +48,11 @@ export async function POST(req: NextRequest) {
 
     // If a collection is chosen, default the current stage to its first stage
     // (unless the client sent one). Normalize + derive isCompleted server-side.
+    const config = await getLifecycleConfig();
     const life = normalizeLifecycle(
+      config,
       input.collectionId,
-      input.currentStageId ?? firstStageId(input.collectionId),
+      input.currentStageId ?? firstStageId(config, input.collectionId),
       input.hiddenStageIds,
     );
 

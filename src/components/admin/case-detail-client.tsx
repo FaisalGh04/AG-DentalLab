@@ -36,8 +36,8 @@ import { ProgressManager } from "@/components/admin/progress-manager";
 import { ImageManager } from "@/components/admin/image-manager";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { useCase, useDeleteCase, useUpdateCase } from "@/hooks/use-cases";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import {
-  PRODUCTION_COLLECTIONS,
   getProductionCollection,
   getVisibleStages,
   firstStageId,
@@ -47,6 +47,7 @@ import { formatDate, formatEstCompletion, cn } from "@/lib/utils";
 
 export function CaseDetailClient({ id }: { id: string }) {
   const { t, locale } = useAdminI18n();
+  const { data: config = [] } = useLifecycleConfig();
   const router = useRouter();
   const params = useSearchParams();
   const { data: kase, isLoading } = useCase(id);
@@ -67,7 +68,7 @@ export function CaseDetailClient({ id }: { id: string }) {
       // and clears hidden stages — stage ids don't carry across collections.
       await update.mutateAsync({
         collectionId,
-        currentStageId: firstStageId(collectionId),
+        currentStageId: firstStageId(config, collectionId),
         hiddenStageIds: [],
       });
       toast.success(t("detail.toastCollectionUpdated"));
@@ -130,8 +131,8 @@ export function CaseDetailClient({ id }: { id: string }) {
     );
   }
 
-  const collection = getProductionCollection(kase.collectionId);
-  const visibleStages = getVisibleStages(kase.collectionId, kase.hiddenStageIds);
+  const collection = getProductionCollection(config, kase.collectionId);
+  const visibleStages = getVisibleStages(config, kase.collectionId, kase.hiddenStageIds);
   const stepperStages = visibleStages.map((s) => ({
     id: s.id,
     label: localizedLabel(s, locale),
@@ -176,6 +177,7 @@ export function CaseDetailClient({ id }: { id: string }) {
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <TrackingIdCopy trackingId={kase.trackingId} />
               <CaseStateBadge
+                config={config}
                 collectionId={kase.collectionId}
                 currentStageId={kase.currentStageId}
                 isCompleted={kase.isCompleted}
@@ -199,7 +201,7 @@ export function CaseDetailClient({ id }: { id: string }) {
                   <SelectValue placeholder={t("detail.selectCollection")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRODUCTION_COLLECTIONS.map((c) => (
+                  {config.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {localizedLabel(c, locale)}
                     </SelectItem>

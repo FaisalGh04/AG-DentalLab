@@ -1,7 +1,10 @@
 import { PrismaClient, CaseCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { generateUniqueTrackingId } from "../src/lib/tracking-id";
-import { computeIsCompleted } from "../src/lib/production-templates";
+import {
+  computeIsCompleted,
+  PRODUCTION_COLLECTIONS,
+} from "../src/lib/production-templates";
 
 const prisma = new PrismaClient();
 
@@ -45,6 +48,7 @@ async function main() {
         currentStageId,
         hiddenStageIds,
         isCompleted: computeIsCompleted(
+          PRODUCTION_COLLECTIONS,
           collectionId,
           currentStageId,
           hiddenStageIds,

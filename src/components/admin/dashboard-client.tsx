@@ -13,6 +13,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CaseStateBadge } from "@/components/case/case-state-badge";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { formatDate, formatEstCompletion } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function DashboardClient({
   recent: AdminCaseListItem[];
 }) {
   const { t } = useAdminI18n();
+  const { data: lifecycleConfig = [] } = useLifecycleConfig();
 
   const cards = [
     { key: "dashboard.totalCases", value: stats.total, icon: FolderKanban, tint: "bg-brand-50 text-brand-600 ring-brand-100" },
@@ -129,6 +131,7 @@ export function DashboardClient({
                   {formatDate(c.updatedAt)}
                 </span>
                 <CaseStateBadge
+                  config={lifecycleConfig}
                   collectionId={c.collectionId}
                   currentStageId={c.currentStageId}
                   isCompleted={c.isCompleted}
