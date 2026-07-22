@@ -1,4 +1,10 @@
-import { LayoutDashboard, FolderKanban, Archive, type LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Archive,
+  Images,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface AdminNavLink {
   href: string;
@@ -17,4 +23,5 @@ export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
   { href: "/admin", key: "nav.dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/cases", key: "nav.cases", icon: FolderKanban },
   { href: "/admin/cases?archived=true", key: "nav.archive", icon: Archive },
+  { href: "/admin/portfolio", key: "nav.portfolio", icon: Images },
 ];

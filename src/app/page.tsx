@@ -9,10 +9,16 @@ import { WorkGallery } from "@/components/landing/work-gallery";
 import { WhyUs } from "@/components/landing/why-us";
 import { Contact } from "@/components/landing/contact";
 import { SITE } from "@/lib/constants";
+import { getPortfolioFolders } from "@/lib/portfolio-service";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
+
+// ISR: the page stays statically generated and edge-cached; the portfolio query
+// runs at build/revalidate time (not per request), so the landing page keeps its
+// static rendering characteristics. Regenerated at most hourly.
+export const revalidate = 3600;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -31,7 +37,9 @@ const jsonLd = {
   sameAs: [SITE.instagramHref],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const workFolders = await getPortfolioFolders();
+
   return (
     <div className="dark landing-dark-shell text-foreground">
       {/* JSON-LD is a static, non-executable data block; no nonce needed. The
@@ -47,7 +55,7 @@ export default function HomePage() {
         <About />
         <Services />
         <MissionVision />
-        <WorkGallery />
+        <WorkGallery folders={workFolders} />
         <WhyUs />
         <Contact />
       </main>

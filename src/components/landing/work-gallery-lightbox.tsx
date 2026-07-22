@@ -1,58 +1,52 @@
 "use client";
 
 import Image from "next/image";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 /**
- * Case-photo lightbox for the work gallery. Split into its own module so the
- * Radix Dialog code is code-split out of the landing bundle and only fetched
- * when a visitor opens a case (dynamically imported by WorkGallery). Mounts
- * already-open; closing calls onClose so the parent can unmount it.
+ * View C — the full-size single-photo view. Presentational only: it renders the
+ * image + the item's title/description as the body of the shared category
+ * Dialog (no Dialog wrapper of its own). De-nesting the zoom out of a second
+ * Radix modal dialog is what removes the stacked-dialog fragility; navigation
+ * (back / close) is owned by the parent WorkCategoryLightbox.
+ *
+ * Provides the Dialog's accessible title/description while this view is active.
  */
-export function WorkGalleryLightbox({
+export function WorkZoomView({
   src,
   width,
   height,
   title,
   description,
-  onClose,
 }: {
   src: string;
   width: number;
   height: number;
   title: string;
   description: string;
-  onClose: () => void;
 }) {
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl border-brand-400/20 bg-background/96 p-3 sm:p-4">
-        <div className="flex flex-col gap-4">
-          <Image
-            src={src}
-            alt={title}
-            width={width}
-            height={height}
-            sizes="(min-width: 1024px) 720px, 92vw"
-            className="h-auto max-h-[70vh] w-full rounded-[1rem] object-contain"
-          />
-          {/* pe-8 keeps the title clear of the top-end close (X) button in
-              both LTR and RTL; bright text for readability on dark theme. */}
-          <div className="text-start">
-            <DialogTitle className="pe-8 font-display text-lg font-bold text-white sm:text-xl">
-              {title}
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-relaxed text-white/85">
-              {description}
-            </DialogDescription>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="flex flex-col gap-4">
+      <Image
+        src={src}
+        alt={title}
+        width={width}
+        height={height}
+        sizes="(min-width: 1024px) 720px, 92vw"
+        // Uploaded images serve via the /api proxy (302 → signed URL); the
+        // optimizer can't follow the redirect, so let the browser fetch
+        // directly. Seed /public paths stay optimized.
+        unoptimized={src.startsWith("/api/")}
+        className="h-auto max-h-[65vh] w-full rounded-[1rem] object-contain"
+      />
+      <div className="text-start">
+        <DialogTitle className="font-display text-lg font-bold text-white sm:text-xl">
+          {title}
+        </DialogTitle>
+        <DialogDescription className="mt-2 text-sm leading-relaxed text-white/85">
+          {description}
+        </DialogDescription>
+      </div>
+    </div>
   );
 }

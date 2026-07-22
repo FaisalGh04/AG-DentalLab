@@ -77,6 +77,8 @@
     "subtitle": "A curated selection of real cases — from single restorations to full-arch rehabilitations.",
     "openCase": "View case details",
     "openFolder": "View {name} cases",
+    "openImage": "View photo",
+    "back": "Back",
     "more": "More",
     "less": "Less",
     "folders": {

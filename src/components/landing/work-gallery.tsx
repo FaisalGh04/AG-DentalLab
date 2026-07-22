@@ -8,7 +8,7 @@ import { Images, ImageOff } from "lucide-react";
 import { Reveal, staggerContainer, staggerItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { useI18n } from "@/components/i18n/language-provider";
-import { WORK_FOLDERS, type WorkFolderId } from "@/lib/gallery";
+import type { PortfolioFolderView } from "@/types/portfolio";
 import { cn } from "@/lib/utils";
 
 // Code-split the category grid (Radix Dialog) out of the initial landing
@@ -22,14 +22,17 @@ const WorkCategoryLightbox = dynamic(
   { ssr: false },
 );
 
-export function WorkGallery() {
-  const { t } = useI18n();
-  const [openFolderId, setOpenFolderId] = useState<WorkFolderId | null>(null);
+export function WorkGallery({ folders }: { folders: PortfolioFolderView[] }) {
+  const { t, locale } = useI18n();
+  const isAr = locale === "ar";
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
+
+  const folderName = (f: PortfolioFolderView) => (isAr ? f.labelAr : f.labelEn);
 
   const activeFolder =
-    openFolderId === null
+    openFolder === null
       ? null
-      : (WORK_FOLDERS.find((f) => f.id === openFolderId) ?? null);
+      : (folders.find((f) => f.id === openFolder) ?? null);
 
   return (
     <section id="work" className="relative py-24 md:py-36">
@@ -46,8 +49,8 @@ export function WorkGallery() {
 
         {/* Folder cards. 3 cols on desktop, 2 on mobile. Auto-placement follows
             the <html> dir attribute, so RTL mirrors the flow with no
-            special-casing. Only non-empty folders reach here — empty Fixed tags
-            are dropped in gallery.ts. */}
+            special-casing. All 8 folders render — empty ones (no cases yet) show
+            the muted placeholder branch below. */}
         <motion.div
           variants={staggerContainer}
           initial="hidden"
@@ -55,35 +58,40 @@ export function WorkGallery() {
           viewport={{ once: true, margin: "-60px" }}
           className="mt-16 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5"
         >
-          {WORK_FOLDERS.map((folder, i) => {
-            const name = t(folder.labelKey);
-            const count = folder.images.length;
-            // Empty folders (Inlay, Onlay, PMMA) have no cover photo yet
-            // → they render the muted placeholder branch below.
-            const cover = folder.images[0] ?? null;
-            const isLast = i === WORK_FOLDERS.length - 1;
+          {folders.map((folder, i) => {
+            const name = folderName(folder);
+            const count = folder.items.length;
+            // Empty folders (no cases yet) have no cover photo → they render the
+            // muted placeholder branch below. Cover = first item's first image.
+            const cover = folder.items[0]?.images[0] ?? null;
+            const isLast = i === folders.length - 1;
             return (
               <motion.button
                 key={folder.id}
                 type="button"
                 variants={staggerItem}
                 whileHover={{ y: -4 }}
-                onClick={() => setOpenFolderId(folder.id)}
+                onClick={() => setOpenFolder(folder.id)}
                 aria-label={t("work.openFolder", { name })}
                 className={cn(
                   "group relative block overflow-hidden rounded-[1.5rem] border border-brand-400/20 text-start shadow-inner-glow transition-all duration-300 hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   // An odd number of folders leaves a lonely half-tile on the
                   // 2-col mobile layout → let the trailing one span both.
-                  isLast && WORK_FOLDERS.length % 2 === 1 && "col-span-2 md:col-span-1",
+                  isLast && folders.length % 2 === 1 && "col-span-2 md:col-span-1",
                 )}
               >
                 {cover ? (
                   <div className="relative aspect-[4/3] w-full">
                     <Image
-                      src={cover.src}
+                      src={cover.url}
                       alt=""
                       fill
                       sizes="(min-width: 768px) 30vw, 50vw"
+                      // Uploaded images serve via the /api proxy route, which
+                      // 302s to a signed URL — the Next optimizer can't follow
+                      // that, so the browser must fetch it directly. Direct
+                      // /public seed paths stay optimized.
+                      unoptimized={cover.url.startsWith("/api/")}
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                     />
                     {/* Legibility wash — kept strong so the folder name + count
@@ -128,13 +136,13 @@ export function WorkGallery() {
       </div>
 
       {/* Category grid for the opened folder — dynamically imported so Radix
-          Dialog only loads on first interaction. Photos + title are resolved
-          here from the gallery.ts folder mapping and the active locale. */}
+          Dialog only loads on first interaction. Items come from the DB-driven
+          folder; per-item captions resolve to the active locale inside. */}
       {activeFolder && (
         <WorkCategoryLightbox
-          images={activeFolder.images}
-          title={t(activeFolder.labelKey)}
-          onClose={() => setOpenFolderId(null)}
+          items={activeFolder.items}
+          title={folderName(activeFolder)}
+          onClose={() => setOpenFolder(null)}
         />
       )}
     </section>

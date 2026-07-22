@@ -3,6 +3,9 @@
 /.pnp
 .pnp.*
 
+# dev-only portfolio uploads (filesystem storage fallback when S3 is unset)
+/public/uploads
+
 # testing
 /coverage
 
@@ -46,6 +49,9 @@ yarn-error.log*
 
 # prisma
 /prisma/*.db
+
+# database backups (pg_dump) — never commit, contains full DB incl. auth data
+*.dump
 
 # sentry
 .sentryclirc
