@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { StageStepper } from "@/components/case/stage-stepper";
 import { CaseStateBadge } from "@/components/case/case-state-badge";
+import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -187,28 +188,17 @@ export function CaseDetailClient({ id }: { id: string }) {
             </div>
           </div>
 
-          {/* Collection + Stage pickers */}
+          {/* Workflow (type → group) + Stage pickers. The workflow picker hides
+              itself for non-production categories. Committing immediately, so we
+              ignore incomplete (null) selections. */}
           <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-auto">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("detail.collection")}
-              </label>
-              <Select
-                value={kase.collectionId ?? ""}
-                onValueChange={changeCollection}
-              >
-                <SelectTrigger className="w-full sm:w-52">
-                  <SelectValue placeholder={t("detail.selectCollection")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {config.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {localizedLabel(c, locale)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <WorkflowSelect
+              category={kase.category}
+              value={kase.collectionId ?? null}
+              onChange={(id) => {
+                if (id) changeCollection(id);
+              }}
+            />
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("detail.stage")}

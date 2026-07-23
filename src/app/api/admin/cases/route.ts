@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
-import { apiOk, handleApiError } from "@/lib/api";
+import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
 import { listCases } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
 import { caseCreateSchema } from "@/lib/validations";
+import { isProductionCategory } from "@/lib/case-types";
 import { normalizeName } from "@/lib/utils";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
@@ -42,6 +43,11 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const input = caseCreateSchema.parse(body);
+
+    // Production categories require a workflow on create (backstop for the form).
+    if (isProductionCategory(input.category) && !input.collectionId) {
+      return apiError("A workflow is required for this category.", 422);
+    }
 
     const norm = normalizeName(input.patientFirstName, input.patientLastName);
     const trackingId = await generateUniqueTrackingId();

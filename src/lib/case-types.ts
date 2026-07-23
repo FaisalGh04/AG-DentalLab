@@ -158,3 +158,23 @@ export function isValidCaseTypeForCategory(
 ) {
   return getCaseTypesForCategory(category).includes(caseType);
 }
+
+/**
+ * Categories that represent in-house restorative production and therefore REQUIRE
+ * a workflow (stage-set) on new cases. The rest are non-production (outsourced
+ * services, equipment, study models) — the workflow field is hidden for them.
+ * SPECIAL_TRAY / FLEX_DENTURE are fabricated but have no matching workflow group
+ * yet; move them here once such groups exist.
+ */
+export const PRODUCTION_CATEGORIES: readonly CaseCategory[] = [
+  "IMPLANT",
+  "C_AND_B",
+  "PRESSABLE_CERAMIC",
+  "VACUUM_FORMER",
+];
+
+export function isProductionCategory(
+  category: CaseCategory | "" | null | undefined,
+): boolean {
+  return !!category && PRODUCTION_CATEGORIES.includes(category as CaseCategory);
+}

@@ -26,10 +26,9 @@ import {
 } from "@/components/ui/select";
 import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
 import { CASE_CATEGORY_ORDER } from "@/lib/constants";
-import { getCaseTypesForCategory } from "@/lib/case-types";
-import { localizedLabel } from "@/lib/production-templates";
+import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
-import { useLifecycleConfig } from "@/hooks/use-lifecycle";
+import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
@@ -43,8 +42,7 @@ interface Props {
 }
 
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
-  const { t, locale } = useAdminI18n();
-  const { data: lifecycleConfig = [] } = useLifecycleConfig();
+  const { t } = useAdminI18n();
   const isEdit = !!existing;
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
@@ -62,6 +60,8 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     reset,
     setValue,
     watch,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<CaseCreateInput>({
     resolver: zodResolver(caseCreateSchema),
@@ -103,6 +103,14 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   }, [open, existing, reset]);
 
   async function onSubmit(values: CaseCreateInput) {
+    // A workflow is REQUIRED for production categories on NEW cases. On edit we
+    // grandfather existing collection-less cases (no hard block).
+    if (!isEdit && isProductionCategory(values.category) && !values.collectionId) {
+      setError("collectionId", { type: "manual", message: t("form.workflowRequired") });
+      return;
+    }
+    clearErrors("collectionId");
+
     // Combine the date (yyyy-mm-dd) and time (HH:mm) as a UTC wall-clock so the
     // stored value renders identically for every viewer. No date => null.
     const datePart = values.estimatedCompletionDate?.slice(0, 10);
@@ -232,31 +240,14 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          <Field
-            label={t("form.collectionOptional")}
+          <WorkflowSelect
+            category={category}
+            value={collectionId ?? null}
+            onChange={(id) =>
+              setValue("collectionId", id, { shouldDirty: true, shouldValidate: true })
+            }
             error={errors.collectionId?.message}
-          >
-            <Select
-              value={collectionId ?? ""}
-              onValueChange={(v) =>
-                setValue("collectionId", v, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("form.pickCollection")} />
-              </SelectTrigger>
-              <SelectContent>
-                {lifecycleConfig.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {localizedLabel(c, locale)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
