@@ -12,7 +12,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "language": "Language",
-    "portfolio": "Portfolio"
+    "portfolio": "Portfolio",
+    "caseGroups": "Workflows"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -253,6 +254,36 @@
     "toastImageRemoved": "Photo removed",
     "toastUnsupported": "{name} is not a supported image",
     "toastTooLarge": "{name} is too large (max 15MB)",
+    "toastError": "Something went wrong. Please try again."
+  },
+  "groups": {
+    "title": "Case Workflows",
+    "subtitle": "Manage the groups, their Regular/Digital workflows, and production stages.",
+    "loadError": "Could not load workflows.",
+    "addGroup": "Add group",
+    "nameEn": "Name (English)",
+    "nameAr": "Name (Arabic)",
+    "rename": "Rename",
+    "save": "Save",
+    "cancel": "Cancel",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "deleteGroup": "Delete group",
+    "deleteGroupBlocked": "Delete this group's workflows first",
+    "addWorkflow": "Add {type} workflow",
+    "deleteWorkflow": "Delete workflow",
+    "deleteWorkflowBlocked": "Move its cases and delete its stages first",
+    "addStage": "Add stage",
+    "deleteStage": "Delete stage",
+    "deleteStageBlocked": "In use by live cases — can't delete",
+    "noStages": "No stages yet.",
+    "inUse": "in use: {count}",
+    "type": { "REGULAR": "Regular", "DIGITAL": "Digital" },
+    "toastSaved": "Saved.",
+    "toastGroupAdded": "Group added.",
+    "toastWorkflowAdded": "Workflow added.",
+    "toastStageAdded": "Stage added.",
+    "toastDeleted": "Deleted.",
     "toastError": "Something went wrong. Please try again."
   }
 }

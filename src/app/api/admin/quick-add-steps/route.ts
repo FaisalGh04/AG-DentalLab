@@ -70,6 +70,14 @@ export async function POST(req: NextRequest) {
       select: { order: true },
     });
 
+    // Link the chip to its DB-backed CaseStage so it cascade-deletes with the
+    // stage (matching the Phase-1-backfilled chips). collectionId == stageSetId,
+    // stageId == stageKey.
+    const caseStage = await prisma.caseStage.findFirst({
+      where: { stageSetId: input.collectionId, stageKey: input.stageId },
+      select: { id: true },
+    });
+
     try {
       const created = await prisma.stageQuickAddStep.create({
         data: {
@@ -78,6 +86,7 @@ export async function POST(req: NextRequest) {
           labelEn: input.labelEn,
           labelAr: input.labelAr,
           order: (last?.order ?? -1) + 1,
+          caseStageId: caseStage?.id ?? null,
         },
       });
       return apiOk(created, 201);

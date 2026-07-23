@@ -227,3 +227,50 @@ export const portfolioImageMetaSchema = z.object({
   height: z.coerce.number().int().positive().max(20000),
 });
 export type PortfolioImageMetaInput = z.infer<typeof portfolioImageMetaSchema>;
+
+// --- Case groups / stage-sets / stages (admin lifecycle management) --
+export const caseGroupCreateSchema = z.object({
+  labelEn: z.string().trim().min(1, "English name is required").max(120),
+  labelAr: z.string().trim().min(1, "Arabic name is required").max(120),
+});
+export type CaseGroupCreateInput = z.infer<typeof caseGroupCreateSchema>;
+
+export const caseGroupUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120).optional(),
+    labelAr: z.string().trim().min(1).max(120).optional(),
+    order: z.number().int().min(0).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type CaseGroupUpdateInput = z.infer<typeof caseGroupUpdateSchema>;
+
+export const stageSetCreateSchema = z.object({
+  type: z.enum(["REGULAR", "DIGITAL"]),
+  labelEn: z.string().trim().min(1, "English name is required").max(120),
+  labelAr: z.string().trim().min(1, "Arabic name is required").max(120),
+});
+export type StageSetCreateInput = z.infer<typeof stageSetCreateSchema>;
+
+export const stageSetUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120).optional(),
+    labelAr: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type StageSetUpdateInput = z.infer<typeof stageSetUpdateSchema>;
+
+export const caseStageCreateSchema = z.object({
+  labelEn: z.string().trim().min(1, "English name is required").max(120),
+  labelAr: z.string().trim().min(1, "Arabic name is required").max(120),
+});
+export type CaseStageCreateInput = z.infer<typeof caseStageCreateSchema>;
+
+// stageKey is immutable — only labels + order are editable.
+export const caseStageUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120).optional(),
+    labelAr: z.string().trim().min(1).max(120).optional(),
+    order: z.number().int().min(0).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, "Nothing to update");
+export type CaseStageUpdateInput = z.infer<typeof caseStageUpdateSchema>;

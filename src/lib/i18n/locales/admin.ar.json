@@ -12,7 +12,8 @@
     "openMenu": "فتح القائمة",
     "closeMenu": "إغلاق القائمة",
     "language": "اللغة",
-    "portfolio": "معرض الأعمال"
+    "portfolio": "معرض الأعمال",
+    "caseGroups": "مسارات العمل"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -253,6 +254,36 @@
     "toastImageRemoved": "تمت إزالة الصورة",
     "toastUnsupported": "{name} ليست صورة مدعومة",
     "toastTooLarge": "{name} كبيرة جدًا (الحد الأقصى 15 ميجابايت)",
+    "toastError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+  },
+  "groups": {
+    "title": "مسارات عمل الحالات",
+    "subtitle": "إدارة المجموعات ومساراتها (تقليدي/رقمي) ومراحل الإنتاج.",
+    "loadError": "تعذّر تحميل مسارات العمل.",
+    "addGroup": "إضافة مجموعة",
+    "nameEn": "الاسم (إنجليزي)",
+    "nameAr": "الاسم (عربي)",
+    "rename": "إعادة تسمية",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "moveUp": "تحريك لأعلى",
+    "moveDown": "تحريك لأسفل",
+    "deleteGroup": "حذف المجموعة",
+    "deleteGroupBlocked": "احذف مسارات هذه المجموعة أولاً",
+    "addWorkflow": "إضافة مسار {type}",
+    "deleteWorkflow": "حذف المسار",
+    "deleteWorkflowBlocked": "انقل حالاته واحذف مراحله أولاً",
+    "addStage": "إضافة مرحلة",
+    "deleteStage": "حذف المرحلة",
+    "deleteStageBlocked": "قيد الاستخدام من حالات حيّة — لا يمكن الحذف",
+    "noStages": "لا توجد مراحل بعد.",
+    "inUse": "قيد الاستخدام: {count}",
+    "type": { "REGULAR": "تقليدي", "DIGITAL": "رقمي" },
+    "toastSaved": "تم الحفظ.",
+    "toastGroupAdded": "تمت إضافة المجموعة.",
+    "toastWorkflowAdded": "تمت إضافة المسار.",
+    "toastStageAdded": "تمت إضافة المرحلة.",
+    "toastDeleted": "تم الحذف.",
     "toastError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
   }
 }
