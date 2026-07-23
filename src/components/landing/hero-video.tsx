@@ -1,26 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import { Volume2, VolumeX, Maximize2, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useI18n } from "@/components/i18n/language-provider";
 
-// Code-split the expanded lightbox (Radix Dialog) out of the initial landing
-// bundle — it's only needed once a visitor taps "expand".
-const HeroVideoLightbox = dynamic(
-  () =>
-    import("@/components/landing/hero-video-lightbox").then(
-      (m) => m.HeroVideoLightbox,
-    ),
-  { ssr: false },
-);
-
-// Desktop source: full 1080x1920 clip (H.264 + AAC, 9:16, ~22 MB). Mobile
-// source: a 720x1280 / ~6 MB variant used on phones so cellular visitors get a
-// sharp clip without the ~22 MB desktop download. ASCII filenames so a Linux
-// build serves them without URL-encoding surprises. Poster is a first-frame JPG
-// for instant paint; the portrait (9:16) frame is filled with object-cover + a
-// top-biased object-position (keeps the face in view) below.
+// Desktop source: full 1080x1920 clip (H.264, video-only, 9:16, ~9 MB). Mobile
+// source: a 720x1280 / ~2.4 MB variant used on phones so cellular visitors get
+// a sharp clip without the full desktop download. ASCII filenames so a Linux
+// build serves them without URL-encoding surprises. Poster is a representative
+// still for instant paint; the portrait (9:16) frame is filled with object-cover
+// + a centered object-position (see the <video> comment) below.
 const DESKTOP_SRC = "/videos/main-video.mp4";
 const MOBILE_SRC = "/videos/main-video-mobile.mp4";
 const POSTER_SRC = "/videos/hero-poster.jpg";
@@ -42,7 +31,7 @@ type Decision = "pending" | "auto" | "manual";
  * - Connection/motion signals only gate AUTOPLAY, never file choice. Autoplay
  *   is suppressed under `prefers-reduced-motion` (accessibility) or a genuinely
  *   constrained link (`saveData` / 2g / slow-2g). Additionally, since the mobile
- *   clip is ~6 MB, autoplay is suppressed on 3g **only on phones** — a desktop
+ *   clip is a few MB, autoplay is suppressed on 3g **only on phones** — a desktop
  *   that misreports "3g" (see above) must still autoplay. Suppressed cases fall
  *   back to poster + explicit tap-to-play; everything else autoplays.
  */
@@ -58,8 +47,8 @@ function decidePlayback(): { autoplay: boolean; src: string } {
   const saveData = !!conn?.saveData;
   const et = conn?.effectiveType;
   const veryConstrained = saveData || et === "2g" || et === "slow-2g";
-  // Phones only: 3g auto-downloading the ~6 MB mobile clip is a lot of unasked
-  // data. Scoped to narrow viewports so a desktop misreporting "3g" is unaffected.
+  // Phones only: 3g auto-downloading the mobile clip is a lot of unasked data.
+  // Scoped to narrow viewports so a desktop misreporting "3g" is unaffected.
   const mobile3g = !wide && et === "3g";
 
   return {
@@ -71,18 +60,15 @@ function decidePlayback(): { autoplay: boolean; src: string } {
 /**
  * Background intro video for the hero panel. It autoplays muted and looping
  * (iOS-safe via playsInline) — desktop (>=768px) pulls the full 1080p clip,
- * phones pull the ~6 MB 720p variant. Autoplay is suppressed under
+ * phones pull the ~2.4 MB 720p variant. Autoplay is suppressed under
  * prefers-reduced-motion, a genuinely constrained link (saveData / 2g / slow-2g),
- * or 3g on phones (where the ~6 MB clip is a lot of unprompted data) — those
- * fall back to the poster + a tap-to-play control. A dark gradient overlay keeps
- * foreground text legible; mute/unmute + expand-to-lightbox controls appear once
- * playing.
+ * or 3g on phones — those fall back to the poster + a tap-to-play control. A dark
+ * gradient overlay keeps foreground text legible. The clip is a muted, video-only
+ * background ambience — there are no on-screen audio or expand controls.
  */
 export function HeroVideo() {
   const { t } = useI18n();
   const bgRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true);
-  const [expanded, setExpanded] = useState(false);
   // Resolved on the client after mount so SSR/first render stay deterministic
   // (and the page stays statically generatable).
   const [decision, setDecision] = useState<Decision>("pending");
@@ -111,22 +97,10 @@ export function HeroVideo() {
     if (!v) return;
     v.src = playbackSrc;
     v.muted = true;
-    setMuted(true);
     void v
       .play()
       .then(() => setStarted(true))
       .catch(() => {});
-  };
-
-  const toggleMute = () => {
-    const v = bgRef.current;
-    if (!v) return;
-    const next = !muted;
-    v.muted = next;
-    setMuted(next);
-    // Unmuting after a muted autoplay may need an explicit play() to satisfy
-    // the browser's gesture requirement for audible playback.
-    if (!next) void v.play().catch(() => {});
   };
 
   return (
@@ -137,14 +111,16 @@ export function HeroVideo() {
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
         {/* Fills the whole panel (no narrow letterboxed strip). The portrait
-            (9:16) clip is cropped L/R by object-cover, but object-position pulls
-            the crop toward the top of the frame so the subject's face stays in
-            view rather than centering on the torso/hands. The src is set from an
-            effect (device-dependent); preload="none" so nothing downloads until
-            we decide to play. */}
+            (9:16) source is a montage/B-roll ending on a branded logo card, so
+            object-position stays CENTERED: there's no single fixed subject to
+            bias toward, and a top bias would slice the end-card wordmark/tagline
+            off in the desktop crop band. object-cover crops L/R on desktop and
+            top/bottom minimally on phones. The src is set from an effect
+            (device-dependent); preload="none" so nothing downloads until we
+            decide to play. */}
         <video
           ref={bgRef}
-          className="absolute inset-0 h-full w-full object-cover object-[center_35%]"
+          className="absolute inset-0 h-full w-full object-cover object-center"
           poster={POSTER_SRC}
           muted
           loop
@@ -156,11 +132,12 @@ export function HeroVideo() {
         <div className="absolute inset-0 bg-ink/25" />
       </div>
 
-      {/* Controls — bottom end corner (mirrors L/R via the dir attribute).
-          Before playback starts on a gated device, a single play control is
-          shown; once playing, the mute + expand controls take over. */}
-      <div className="absolute bottom-4 end-4 z-20 flex gap-2">
-        {decision === "manual" && !started && (
+      {/* Tap-to-play — shown only before playback starts on a gated device
+          (reduced-motion / constrained link). Bottom end corner (mirrors L/R
+          via the dir attribute). No mute/expand controls: the clip is a muted
+          background ambience. */}
+      {decision === "manual" && !started && (
+        <div className="absolute bottom-4 end-4 z-20 flex gap-2">
           <button
             type="button"
             onClick={startManual}
@@ -169,45 +146,7 @@ export function HeroVideo() {
           >
             <Play className="h-5 w-5" />
           </button>
-        )}
-
-        {started && (
-          <>
-            <button
-              type="button"
-              onClick={toggleMute}
-              aria-label={muted ? t("hero.unmuteAudio") : t("hero.muteAudio")}
-              aria-pressed={!muted}
-              className={CONTROL_CLASS}
-            >
-              {muted ? (
-                <VolumeX className="h-5 w-5" />
-              ) : (
-                <Volume2 className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              aria-label={t("hero.expandVideo")}
-              className={CONTROL_CLASS}
-            >
-              <Maximize2 className="h-5 w-5" />
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Expanded lightbox — full controls, audio on by default. Dynamically
-          imported, so it (and Radix Dialog) only loads when actually opened.
-          Uses whichever source the device is already playing. */}
-      {expanded && (
-        <HeroVideoLightbox
-          src={playbackSrc}
-          poster={POSTER_SRC}
-          title={t("hero.videoTitle")}
-          onClose={() => setExpanded(false)}
-        />
+        </div>
       )}
     </>
   );
