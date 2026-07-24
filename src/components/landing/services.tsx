@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Layers, Anchor, Shield, Cpu } from "lucide-react";
+import { Layers, Crown, Shield, Cpu } from "lucide-react";
 import { Reveal, staggerContainer, staggerItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { useI18n } from "@/components/i18n/language-provider";
@@ -9,7 +9,7 @@ import { useI18n } from "@/components/i18n/language-provider";
 // Icon + i18n key per service; titles and item chips resolve via t()/tList().
 const SERVICES = [
   { icon: Layers, key: "fixed" },
-  { icon: Anchor, key: "implant" },
+  { icon: Crown, key: "implant" },
   { icon: Shield, key: "oral" },
   { icon: Cpu, key: "digital" },
 ];
