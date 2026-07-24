@@ -6,6 +6,12 @@
 # dev-only portfolio uploads (filesystem storage fallback when S3 is unset)
 /public/uploads
 
+# local staging area for source media before processing — never commit
+/raw-uploads
+
+# stray local installers/binaries
+*.exe
+
 # testing
 /coverage
 
