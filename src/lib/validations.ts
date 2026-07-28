@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { isValidCaseTypeForCategory } from "@/lib/case-types";
+import { RECEIVED_BY_OPTIONS } from "@/lib/constants";
 import {
   MAX_IMAGE_BYTES,
   ALLOWED_IMAGE_LABEL,
@@ -79,7 +80,26 @@ const caseInputBaseSchema = z.object({
   notes: z.string().trim().max(2000).optional().nullable(),
 });
 
-export const caseCreateSchema = caseInputBaseSchema.superRefine((data, ctx) => {
+/**
+ * receivedBy is WRITE-ONCE: it lives on the create schema only, never on the
+ * base, so `caseInputBaseSchema.partial()` below cannot pick it up. That is
+ * enforcement layers 1 + 2 — `CaseUpdateInput` has no such property (TS won't
+ * compile a client that sends it), and because zod objects are non-strict,
+ * caseUpdateSchema.parse() silently strips an injected receivedBy off a crafted
+ * body. Layers 3 + 4 are the 422 guard and the omitted Prisma field in
+ * src/app/api/admin/cases/[id]/route.ts.
+ *
+ * `.extend()` has to happen before `.superRefine()` — the latter returns a
+ * ZodEffects, which has no .extend().
+ */
+const caseCreateBaseSchema = caseInputBaseSchema.extend({
+  receivedBy: z.enum(RECEIVED_BY_OPTIONS, {
+    required_error: "Received by is required",
+    invalid_type_error: "Received by is required",
+  }),
+});
+
+export const caseCreateSchema = caseCreateBaseSchema.superRefine((data, ctx) => {
   if (!isValidCaseTypeForCategory(data.category, data.caseType)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

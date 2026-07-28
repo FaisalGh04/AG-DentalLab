@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,8 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { caseCreateSchema, type CaseCreateInput } from "@/lib/validations";
-import { CASE_CATEGORY_ORDER } from "@/lib/constants";
+import {
+  caseCreateSchema,
+  caseUpdateSchema,
+  type CaseCreateInput,
+} from "@/lib/validations";
+import { CASE_CATEGORY_ORDER, RECEIVED_BY_OPTIONS } from "@/lib/constants";
 import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
@@ -54,6 +58,19 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   // date on submit. Empty string = no specific time (stored as 00:00 UTC).
   const [estTime, setEstTime] = React.useState("");
 
+  // Edit validates against the UPDATE schema, which has no receivedBy. Using the
+  // create schema here would make the required receivedBy block saving any other
+  // field on a legacy case whose value is null. The cast is safe: CaseUpdateInput
+  // is a partial of the same base, so it validates a strict subset of the fields
+  // this form holds.
+  const resolver = React.useMemo(
+    () =>
+      zodResolver(
+        isEdit ? caseUpdateSchema : caseCreateSchema,
+      ) as Resolver<CaseCreateInput>,
+    [isEdit],
+  );
+
   const {
     register,
     handleSubmit,
@@ -64,7 +81,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     clearErrors,
     formState: { errors },
   } = useForm<CaseCreateInput>({
-    resolver: zodResolver(caseCreateSchema),
+    resolver,
     defaultValues: {
       category: undefined as unknown as CaseCategory,
       collectionId: null,
@@ -81,6 +98,8 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         caseType: existing.caseType,
         category: existing.category,
         collectionId: existing.collectionId,
+        // receivedBy is deliberately NOT hydrated as a form value — it is
+        // write-once and rendered as read-only text below, never registered.
         estimatedCompletionDate: existing.estimatedCompletionDate
           ? existing.estimatedCompletionDate.slice(0, 10)
           : "",
@@ -95,6 +114,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         caseType: "",
         category: undefined as unknown as CaseCategory,
         collectionId: null,
+        receivedBy: undefined as unknown as CaseCreateInput["receivedBy"],
         estimatedCompletionDate: "",
         notes: "",
       });
@@ -114,23 +134,24 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     // Combine the date (yyyy-mm-dd) and time (HH:mm) as a UTC wall-clock so the
     // stored value renders identically for every viewer. No date => null.
     const datePart = values.estimatedCompletionDate?.slice(0, 10);
-    const payload = {
-      ...values,
-      estimatedCompletionDate: datePart
-        ? new Date(`${datePart}T${estTime || "00:00"}:00.000Z`).toISOString()
-        : null,
-    };
+    const estimatedCompletionDate = datePart
+      ? new Date(`${datePart}T${estTime || "00:00"}:00.000Z`).toISOString()
+      : null;
 
     try {
       if (isEdit) {
-        const res = await update.mutateAsync(payload);
+        // receivedBy is write-once: strip it client-side so a PATCH body can
+        // never carry it. The route 422s if it does; `rest` is CaseUpdateInput.
+        const { receivedBy, ...rest } = values;
+        void receivedBy;
+        const res = await update.mutateAsync({ ...rest, estimatedCompletionDate });
         toast.success(t("form.toastUpdated"));
         onOpenChange(false);
         onSaved?.(res.id);
         return;
       }
 
-      const res = await create.mutateAsync(payload);
+      const res = await create.mutateAsync({ ...values, estimatedCompletionDate });
       toast.success(t("form.toastCreated"));
       onOpenChange(false);
       setCreatedTrackingId(res.trackingId);
@@ -143,6 +164,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const category = watch("category");
   const collectionId = watch("collectionId");
   const caseType = watch("caseType");
+  const receivedBy = watch("receivedBy");
   const availableCaseTypes = getCaseTypesForCategory(category);
 
   return (
@@ -264,6 +286,46 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
               />
             </Field>
           </div>
+
+          {/* Received By — who logged the case in. Set ONCE at creation: in edit
+              mode it is plain read-only text, never an input, and contributes
+              nothing to the submitted payload. */}
+          {isEdit ? (
+            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("form.receivedBy")}
+              </p>
+              <p className="mt-2 font-medium text-ink">
+                {existing?.receivedBy || "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("form.receivedByLocked")}
+              </p>
+            </div>
+          ) : (
+            <Field label={t("form.receivedBy")} error={errors.receivedBy?.message}>
+              <Select
+                value={receivedBy ?? ""}
+                onValueChange={(v) =>
+                  setValue("receivedBy", v as CaseCreateInput["receivedBy"], {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("form.selectReceivedBy")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {RECEIVED_BY_OPTIONS.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
 
           <Field label={t("form.notes")} error={errors.notes?.message}>
             <Textarea

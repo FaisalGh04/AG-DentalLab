@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
         patientLastName: input.patientLastName,
         patientFullNameNorm: norm,
         doctorName: input.doctorName,
+        // Write-once — the only place received_by is ever set. See the PATCH
+        // route, which rejects any later attempt to change it.
+        receivedBy: input.receivedBy,
         caseType: input.caseType,
         category: input.category,
         collectionId: life.collectionId,

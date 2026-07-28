@@ -5,6 +5,7 @@ import {
   computeIsCompleted,
   PRODUCTION_COLLECTIONS,
 } from "../src/lib/production-templates";
+import { RECEIVED_BY_OPTIONS } from "../src/lib/constants";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +43,9 @@ async function main() {
         patientLastName: "Khalil",
         patientFullNameNorm: normalizeName("Sara", "Khalil"),
         doctorName: "Dr. Omar Haddad",
+        // Required since Phase B. Any value from RECEIVED_BY_OPTIONS is valid;
+        // the seed is demo data, so the first entry is arbitrary but real.
+        receivedBy: RECEIVED_BY_OPTIONS[0],
         caseType: "Ivoclar Prime ZiR",
         category: CaseCategory.C_AND_B,
         collectionId,

@@ -62,6 +62,12 @@ export interface AdminCaseDTO extends CaseLifecycleFields {
   patientFirstName: string;
   patientLastName: string;
   doctorName: string;
+  /**
+   * Who logged this case into the system, at intake. Write-once, and required
+   * at the DB level as of Phase B. Admin-only — deliberately absent from
+   * PublicCaseDTO.
+   */
+  receivedBy: string;
   caseType: string;
   category: CaseCategory;
   estimatedCompletionDate: string | null;

@@ -35,10 +35,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (denied) return denied;
 
     const { id } = await params;
+
+    // Enforcement layer 3 for the write-once receivedBy. caseUpdateSchema would
+    // silently strip the key (zod objects are non-strict) and the `data` below
+    // never names it — but a silent drop makes a real client bug look like a
+    // successful save, so reject loudly instead. Checked BEFORE the row lookup:
+    // the request is invalid regardless of whether the case exists, and this
+    // avoids a DB round trip (and any existence oracle) on a rejected body.
+    const body = await req.json();
+    if (body && typeof body === "object" && "receivedBy" in body) {
+      return apiError("Received By cannot be changed after creation.", 422);
+    }
+
     const existing = await prisma.patientCase.findUnique({ where: { id } });
     if (!existing) return apiError("Case not found", 404);
 
-    const input = caseUpdateSchema.parse(await req.json());
+    const input = caseUpdateSchema.parse(body);
 
     const firstName = input.patientFirstName ?? existing.patientFirstName;
     const lastName = input.patientLastName ?? existing.patientLastName;

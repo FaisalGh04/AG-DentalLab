@@ -55,6 +55,12 @@ model PatientCase {
   // Denormalized lowercased full name for fast, case-insensitive lookup.
   patientFullNameNorm    String       @map("patient_full_name_norm")
   doctorName             String       @map("doctor_name")
+  // WHO LOGGED THE CASE INTO THE SYSTEM at intake (not who handled production).
+  // Write-once: set on create, never updatable — receivedBy is absent from
+  // caseUpdateSchema and the PATCH route rejects it (see src/lib/validations.ts).
+  // Required as of Phase B (20260728140000_received_by_not_null); the pre-existing
+  // rows were removed rather than backfilled, so no sentinel reached production.
+  receivedBy             String       @map("received_by")
   caseType               String       @map("case_type")
   category               CaseCategory
   // Selected production template (src/lib/production-templates.ts). Both nullable:

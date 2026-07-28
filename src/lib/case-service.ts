@@ -160,6 +160,7 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
     patientFirstName: c.patientFirstName,
     patientLastName: c.patientLastName,
     doctorName: c.doctorName,
+    receivedBy: c.receivedBy,
     caseType: c.caseType,
     category: c.category,
     collectionId: c.collectionId,

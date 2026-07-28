@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   Layers,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -299,7 +300,9 @@ export function CaseDetailClient({ id }: { id: string }) {
           </div>
         )}
 
-        <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-5">
+        {/* 6 tiles → 2x3 on desktop. Read-only throughout: receivedBy is
+            write-once and has no inline editor by design. */}
+        <div className="grid gap-px bg-border/80 sm:grid-cols-2 lg:grid-cols-3">
           <Detail icon={Stethoscope} label={t("detail.doctor")} value={kase.doctorName} />
           <Detail icon={Hash} label={t("detail.trackingId")} value={kase.trackingId} />
           <Detail icon={Package} label={t("detail.caseType")} value={kase.caseType} />
@@ -307,6 +310,11 @@ export function CaseDetailClient({ id }: { id: string }) {
             icon={Tag}
             label={t("detail.category")}
             value={t(`category.${kase.category}`)}
+          />
+          <Detail
+            icon={UserCheck}
+            label={t("detail.receivedBy")}
+            value={kase.receivedBy || "—"}
           />
           <Detail
             icon={CalendarClock}

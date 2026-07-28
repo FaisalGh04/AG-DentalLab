@@ -1,0 +1,25 @@
+-- Phase B of the received-by change: make the column required.
+--
+-- Phase A (20260728120000_add_received_by) added received_by as NULLABLE with no
+-- default, deliberately, so no fabricated attribution was written to existing
+-- rows. This migration closes that out.
+--
+-- PRECONDITION, verified before applying:
+--   SELECT count(*) FROM patient_cases WHERE received_by IS NULL;  -->  0
+--
+-- The 8 pre-existing test cases were deleted rather than backfilled (see
+-- prisma/delete-test-cases-2026-07-28.ts); the 4 remaining real cases were set
+-- to their actual intake staff member. The planned legacy sentinel ("غير محدد")
+-- was therefore NEVER written to production, and both it and the backfill script
+-- were removed rather than left as dead code that could invite later misuse.
+--
+-- Safe to re-run against a DB that already has the constraint? No — SET NOT NULL
+-- is idempotent in effect but Prisma tracks this by migration name, so it applies
+-- exactly once.
+--
+-- The app layer has required receivedBy on create since Phase A, and the field is
+-- write-once (absent from caseUpdateSchema; the PATCH route 422s on it), so no
+-- row written after Phase A can be NULL.
+
+-- AlterTable
+ALTER TABLE "patient_cases" ALTER COLUMN "received_by" SET NOT NULL;
