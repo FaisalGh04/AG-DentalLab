@@ -34,6 +34,62 @@ export const searchSchema = z.object({
 });
 export type SearchInput = z.infer<typeof searchSchema>;
 
+/**
+ * PUBLIC doctor portal code: ag-{letters}{sequence}-{random4}.
+ *
+ * Case-insensitive on input (people type however they like) but normalised to
+ * the stored form: lowercase prefix/letters, uppercase random suffix.
+ *
+ * The shape is validated BEFORE any database work so malformed input is
+ * rejected without a query — and, importantly, a shape failure is reported the
+ * same way as "no such doctor", so the response never distinguishes
+ * "wrong format" from "no such code".
+ */
+export const doctorCodeSchema = z.object({
+  code: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v),
+    z
+      .string()
+      .regex(/^ag-[A-Za-z]{3}\d{3}-[A-Za-z0-9]{4}$/, "Invalid doctor code")
+      .transform((v) => {
+        const [prefix, suffix] = v.split("-").slice(0, 2).length ? [v.slice(0, v.lastIndexOf("-")), v.slice(v.lastIndexOf("-") + 1)] : [v, ""];
+        return `${prefix.toLowerCase()}-${suffix.toUpperCase()}`;
+      }),
+  ),
+});
+export type DoctorCodeInput = z.infer<typeof doctorCodeSchema>;
+
+/** True when the input looks like a doctor portal code rather than a case id. */
+export function isDoctorCodeInput(value: string): boolean {
+  return /^ag-[A-Za-z]{3}\d{3}-[A-Za-z0-9]{4}$/.test(value.trim());
+}
+
+/**
+ * The single /track input now accepts EITHER a case tracking id OR a doctor
+ * portal code, so the form must validate the union and the caller branches on
+ * the shape. The two lookups then use entirely separate API routes — the
+ * single-case tracker's code path is not shared or modified.
+ */
+export const trackInputSchema = z.object({
+  trackingId: z
+    .string()
+    .trim()
+    .min(1, "Enter a tracking ID or doctor code")
+    .refine(
+      (v) =>
+        /^AG-[A-HJ-NP-Z2-9]{6}$/.test(formatTrackingId(v)) ||
+        isDoctorCodeInput(v),
+      "Enter a valid tracking ID (AG-8F3K2A) or doctor code (ag-abc001-K7P2)",
+    ),
+});
+export type TrackInput = z.infer<typeof trackInputSchema>;
+
+/** Patient-name filter inside a doctor portal. Empty = no filter. */
+export const doctorPortalQuerySchema = z.object({
+  q: z.string().trim().max(80).optional(),
+  archived: z.boolean().optional(),
+});
+
 // --- Admin login ----------------------------------------------------
 export const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email"),

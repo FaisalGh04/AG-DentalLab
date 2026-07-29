@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -27,8 +27,14 @@ import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { ProgressTimeline } from "@/components/case/progress-timeline";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useI18n } from "@/components/i18n/language-provider";
-import { searchSchema, type SearchInput } from "@/lib/validations";
+import {
+  trackInputSchema,
+  isDoctorCodeInput,
+  type TrackInput,
+} from "@/lib/validations";
 import { apiFetch, ApiError } from "@/lib/fetcher";
+import { DoctorPortalView } from "@/components/track/doctor-portal-view";
+import type { PublicDoctorPortalDTO } from "@/types/case";
 import {
   getProductionCollection,
   getVisibleStages,
@@ -51,20 +57,68 @@ export function TrackClient({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SearchInput>({
-    resolver: zodResolver(searchSchema),
+  } = useForm<TrackInput>({
+    resolver: zodResolver(trackInputSchema),
     defaultValues: { trackingId: "" },
   });
 
-  const mutation = useMutation<PublicCaseDTO, ApiError, SearchInput>({
+  // Single-case tracker — UNCHANGED. Same route, same DTO, same behaviour.
+  const mutation = useMutation<PublicCaseDTO, ApiError, TrackInput>({
     mutationFn: (input) =>
       apiFetch<PublicCaseDTO>(
         `/api/track?trackingId=${encodeURIComponent(input.trackingId)}`,
       ),
   });
 
-  const onSubmit = (data: SearchInput) => mutation.mutate(data);
+  // Doctor portal — a SEPARATE route, so the tracker above cannot regress
+  // through shared code.
+  const [portalCode, setPortalCode] = React.useState<string | null>(null);
+  const [archived, setArchived] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+
+  React.useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const portalQuery = useQuery<PublicDoctorPortalDTO, ApiError>({
+    queryKey: ["doctor-portal", portalCode, archived, debouncedSearch],
+    enabled: !!portalCode,
+    queryFn: () => {
+      const sp = new URLSearchParams({ code: portalCode! });
+      if (archived) sp.set("archived", "true");
+      if (debouncedSearch.trim()) sp.set("q", debouncedSearch.trim());
+      return apiFetch<PublicDoctorPortalDTO>(`/api/track/doctor?${sp}`);
+    },
+  });
+
+  /**
+   * Branch on the INPUT SHAPE: AG-xxxxxx keeps the existing tracker path,
+   * ag-xxx000-XXXX opens the doctor portal. Each dispatches to its own route.
+   */
+  const onSubmit = (data: TrackInput) => {
+    const value = data.trackingId.trim();
+    if (isDoctorCodeInput(value)) {
+      mutation.reset();
+      setArchived(false);
+      setSearch("");
+      setDebouncedSearch("");
+      setPortalCode(value);
+      return;
+    }
+    setPortalCode(null);
+    mutation.mutate(data);
+  };
+
+  /** Opening a card falls through to the existing single-case tracker. */
+  const openCase = (trackingId: string) => {
+    setPortalCode(null);
+    mutation.mutate({ trackingId });
+  };
+
   const result = mutation.data;
+  const portal = portalQuery.data;
 
   // The case's collection + its visible stages (hidden ones filtered out).
   const collection = getProductionCollection(config, result?.collectionId);
@@ -149,7 +203,7 @@ export function TrackClient({
         )}
       </form>
 
-      {!mutation.data && !mutation.isError && !mutation.isPending && (
+      {!mutation.data && !mutation.isError && !mutation.isPending && !portalCode && (
         <div className="premium-panel mt-8 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/30 bg-brand-500/15 text-brand-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_34px_-12px_rgba(83,136,111,0.9)]">
             <ClipboardList className="h-6 w-6" />
@@ -162,6 +216,41 @@ export function TrackClient({
       )}
 
       <AnimatePresence mode="wait">
+        {portalQuery.isError && portalCode && (
+          <motion.div
+            key="portal-error"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mt-6"
+          >
+            <Card className="flex items-start gap-3 border-amber-300/35 bg-amber-500/10 p-5 text-amber-100">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-sm">{portalQuery.error.message}</p>
+            </Card>
+          </motion.div>
+        )}
+
+        {portal && portalCode && (
+          <motion.div
+            key="portal"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <DoctorPortalView
+              portal={portal}
+              config={config}
+              archived={archived}
+              search={search}
+              loading={portalQuery.isFetching}
+              onArchivedChange={setArchived}
+              onSearchChange={setSearch}
+              onOpenCase={openCase}
+            />
+          </motion.div>
+        )}
+
         {mutation.isError && (
           <motion.div
             key="error"

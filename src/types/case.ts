@@ -73,6 +73,44 @@ export interface PublicCaseDTO extends CaseLifecycleFields {
   images: ImageDTO[];
 }
 
+/**
+ * PUBLIC doctor-portal CARD. Strictly NARROWER than PublicCaseDTO.
+ *
+ * Deliberately EXCLUDED, and each for a reason:
+ *   progress[] / images[] — not needed on a card, and loading them for N cases
+ *                           multiplies both exposure and payload. The single-case
+ *                           tracker still serves them when a card is opened.
+ *   notes                 — internal lab instructions (S-M2), never public
+ *   receivedBy            — internal intake attribution
+ *   stageHistory          — internal operational timing
+ *   doctorId / any id     — no internal identifiers leave the server
+ *   hiddenStageIds        — per-case display config, not needed for a card
+ *
+ * patientName is redacted to "First L." by the same rule the single-case
+ * tracker uses. collectionId is present ONLY so the client can resolve a stage
+ * LABEL from the lifecycle config it already holds; it is already public on
+ * PublicCaseDTO, so it is not a new exposure.
+ */
+export interface PublicDoctorCaseDTO {
+  trackingId: string;
+  patientName: string;
+  caseType: string;
+  category: CaseCategory;
+  collectionId: string | null;
+  currentStageId: string | null;
+  isCompleted: boolean;
+  estimatedCompletionDate: string | null;
+}
+
+/** One page of a doctor's portal. The doctor name appears once, in the header. */
+export interface PublicDoctorPortalDTO {
+  doctorName: string;
+  activeCount: number;
+  archivedCount: number;
+  /** Either the active list or the archive, depending on the request. */
+  cases: PublicDoctorCaseDTO[];
+}
+
 /** ADMIN case (full detail, includes id). */
 export interface AdminCaseDTO extends CaseLifecycleFields {
   id: string;

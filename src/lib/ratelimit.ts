@@ -48,6 +48,38 @@ export const confirmationRatelimit = redis
     })
   : null;
 
+/**
+ * PUBLIC doctor portal — normal browsing (search, archive toggle). Parity with
+ * the single-case tracker.
+ */
+export const doctorPortalRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "1 m"),
+      analytics: true,
+      prefix: "rl:docportal",
+    })
+  : null;
+
+/**
+ * FAILED doctor-code lookups only — far stricter, because this is the
+ * enumeration signal.
+ *
+ * A doctor code exposes EVERY case that doctor has, not one, so guessing must
+ * cost more than guessing a tracking ID. Charging only MISSES means an attacker
+ * sweeping the keyspace is throttled almost immediately, while a real doctor —
+ * whose lookups succeed — never touches this budget. A flat limit would have
+ * punished both equally.
+ */
+export const doctorCodeMissRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      analytics: true,
+      prefix: "rl:doccode-miss",
+    })
+  : null;
+
 // --- Login brute-force protection ----------------------------------
 
 const AUTH_MAX_ATTEMPTS = 5;
