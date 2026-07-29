@@ -14,6 +14,21 @@ export function useDoctors() {
   });
 }
 
+/**
+ * Active doctors as {id, name} only, for the case-form picker.
+ *
+ * Derived from the same cached roster query (no extra request), but narrowed so
+ * the picker never holds portal codes it has no reason to see.
+ */
+export function useActiveDoctorOptions() {
+  return useQuery({
+    queryKey: KEY,
+    queryFn: () => apiFetch<DoctorDTO[]>("/api/admin/doctors"),
+    select: (rows) =>
+      rows.filter((d) => d.isActive).map((d) => ({ id: d.id, name: d.name })),
+  });
+}
+
 export function useCreateDoctor() {
   const qc = useQueryClient();
   return useMutation({

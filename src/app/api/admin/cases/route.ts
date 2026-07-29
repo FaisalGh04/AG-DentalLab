@@ -111,6 +111,8 @@ export async function POST(req: NextRequest) {
         patientLastName: input.patientLastName,
         patientFullNameNorm: norm,
         doctorName: input.doctorName,
+        // Roster link, or null for a free-text one-off doctor.
+        doctorId: input.doctorId ?? null,
         // Write-once — the only place received_by is ever set. See the PATCH
         // route, which rejects any later attempt to change it.
         receivedBy: input.receivedBy,

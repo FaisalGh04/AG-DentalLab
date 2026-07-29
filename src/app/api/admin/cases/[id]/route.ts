@@ -129,6 +129,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         patientLastName: lastName,
         patientFullNameNorm: norm,
         doctorName: input.doctorName ?? existing.doctorName,
+        // Plain field: retroactively linking a case to a roster doctor is NOT a
+        // lifecycle change, so it deliberately does not trigger the gate.
+        doctorId: input.doctorId !== undefined ? input.doctorId : existing.doctorId,
         caseType: input.caseType ?? existing.caseType,
         category: input.category ?? existing.category,
         collectionId: life.collectionId,

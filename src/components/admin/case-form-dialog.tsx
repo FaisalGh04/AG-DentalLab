@@ -34,6 +34,8 @@ import { useStaff } from "@/hooks/use-staff";
 import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
+import { DoctorCombobox } from "@/components/admin/doctor-combobox";
+import { useActiveDoctorOptions } from "@/hooks/use-doctors";
 import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useLifecycleConfig } from "@/hooks/use-lifecycle";
@@ -60,6 +62,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   // dropdown and the confirmation gate can never drift apart.
   const staff = useStaff();
   const confirmGate = useConfirmAction();
+  const doctorOptions = useActiveDoctorOptions();
   const { data: config = [] } = useLifecycleConfig();
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
@@ -108,6 +111,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         patientFirstName: existing.patientFirstName,
         patientLastName: existing.patientLastName,
         doctorName: existing.doctorName,
+        doctorId: existing.doctorId,
         caseType: existing.caseType,
         category: existing.category,
         collectionId: existing.collectionId,
@@ -124,6 +128,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         patientFirstName: "",
         patientLastName: "",
         doctorName: "",
+        doctorId: null,
         caseType: "",
         category: undefined as unknown as CaseCategory,
         collectionId: null,
@@ -216,6 +221,8 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const collectionId = watch("collectionId");
   const caseType = watch("caseType");
   const receivedBy = watch("receivedBy");
+  const doctorName = watch("doctorName");
+  const doctorId = watch("doctorId");
   const availableCaseTypes = getCaseTypesForCategory(category);
 
   return (
@@ -250,9 +257,62 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          <Field label={t("form.doctorName")} error={errors.doctorName?.message}>
-            <Input {...register("doctorName")} placeholder={t("form.doctorPlaceholder")} />
-          </Field>
+          {/* CREATE: one control does both — pick a roster doctor (which also
+              links the case) or type a one-off name. EDIT: the name stays a
+              plain input so linking can never rewrite the stored snapshot;
+              the link is a separate, explicit control below it. */}
+          {isEdit ? (
+            <>
+              <Field label={t("form.doctorName")} error={errors.doctorName?.message}>
+                <Input
+                  {...register("doctorName")}
+                  placeholder={t("form.doctorPlaceholder")}
+                />
+              </Field>
+              <Field label={t("doctorPick.linkLabel")}>
+                <Select
+                  value={doctorId ?? "__none__"}
+                  onValueChange={(v) =>
+                    setValue("doctorId", v === "__none__" ? null : v, {
+                      shouldDirty: true,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("doctorPick.linkPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      {t("doctorPick.notLinked")}
+                    </SelectItem>
+                    {(doctorOptions.data ?? []).map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t("doctorPick.linkHint")}
+                </p>
+              </Field>
+            </>
+          ) : (
+            <Field label={t("form.doctorName")} error={errors.doctorName?.message}>
+              <DoctorCombobox
+                value={doctorName ?? ""}
+                doctorId={doctorId ?? null}
+                onChange={(name, id) => {
+                  setValue("doctorName", name, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  setValue("doctorId", id, { shouldDirty: true });
+                }}
+                placeholder={t("form.doctorPlaceholder")}
+              />
+            </Field>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("form.category")} error={errors.category?.message}>

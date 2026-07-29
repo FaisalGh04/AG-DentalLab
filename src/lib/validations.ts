@@ -56,6 +56,16 @@ const caseInputBaseSchema = z.object({
   patientFirstName: z.string().trim().min(1, "First name is required").max(80),
   patientLastName: z.string().trim().min(1, "Last name is required").max(80),
   doctorName: z.string().trim().min(2, "Doctor name is required").max(120),
+  // Optional roster link. NULL = free-text one-off doctor. Lives on the BASE
+  // schema so it is editable after creation (retroactive linking), and because
+  // it is not a lifecycle field it never triggers the confirmation gate.
+  doctorId: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
   caseType: z.string().trim().min(2, "Case type is required").max(160),
   category: CaseCategoryEnum,
   // Production-template selection. The route validates that the stage belongs to

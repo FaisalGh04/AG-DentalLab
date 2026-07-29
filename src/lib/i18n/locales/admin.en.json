@@ -385,5 +385,17 @@
     "toastDeletedWithCases": "Doctor deleted — {count} case(s) unlinked, none removed",
     "toastRotated": "New code issued — {code}",
     "toastError": "Something went wrong"
+  },
+  "doctorPick": {
+    "roster": "Roster",
+    "linked": "Linked",
+    "noMatch": "No roster match — will be saved as typed",
+    "useAsTyped": "Use \"{name}\" as a one-off (not on the roster)",
+    "linkedHint": "Linked to the roster — this case will appear in that doctor's portal.",
+    "freeHint": "Pick from the roster, or type any name for a one-off doctor.",
+    "linkLabel": "Linked roster doctor",
+    "linkPlaceholder": "Not linked",
+    "notLinked": "— Not linked (one-off doctor) —",
+    "linkHint": "Linking makes this case appear in that doctor's portal. The doctor name above is kept as recorded and is not overwritten."
   }
 }
