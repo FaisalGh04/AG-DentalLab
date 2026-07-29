@@ -54,7 +54,15 @@ model PatientCase {
   patientLastName         String       @map("patient_last_name")
   // Denormalized lowercased full name for fast, case-insensitive lookup.
   patientFullNameNorm     String       @map("patient_full_name_norm")
+  // NAME SNAPSHOT, always the display value — never resolved through doctorId.
+  // Renaming a roster doctor must not rewrite what past cases say, the same
+  // reasoning that keeps receivedBy a snapshot below.
   doctorName              String       @map("doctor_name")
+  // Optional link to the Doctor roster. NULL = a free-text one-off doctor who
+  // is not on the roster; such a case can be linked retroactively if that
+  // doctor is added later. Only linked cases appear in a doctor's public
+  // portal. SetNull on delete: removing a roster entry never touches the case.
+  doctorId                String?      @map("doctor_id")
   // WHO LOGGED THE CASE INTO THE SYSTEM at intake (not who handled production).
   // Write-once: set on create, never updatable — receivedBy is absent from
   // caseUpdateSchema and the PATCH route rejects it (see src/lib/validations.ts).
@@ -83,6 +91,7 @@ model PatientCase {
   // this adds NO column to patient_cases. onDelete: SetNull there keeps the
   // audit trail after a case is deleted.
   actionLogs CaseActionLog[]
+  doctor     Doctor?         @relation(fields: [doctorId], references: [id], onDelete: SetNull)
 
   // Indexes tuned for the two hot paths: public tracking lookup + admin list.
   @@index([patientFullNameNorm])
@@ -90,6 +99,9 @@ model PatientCase {
   @@index([isCompleted])
   @@index([createdAt])
   @@index([doctorName])
+  // Public doctor portal: one doctor's cases, split active/archive, newest
+  // first — this composite covers the whole query in one index.
+  @@index([doctorId, isCompleted, createdAt])
   @@map("patient_cases")
 }
 
@@ -425,4 +437,60 @@ model CaseActionLog {
   @@index([createdAt])
   @@index([outcome, createdAt])
   @@map("case_action_logs")
+}
+
+// ==================================================================
+// Doctor roster + public doctor portal (Phase 1: schema only).
+//
+// A doctor is OPTIONAL on a case: PatientCase.doctorName stays a required
+// free-text snapshot and remains the display value everywhere, while
+// doctorId links the case to a roster entry when there is one. That keeps
+// one-off doctors working with no sentinel value, and keeps history stable
+// when a roster name is edited.
+// ==================================================================
+
+model Doctor {
+  id String @id @default(cuid())
+
+  // Stored WITH the "Dr. " prefix, exactly as it should display.
+  // Deliberately NOT unique: real rosters do contain two people with the same
+  // name, and a constraint would hard-block a legitimate entry. Accidental
+  // duplicates are caught in the admin UI instead.
+  name String
+
+  // The full PUBLIC code: ag-{letters}{sequence}-{random4}, e.g. ag-mut001-K7P2.
+  // This is the only column the portal looks up, hence the unique index.
+  //
+  // The random suffix is NOT decoration. Without it the code is derivable from
+  // the doctor's (public) name plus a 3-digit sequence — a targeted guess would
+  // take ~130 attempts. The 4 extra characters from the 32-char unambiguous
+  // alphabet raise that by ~1,000,000x while staying short enough to read out
+  // over the phone.
+  code String @unique
+
+  // The 3 transliterated Latin letters. Auto-suggested from the Arabic name,
+  // then admin-editable before saving — transliteration is not deterministic.
+  codeLetters String @map("code_letters")
+
+  // Global creation order, 1-based, NEVER reused after a delete: reusing a
+  // number would make an older printed/spoken reference resolve to a different
+  // doctor. Gaps are correct and expected. Unique so concurrent creates fail
+  // loudly on the constraint rather than silently colliding.
+  sequence Int @unique
+
+  // Rotation support from day one — retrofitting it after a code leaks is
+  // painful. Rotation regenerates ONLY the random suffix, so the recognisable
+  // {letters}{sequence} part a doctor has memorised stays stable.
+  // Null = never rotated. Superseded codes are deliberately NOT retained: a
+  // leaked code you have rotated away from is a liability, not an asset.
+  codeRotatedAt DateTime? @map("code_rotated_at")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cases PatientCase[]
+
+  @@index([isActive, sequence])
+  @@map("doctors")
 }
