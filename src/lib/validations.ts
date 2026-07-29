@@ -148,6 +148,36 @@ export const caseUpdateSchema = caseInputBaseSchema.partial().superRefine(
 );
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
 
+// --- Doctors --------------------------------------------------------
+/**
+ * `codeLetters` is exactly 3 lowercase Latin letters. It is auto-suggested from
+ * the Arabic name but ADMIN-EDITABLE, because Arabic-to-Latin romanisation is
+ * not deterministic — so it is validated for shape here, never for "correctness".
+ */
+const codeLettersSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z]{3}$/, "Code letters must be exactly 3 Latin letters (a-z)");
+
+export const doctorCreateSchema = z.object({
+  name: z.string().trim().min(2, "Doctor name is required").max(120),
+  codeLetters: codeLettersSchema,
+});
+export type DoctorCreateInput = z.infer<typeof doctorCreateSchema>;
+
+/**
+ * Update carries name and/or isActive ONLY. `code`, `codeLetters` and
+ * `sequence` are absent by design: they are immutable once issued because
+ * cases and printed/spoken references depend on them. Rotation is a separate
+ * endpoint that regenerates only the random suffix.
+ */
+export const doctorUpdateSchema = z.object({
+  name: z.string().trim().min(2, "Doctor name is required").max(120).optional(),
+  isActive: z.boolean().optional(),
+});
+export type DoctorUpdateInput = z.infer<typeof doctorUpdateSchema>;
+
 // --- Progress steps -------------------------------------------------
 export const progressCreateSchema = z.object({
   stepTitle: z.string().trim().min(2, "Step title is required").max(160),
