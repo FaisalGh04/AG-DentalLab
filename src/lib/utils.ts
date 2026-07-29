@@ -36,6 +36,33 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 }
 
 /**
+ * "2 days ago" / "منذ يومين" — for tooltips beside an absolute timestamp, never
+ * as the only representation: relative time alone hides the actual instant.
+ */
+export function formatRelativeTime(
+  date: Date | string | null | undefined,
+  locale: string = "en",
+): string {
+  if (!date) return "";
+  const then = new Date(date).getTime();
+  const diffSec = Math.round((then - Date.now()) / 1000);
+  const abs = Math.abs(diffSec);
+
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31_536_000],
+    ["month", 2_592_000],
+    ["day", 86_400],
+    ["hour", 3_600],
+    ["minute", 60],
+  ];
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, seconds] of units) {
+    if (abs >= seconds) return rtf.format(Math.round(diffSec / seconds), unit);
+  }
+  return rtf.format(Math.round(diffSec), "second");
+}
+
+/**
  * Estimated completion is stored as a UTC wall-clock (a date plus an optional
  * time). Format it in UTC so every viewer — admin or public — sees exactly the
  * date/time the lab entered, regardless of their own timezone. A midnight

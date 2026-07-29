@@ -31,6 +31,24 @@ export interface ImageDTO {
   createdAt: string;
 }
 
+/**
+ * One recorded ENTRY into a stage, derived from CaseActionLog. A case can enter
+ * the same stage more than once (revert, then advance again), so this is a flat
+ * chronological list of visits rather than one row per stage — the UI shows the
+ * latest per stage in the list and the full run in the viewer.
+ *
+ * ADMIN-ONLY. Deliberately absent from PublicCaseDTO: internal operational
+ * timing, same boundary that already excludes `notes` (S-M2) and `receivedBy`.
+ */
+export interface StageVisitDTO {
+  stageId: string;
+  /** When the case entered this stage = the confirmed transition's createdAt. */
+  enteredAt: string;
+  action: "CASE_CREATED" | "STAGE_CHANGED" | "COLLECTION_CHANGED";
+  /** Who confirmed it, snapshotted at the time. Null on pre-audit rows. */
+  staffName: string | null;
+}
+
 /** The production-template fields shared by public + admin case DTOs. */
 export interface CaseLifecycleFields {
   collectionId: string | null;
@@ -76,6 +94,12 @@ export interface AdminCaseDTO extends CaseLifecycleFields {
   updatedAt: string;
   progress: ProgressDTO[];
   images: ImageDTO[];
+  /**
+   * Chronological stage entries derived from the audit log. EMPTY for cases
+   * whose transitions predate the staff-auth feature — nothing was recorded
+   * then, so the UI must say "not recorded" rather than imply a blank.
+   */
+  stageHistory: StageVisitDTO[];
   _count?: { progress: number; images: number };
 }
 

@@ -29,10 +29,18 @@ import {
   caseUpdateSchema,
   type CaseCreateInput,
 } from "@/lib/validations";
-import { CASE_CATEGORY_ORDER, RECEIVED_BY_OPTIONS } from "@/lib/constants";
+import { CASE_CATEGORY_ORDER } from "@/lib/constants";
+import { useStaff } from "@/hooks/use-staff";
 import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
+import { useLifecycleConfig } from "@/hooks/use-lifecycle";
+import {
+  getProductionCollection,
+  localizedLabel,
+} from "@/lib/production-templates";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
@@ -46,8 +54,13 @@ interface Props {
 }
 
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
-  const { t } = useAdminI18n();
+  const { t, locale } = useAdminI18n();
   const isEdit = !!existing;
+  // Roster comes from StaffMember (src/lib/staff.ts), not a static const, so the
+  // dropdown and the confirmation gate can never drift apart.
+  const staff = useStaff();
+  const confirmGate = useConfirmAction();
+  const { data: config = [] } = useLifecycleConfig();
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
   const pending = create.isPending || update.isPending;
@@ -138,27 +151,65 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
       ? new Date(`${datePart}T${estTime || "00:00"}:00.000Z`).toISOString()
       : null;
 
-    try {
-      if (isEdit) {
-        // receivedBy is write-once: strip it client-side so a PATCH body can
-        // never carry it. The route 422s if it does; `rest` is CaseUpdateInput.
-        const { receivedBy, ...rest } = values;
-        void receivedBy;
-        const res = await update.mutateAsync({ ...rest, estimatedCompletionDate });
-        toast.success(t("form.toastUpdated"));
-        onOpenChange(false);
-        onSaved?.(res.id);
+    if (isEdit) {
+      // receivedBy is write-once: strip it client-side so a PATCH body can
+      // never carry it. The route 422s if it does; `rest` is CaseUpdateInput.
+      const { receivedBy, ...rest } = values;
+      void receivedBy;
+      const patch = { ...rest, estimatedCompletionDate };
+
+      // ENTRY POINT 6: changing the workflow from the EDIT dialog is a real
+      // lifecycle transition (the server resets the stage), so it is gated —
+      // while every other field on this form stays ungated.
+      const collectionChanged =
+        (values.collectionId ?? null) !== (existing?.collectionId ?? null);
+
+      if (collectionChanged) {
+        const target = getProductionCollection(config, values.collectionId);
+        confirmGate.request(
+          {
+            summary: `${t("confirm.workflowTo")}: ${
+              target ? localizedLabel(target, locale) : t("confirm.noStage")
+            }`,
+          },
+          async (confirmation) => {
+            const res = await update.mutateAsync({ ...patch, confirmation });
+            toast.success(t("form.toastUpdated"));
+            onOpenChange(false);
+            onSaved?.(res.id);
+          },
+        );
         return;
       }
 
-      const res = await create.mutateAsync({ ...values, estimatedCompletionDate });
-      toast.success(t("form.toastCreated"));
-      onOpenChange(false);
-      setCreatedTrackingId(res.trackingId);
-      onSaved?.(res.id);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("form.toastError"));
+      try {
+        const res = await update.mutateAsync(patch);
+        toast.success(t("form.toastUpdated"));
+        onOpenChange(false);
+        onSaved?.(res.id);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t("form.toastError"));
+      }
+      return;
     }
+
+    // ENTRY POINT 1: creation is ALWAYS gated.
+    confirmGate.request(
+      {
+        summary: `${t("confirm.createCase")}: ${values.patientFirstName} ${values.patientLastName}`,
+      },
+      async (confirmation) => {
+        const res = await create.mutateAsync({
+          ...values,
+          estimatedCompletionDate,
+          confirmation,
+        });
+        toast.success(t("form.toastCreated"));
+        onOpenChange(false);
+        setCreatedTrackingId(res.trackingId);
+        onSaved?.(res.id);
+      },
+    );
   }
 
   const category = watch("category");
@@ -317,9 +368,9 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                   <SelectValue placeholder={t("form.selectReceivedBy")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {RECEIVED_BY_OPTIONS.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
+                  {(staff.data ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -351,6 +402,13 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         </form>
       </DialogContent>
     </Dialog>
+    {/* Gate for entry points 1 (create) and 6 (edit's workflow change). */}
+    <ConfirmActionDialog
+      open={confirmGate.open}
+      onOpenChange={confirmGate.setOpen}
+      intent={confirmGate.intent}
+      perform={confirmGate.perform}
+    />
     <Dialog
       open={!!createdTrackingId}
       onOpenChange={(nextOpen) => {

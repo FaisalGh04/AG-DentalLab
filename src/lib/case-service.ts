@@ -9,6 +9,7 @@ import type {
   AdminCaseListResponse,
   AdminCaseListItem,
   AdminCaseDTO,
+  StageVisitDTO,
 } from "@/types/case";
 
 /**
@@ -154,6 +155,32 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
   });
   if (!c) return null;
 
+  // Stage-entry timestamps, derived from the audit log. Each filter matters:
+  //   - outcome SUCCESS       : failed attempts also carry from->to, but the
+  //                             case never actually entered that stage
+  //   - action NOT visibility : STAGE_VISIBILITY_CHANGED writes from == to, so
+  //                             including it would fabricate a re-entry every
+  //                             time someone hides a stage
+  //   - toStageId not null    : an invalid stage id normalizes to null
+  // Ordered oldest-first so the LAST match for a stage is its latest entry.
+  // Bounded: a case realistically sees 10-20 transitions in its lifetime.
+  const visits = await prisma.caseActionLog.findMany({
+    where: {
+      caseId: id,
+      outcome: "SUCCESS",
+      action: { in: ["CASE_CREATED", "STAGE_CHANGED", "COLLECTION_CHANGED"] },
+      toStageId: { not: null },
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      toStageId: true,
+      createdAt: true,
+      action: true,
+      staffNameSnapshot: true,
+    },
+    take: 500,
+  });
+
   return {
     id: c.id,
     trackingId: c.trackingId,
@@ -187,6 +214,13 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       caption: i.caption,
       stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),
+    })),
+    stageHistory: visits.map((v) => ({
+      // Non-null by the `toStageId: { not: null }` filter above.
+      stageId: v.toStageId as string,
+      enteredAt: v.createdAt.toISOString(),
+      action: v.action as StageVisitDTO["action"],
+      staffName: v.staffNameSnapshot,
     })),
   };
 }

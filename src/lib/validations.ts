@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { isValidCaseTypeForCategory } from "@/lib/case-types";
-import { RECEIVED_BY_OPTIONS } from "@/lib/constants";
 import {
   MAX_IMAGE_BYTES,
   ALLOWED_IMAGE_LABEL,
@@ -89,15 +88,37 @@ const caseInputBaseSchema = z.object({
  * body. Layers 3 + 4 are the 422 guard and the omitted Prisma field in
  * src/app/api/admin/cases/[id]/route.ts.
  *
+ * The value is only shape-checked here. It used to be a compile-time
+ * z.enum(RECEIVED_BY_OPTIONS), but StaffMember is now the single source of
+ * truth and a DB-driven list cannot be a zod enum — so membership is validated
+ * at runtime in the POST route via isActiveStaffName(). That runtime check is a
+ * REAL backstop, not just UI convenience: without it any string would pass.
+ *
  * `.extend()` has to happen before `.superRefine()` — the latter returns a
  * ZodEffects, which has no .extend().
  */
 const caseCreateBaseSchema = caseInputBaseSchema.extend({
-  receivedBy: z.enum(RECEIVED_BY_OPTIONS, {
-    required_error: "Received by is required",
-    invalid_type_error: "Received by is required",
-  }),
+  receivedBy: z
+    .string({ required_error: "Received by is required" })
+    .trim()
+    .min(1, "Received by is required")
+    .max(120),
 });
+
+/**
+ * The two-factor confirmation payload accompanying a gated mutation.
+ *
+ * Sent WITH the mutation rather than exchanged for a token, so verification and
+ * the write are atomic — there is no window in which an approval exists but the
+ * action has not happened. Consequence: these bodies must never be logged or
+ * captured by Sentry.
+ */
+export const confirmationSchema = z.object({
+  staffId: z.string().trim().min(1, "Select who is performing this action"),
+  staffPassword: z.string().min(1, "Password is required").max(200),
+  managerCode: z.string().min(1, "Manager code is required").max(200),
+});
+export type ConfirmationInputDTO = z.infer<typeof confirmationSchema>;
 
 export const caseCreateSchema = caseCreateBaseSchema.superRefine((data, ctx) => {
   if (!isValidCaseTypeForCategory(data.category, data.caseType)) {

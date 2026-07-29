@@ -33,6 +33,21 @@ export const adminMutationRatelimit = redis
     })
   : null;
 
+/**
+ * Two-factor confirmation attempts (case creation + stage transitions).
+ * Deliberately far stricter than adminMutationRatelimit's 60/min: the secrets
+ * behind it are short, so throttling — not hash cost — is the real control.
+ * Keyed on `staffId + IP` by the caller (src/lib/staff-auth.ts).
+ */
+export const confirmationRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      analytics: true,
+      prefix: "rl:confirm",
+    })
+  : null;
+
 // --- Login brute-force protection ----------------------------------
 
 const AUTH_MAX_ATTEMPTS = 5;

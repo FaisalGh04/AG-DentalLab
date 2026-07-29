@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
-import { apiOk, apiError, handleApiError } from "@/lib/api";
+import { apiOk, apiError, handleApiError, rateLimited } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
+import { auth } from "@/auth";
+import { getClientIp } from "@/lib/ratelimit";
+import { verifyConfirmation } from "@/lib/staff-auth";
+import { detectLifecycleChange, buildActionLog } from "@/lib/case-audit";
+import { confirmationSchema } from "@/lib/validations";
 import { revalidateTag } from "next/cache";
 import { getCaseById } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
@@ -51,6 +56,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!existing) return apiError("Case not found", 404);
 
     const input = caseUpdateSchema.parse(body);
+    const ip = getClientIp(req.headers);
+    const session = await auth();
 
     const firstName = input.patientFirstName ?? existing.patientFirstName;
     const lastName = input.patientLastName ?? existing.patientLastName;
@@ -79,9 +86,45 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           : existing.hiddenStageIds;
     const life = normalizeLifecycle(config, collectionId, currentStageId, hiddenStageIds);
 
-    const updated = await prisma.patientCase.update({
-      where: { id },
-      data: {
+    // ---- Confirmation gate, keyed on the DIFF, not on the route ----------
+    // Plain edits (notes / doctorName / dates) leave the normalized lifecycle
+    // identical, so `change` is null and they pass through completely ungated.
+    // Only an actual transition demands the two-factor confirmation.
+    const change = detectLifecycleChange(existing, life);
+    let confirmed: Awaited<ReturnType<typeof verifyConfirmation>> | null = null;
+
+    if (change) {
+      const parsed = confirmationSchema.safeParse(body?.confirmation);
+      if (!parsed.success) {
+        return apiError("This change requires confirmation.", 401);
+      }
+      confirmed = await verifyConfirmation(parsed.data, ip);
+
+      if (!confirmed.ok) {
+        await prisma.caseActionLog.create({
+          data: buildActionLog({
+            caseId: existing.id,
+            trackingId: existing.trackingId,
+            action: change.action,
+            outcome:
+              confirmed.reason === "locked" ? "LOCKED_OUT" : "CONFIRMATION_FAILED",
+            change,
+            staffId: parsed.data.staffId,
+            adminEmail: session?.user?.email ?? null,
+            ip,
+          }),
+        });
+        if (confirmed.reason === "throttled") {
+          return rateLimited(confirmed.retryAfter ?? Date.now() + 60_000);
+        }
+        return apiError("Confirmation failed.", 401);
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.patientCase.update({
+        where: { id },
+        data: {
         patientFirstName: firstName,
         patientLastName: lastName,
         patientFullNameNorm: norm,
@@ -98,8 +141,30 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               ? new Date(input.estimatedCompletionDate)
               : null
             : existing.estimatedCompletionDate,
-        notes: input.notes !== undefined ? input.notes : existing.notes,
-      },
+          notes: input.notes !== undefined ? input.notes : existing.notes,
+        },
+      });
+
+      // Same transaction as the mutation: a gated action cannot commit without
+      // its log line. Ungated plain edits write nothing here.
+      if (change && confirmed?.ok) {
+        await tx.caseActionLog.create({
+          data: buildActionLog({
+            caseId: row.id,
+            trackingId: row.trackingId,
+            action: change.action,
+            outcome: "SUCCESS",
+            change,
+            staffId: confirmed.staffId,
+            staffName: confirmed.staffName,
+            usedBreakGlass: confirmed.usedBreakGlass,
+            adminEmail: session?.user?.email ?? null,
+            ip,
+          }),
+        });
+      }
+
+      return row;
     });
 
     // Status may have changed → refresh the cached dashboard counts.

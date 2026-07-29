@@ -5,7 +5,6 @@ import {
   computeIsCompleted,
   PRODUCTION_COLLECTIONS,
 } from "../src/lib/production-templates";
-import { RECEIVED_BY_OPTIONS } from "../src/lib/constants";
 
 const prisma = new PrismaClient();
 
@@ -31,7 +30,22 @@ async function main() {
     where: { patientFullNameNorm: normalizeName("Sara", "Khalil") },
   });
 
-  if (!existing) {
+  // receivedBy is a NAME SNAPSHOT sourced from the StaffMember roster, which is
+  // seeded separately and interactively (prisma/seed-staff.ts) because it holds
+  // credentials. Rather than hardcode a real person's name here, read the roster
+  // — and skip the demo case entirely if it hasn't been seeded yet.
+  const anyStaff = await prisma.staffMember.findFirst({
+    where: { isActive: true },
+    orderBy: [{ order: "asc" }, { name: "asc" }],
+    select: { name: true },
+  });
+  if (!existing && !anyStaff) {
+    console.log(
+      "• Skipping demo case: no StaffMember rows yet. Run `npx tsx prisma/seed-staff.ts` first.",
+    );
+  }
+
+  if (!existing && anyStaff) {
     // Demo case mid-way through the "Zirconia Crown & Bridge" collection.
     const collectionId = "zirconia-crown-bridge";
     const currentStageId = "cad-cam";
@@ -43,9 +57,8 @@ async function main() {
         patientLastName: "Khalil",
         patientFullNameNorm: normalizeName("Sara", "Khalil"),
         doctorName: "Dr. Omar Haddad",
-        // Required since Phase B. Any value from RECEIVED_BY_OPTIONS is valid;
-        // the seed is demo data, so the first entry is arbitrary but real.
-        receivedBy: RECEIVED_BY_OPTIONS[0],
+        // Required since Phase B. Name snapshot taken from the seeded roster.
+        receivedBy: anyStaff.name,
         caseType: "Ivoclar Prime ZiR",
         category: CaseCategory.C_AND_B,
         collectionId,

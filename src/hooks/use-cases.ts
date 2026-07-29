@@ -11,7 +11,11 @@ import type {
   AdminCaseListResponse,
   AdminCaseDTO,
 } from "@/types/case";
-import type { CaseCreateInput, CaseUpdateInput } from "@/lib/validations";
+import type {
+  CaseCreateInput,
+  CaseUpdateInput,
+  ConfirmationInputDTO,
+} from "@/lib/validations";
 
 export interface CaseListQuery {
   q?: string;
@@ -49,10 +53,14 @@ export function useCase(id: string | null) {
   });
 }
 
+/**
+ * Case creation is ALWAYS gated, so the confirmation payload is required here —
+ * the type makes it impossible to call this without one.
+ */
 export function useCreateCase() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CaseCreateInput) =>
+    mutationFn: (input: CaseCreateInput & { confirmation: ConfirmationInputDTO }) =>
       apiFetch<{ id: string; trackingId: string }>("/api/admin/cases", {
         method: "POST",
         body: JSON.stringify(input),
@@ -61,10 +69,17 @@ export function useCreateCase() {
   });
 }
 
+/**
+ * Updates are gated only when they change the lifecycle (the server decides, by
+ * diffing). `confirmation` is therefore OPTIONAL: plain field edits omit it and
+ * pass through ungated, exactly as before.
+ */
 export function useUpdateCase(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CaseUpdateInput) =>
+    mutationFn: (
+      input: CaseUpdateInput & { confirmation?: ConfirmationInputDTO },
+    ) =>
       apiFetch<{ id: string }>(`/api/admin/cases/${id}`, {
         method: "PATCH",
         body: JSON.stringify(input),

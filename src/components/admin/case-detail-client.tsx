@@ -16,6 +16,7 @@ import {
   EyeOff,
   Layers,
   UserCheck,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,9 @@ import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
+import { StageViewerDialog } from "@/components/admin/stage-viewer-dialog";
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { ProgressManager } from "@/components/admin/progress-manager";
 import { ImageManager } from "@/components/admin/image-manager";
@@ -45,7 +49,13 @@ import {
   firstStageId,
   localizedLabel,
 } from "@/lib/production-templates";
-import { formatDate, formatEstCompletion, cn } from "@/lib/utils";
+import {
+  formatDate,
+  formatEstCompletion,
+  formatDateTime,
+  formatRelativeTime,
+  cn,
+} from "@/lib/utils";
 
 export function CaseDetailClient({ id }: { id: string }) {
   const { t, locale } = useAdminI18n();
@@ -58,46 +68,82 @@ export function CaseDetailClient({ id }: { id: string }) {
 
   const [editOpen, setEditOpen] = React.useState(params.get("edit") === "true");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+  // Every gated action on this page routes through one gate, so no call site can
+  // accidentally mutate the lifecycle inline and bypass confirmation.
+  const confirmGate = useConfirmAction();
+  // Read-only stage viewer. Plain local state — deliberately NOT routed through
+  // confirmGate, because looking at a stage is not a transition.
+  const [viewerStageId, setViewerStageId] = React.useState<string | null>(null);
 
   const badgeLabels = {
     completed: t("state.completed"),
     noCollection: t("state.noCollection"),
   };
 
-  async function changeCollection(collectionId: string) {
-    try {
-      // Switching collection resets the current stage (to the new first stage)
-      // and clears hidden stages — stage ids don't carry across collections.
-      await update.mutateAsync({
-        collectionId,
-        currentStageId: firstStageId(config, collectionId),
-        hiddenStageIds: [],
-      });
-      toast.success(t("detail.toastCollectionUpdated"));
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : t("detail.toastCollectionFailed"),
-      );
-    }
+  /** Human label for a stage id, for the dialog's intent summary. */
+  function stageLabel(stageId: string | null | undefined): string {
+    if (!stageId) return t("confirm.noStage");
+    // Resolve independently rather than closing over `collection`, which is
+    // declared further down (after the loading guard).
+    const c = getProductionCollection(config, kase?.collectionId);
+    const s = c?.stages.find((x) => x.id === stageId);
+    return s ? localizedLabel(s, locale) : stageId;
   }
 
-  async function changeStage(currentStageId: string) {
-    try {
-      await update.mutateAsync({ currentStageId });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("detail.toastStageFailed"));
-    }
+  // ---- ENTRY POINT 4: workflow / collection change ---------------------
+  function changeCollection(collectionId: string) {
+    const target = getProductionCollection(config, collectionId);
+    confirmGate.request(
+      {
+        summary: `${t("confirm.workflowTo")}: ${
+          target ? localizedLabel(target, locale) : collectionId
+        }`,
+      },
+      async (confirmation) => {
+        // Switching collection resets the current stage (to the new first stage)
+        // and clears hidden stages — stage ids don't carry across collections.
+        await update.mutateAsync({
+          collectionId,
+          currentStageId: firstStageId(config, collectionId),
+          hiddenStageIds: [],
+          confirmation,
+        });
+        toast.success(t("detail.toastCollectionUpdated"));
+      },
+    );
   }
 
-  async function toggleHidden(stageId: string, hidden: string[]) {
-    const next = hidden.includes(stageId)
-      ? hidden.filter((s) => s !== stageId)
-      : [...hidden, stageId];
-    try {
-      await update.mutateAsync({ hiddenStageIds: next });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("detail.toastStagesFailed"));
-    }
+  // ---- ENTRY POINTS 2 + 3: Stage <Select> and StageStepper click -------
+  function changeStage(currentStageId: string) {
+    // No-op guard: re-selecting the current stage is not a transition, so it
+    // must not prompt. The server treats it as ungated too.
+    if (currentStageId === kase?.currentStageId) return;
+    confirmGate.request(
+      {
+        summary: `${stageLabel(kase?.currentStageId)} → ${stageLabel(currentStageId)}`,
+      },
+      async (confirmation) => {
+        await update.mutateAsync({ currentStageId, confirmation });
+      },
+    );
+  }
+
+  // ---- ENTRY POINT 5: stage visibility toggle -------------------------
+  function toggleHidden(stageId: string, hidden: string[]) {
+    const willHide = !hidden.includes(stageId);
+    const next = willHide
+      ? [...hidden, stageId]
+      : hidden.filter((s) => s !== stageId);
+    confirmGate.request(
+      {
+        summary: `${
+          willHide ? t("confirm.hideStage") : t("confirm.showStage")
+        }: ${stageLabel(stageId)}`,
+      },
+      async (confirmation) => {
+        await update.mutateAsync({ hiddenStageIds: next, confirmation });
+      },
+    );
   }
 
   async function confirmDelete() {
@@ -139,6 +185,28 @@ export function CaseDetailClient({ id }: { id: string }) {
     id: s.id,
     label: localizedLabel(s, locale),
   }));
+
+  // --- read-only stage history (derived, never mutated) -------------------
+  const history = kase.stageHistory;
+  /** Visits to one stage, oldest first. */
+  const visitsFor = (stageId: string) => history.filter((v) => v.stageId === stageId);
+  /** Most recent entry into a stage; null when never recorded. */
+  const latestVisit = (stageId: string) => {
+    const v = visitsFor(stageId);
+    return v.length > 0 ? v[v.length - 1]! : null;
+  };
+  // A case whose transitions predate the audit log has no rows at all — used to
+  // explain "not recorded" rather than leaving a bare blank.
+  const historyUnavailable = history.length === 0;
+
+  const viewerStage = viewerStageId
+    ? (collection?.stages.find((s) => s.id === viewerStageId) ?? null)
+    : null;
+  // "Reached" = we have a recorded entry, or it IS the current stage (which
+  // covers legacy cases with no audit rows).
+  const viewerReached = viewerStageId
+    ? visitsFor(viewerStageId).length > 0 || kase.currentStageId === viewerStageId
+    : false;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -264,33 +332,77 @@ export function CaseDetailClient({ id }: { id: string }) {
               {collection.stages.map((s) => {
                 const hidden = kase.hiddenStageIds.includes(s.id);
                 const isCurrent = kase.currentStageId === s.id;
+                const entered = latestVisit(s.id);
                 return (
-                  <button
+                  // The two buttons are SIBLINGS, never nested: a button inside
+                  // a button is invalid HTML and the click would bubble into
+                  // toggleHidden — i.e. "view" would fire the confirmation gate.
+                  <span
                     key={s.id}
-                    type="button"
-                    onClick={() => toggleHidden(s.id, kase.hiddenStageIds)}
-                    disabled={update.isPending || isCurrent}
-                    title={
-                      isCurrent
-                        ? t("detail.cantHideCurrent")
-                        : hidden
-                          ? t("detail.showStage")
-                          : t("detail.hideStage")
-                    }
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                      "inline-flex items-center rounded-full border",
                       hidden
-                        ? "border-border bg-muted/40 text-muted-foreground line-through"
-                        : "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100",
+                        ? "border-border bg-muted/40"
+                        : "border-brand-200 bg-brand-50",
                     )}
                   >
-                    {hidden ? (
-                      <EyeOff className="h-3.5 w-3.5" />
-                    ) : (
-                      <Eye className="h-3.5 w-3.5" />
+                    {/* ACT: toggling visibility is a gated lifecycle change. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleHidden(s.id, kase.hiddenStageIds)}
+                      disabled={update.isPending || isCurrent}
+                      title={
+                        isCurrent
+                          ? t("detail.cantHideCurrent")
+                          : hidden
+                            ? t("detail.showStage")
+                            : t("detail.hideStage")
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-s-full px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                        hidden
+                          ? "text-muted-foreground line-through"
+                          : "text-brand-700 hover:bg-brand-100",
+                      )}
+                    >
+                      {hidden ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                      {localizedLabel(s, locale)}
+                    </button>
+
+                    {/* Timestamp sits BETWEEN the two buttons and is deliberately
+                        non-interactive: inside the toggle it would look like
+                        information while actually firing the gated hide/show,
+                        and its tooltip would compete with the button's own. */}
+                    {entered && (
+                      <span
+                        className="px-1 text-xs font-normal text-muted-foreground"
+                        title={formatRelativeTime(entered.enteredAt, locale)}
+                      >
+                        {formatDateTime(entered.enteredAt)}
+                      </span>
                     )}
-                    {localizedLabel(s, locale)}
-                  </button>
+
+                    {/* LOOK: opens a read-only dialog. Sets LOCAL STATE ONLY —
+                        no mutation, no confirmation gate, no network call. */}
+                    <button
+                      type="button"
+                      onClick={() => setViewerStageId(s.id)}
+                      title={t("stageView.open")}
+                      aria-label={`${t("stageView.open")}: ${localizedLabel(s, locale)}`}
+                      className={cn(
+                        "inline-flex items-center rounded-e-full border-s px-2 py-1.5 transition-colors",
+                        hidden
+                          ? "border-s-border text-muted-foreground hover:bg-muted/60"
+                          : "border-s-brand-200 text-brand-700 hover:bg-brand-100",
+                      )}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
                 );
               })}
             </div>
@@ -353,6 +465,28 @@ export function CaseDetailClient({ id }: { id: string }) {
         open={editOpen}
         onOpenChange={setEditOpen}
         existing={kase}
+      />
+      {/* READ-ONLY viewer. Receives plain data; has no mutation in scope. */}
+      <StageViewerDialog
+        open={!!viewerStageId}
+        onOpenChange={(o) => !o && setViewerStageId(null)}
+        stage={
+          viewerStage
+            ? { id: viewerStage.id, label: localizedLabel(viewerStage, locale) }
+            : null
+        }
+        visits={viewerStageId ? visitsFor(viewerStageId) : []}
+        steps={kase.progress.filter((p) => p.stageId === viewerStageId)}
+        images={kase.images.filter((i) => i.stageId === viewerStageId)}
+        isReached={viewerReached}
+        historyUnavailable={historyUnavailable}
+      />
+      {/* Single gate for entry points 2-5 on this page. */}
+      <ConfirmActionDialog
+        open={confirmGate.open}
+        onOpenChange={confirmGate.setOpen}
+        intent={confirmGate.intent}
+        perform={confirmGate.perform}
       />
       <ConfirmDialog
         open={deleteOpen}
