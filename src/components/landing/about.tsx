@@ -18,7 +18,9 @@ const TIMELINE = [
 ];
 
 const COUNTERS = [
-  { icon: CalendarDays, to: 35, suffix: "+", key: "years" },
+  // 30+, matching the "30+ years" copy in en.json / ar.json (about.p2,
+  // vision.p1, why-us). Founded 1994 — keep all four in step if this changes.
+  { icon: CalendarDays, to: 30, suffix: "+", key: "years" },
   { icon: Users, to: 150, suffix: "+", key: "partners" },
   { icon: PackageCheck, to: 15000, suffix: "+", key: "cases" },
   { icon: Boxes, to: 100000, suffix: "+", key: "units" },
