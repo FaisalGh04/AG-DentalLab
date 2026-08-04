@@ -87,6 +87,19 @@ export function WorkflowSelect({
     : [];
 
   /**
+   * A type is offerable only if the CURRENTLY SELECTED group has a stage-set of
+   * it. Most groups are Regular-only, so without this the Digital button looked
+   * available, then silently cleared the group on click and saved nothing —
+   * indistinguishable from a broken button.
+   *
+   * With NO group chosen yet (New Case) every type stays enabled: the flow is
+   * pick-type-then-group, so disabling here would deadlock the form.
+   */
+  const currentGroup = groupId ? groups.find((g) => g.id === groupId) : undefined;
+  const typeAvailable = (wt: CaseWorkflowType) =>
+    !currentGroup || currentGroup.stageSets.some((s) => s.type === wt);
+
+  /**
    * Switching Regular<->Digital is itself a workflow change whenever the chosen
    * group also exists in the new type — so it must EMIT, not just re-filter the
    * dropdown. Emitting routes the caller through its normal confirmation gate;
@@ -123,22 +136,34 @@ export function WorkflowSelect({
 
       {/* Regular / Digital segmented control */}
       <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-        {(["REGULAR", "DIGITAL"] as CaseWorkflowType[]).map((wt) => (
-          <button
-            key={wt}
-            type="button"
-            disabled={disabled}
-            onClick={() => pickType(wt)}
-            className={cn(
-              "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-              type === wt
-                ? "bg-brand-600 text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t(`groups.type.${wt}`)}
-          </button>
-        ))}
+        {(["REGULAR", "DIGITAL"] as CaseWorkflowType[]).map((wt) => {
+          const unavailable = !typeAvailable(wt);
+          const reason = unavailable
+            ? t("form.noWorkflowForType", { type: t(`groups.type.${wt}`) })
+            : undefined;
+          return (
+            // The title sits on the WRAPPER, not the button: a disabled button
+            // receives no pointer events, so a tooltip on it never appears.
+            <span key={wt} className="inline-flex" title={reason}>
+              <button
+                type="button"
+                disabled={disabled || unavailable}
+                aria-disabled={disabled || unavailable}
+                onClick={() => pickType(wt)}
+                className={cn(
+                  "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                  type === wt
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                  unavailable &&
+                    "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+                )}
+              >
+                {t(`groups.type.${wt}`)}
+              </button>
+            </span>
+          );
+        })}
       </div>
 
       {/* Group dropdown, filtered to groups having a stage-set of the chosen type */}

@@ -129,6 +129,7 @@
     "collectionOptional": "المجموعة (اختياري)",
     "workflow": "مسار العمل",
     "pickTypeFirst": "اختر تقليدي أو رقمي أولاً",
+    "noWorkflowForType": "لا يوجد مسار {type} متاح لهذه المجموعة",
     "pickGroup": "اختر مجموعة",
     "workflowRequired": "يجب اختيار مسار عمل لهذه الفئة.",
     "estDate": "تاريخ الإنجاز المتوقع",
