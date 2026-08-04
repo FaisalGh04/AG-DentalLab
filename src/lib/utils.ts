@@ -15,31 +15,14 @@ export function normalizeQuery(q: string): string {
   return q.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-// ---------------------------------------------------------------------------
-// Numerals
-//
-// In Arabic every QUANTITY renders with Eastern Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩).
-// CODES do not: tracking ids and doctor codes are alphanumeric identifiers meant
-// to be read aloud, typed, and matched exactly. Two reasons that matters:
-//   * the tracking-id alphabet (ABCDEFGHJKLMNPQRSTUVWXYZ23456789) uses 2-9 as
-//     SYMBOLS, so substituting them changes the identity of the code;
-//   * a doctor typing back what they saw would miss `findUnique({ code })` and
-//     get the deliberately-uninformative 404, with no way to tell why.
-// Codes therefore stay Western everywhere — see `toWesternDigits` for the
-// inbound direction, which accepts Arabic-Indic input and normalizes it.
-// ---------------------------------------------------------------------------
-
-const ARABIC_INDIC = "٠١٢٣٤٥٦٧٨٩";
-
-/** Western digits -> Arabic-Indic. Non-digits pass through untouched. */
-export function toArabicDigits(input: string | number): string {
-  return String(input).replace(/[0-9]/g, (d) => ARABIC_INDIC[Number(d)] ?? d);
-}
-
 /**
- * Arabic-Indic (and Persian/extended) digits -> Western. Used on INPUT so a
- * tracking id or doctor code typed on an Arabic keyboard still matches the
- * stored Western form.
+ * Arabic-Indic (and Persian/extended) digits -> Western.
+ *
+ * INPUT-side only. Numbers are DISPLAYED in Western digits in every locale, so
+ * there is no matching outbound conversion — but an Arabic keyboard can still
+ * emit ٠-٩, and tracking ids / doctor codes are stored Western and matched
+ * exactly. Normalizing here means such a code still resolves instead of hitting
+ * the deliberately-uninformative "not found".
  */
 export function toWesternDigits(input: string): string {
   return input
@@ -47,61 +30,24 @@ export function toWesternDigits(input: string): string {
     .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
 }
 
-/** Locale-aware number (counts, totals). Arabic gets Arabic-Indic digits. */
-export function formatNumber(
-  value: number | null | undefined,
-  locale: string = "en",
-): string {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-GB", {
-    numberingSystem: locale === "ar" ? "arab" : "latn",
-  }).format(value);
-}
-
-/**
- * Shared date-formatting options.
- *
- * Both overrides are pinned deliberately rather than left to the locale:
- *   * calendar "gregory" — several ICU builds resolve `ar` to the Islamic
- *     calendar, which would silently render a DIFFERENT date rather than the
- *     same date in Arabic. This is the one that would actually corrupt meaning.
- *   * numberingSystem — `ar-EG` happens to default to `arab`, but the default
- *     varies by locale and ICU version, so state it instead of inheriting it.
- */
-function dateOpts(locale: string, extra: Intl.DateTimeFormatOptions = {}) {
-  const ar = locale === "ar";
-  return {
-    calendar: "gregory",
-    numberingSystem: ar ? "arab" : "latn",
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    ...extra,
-  } satisfies Intl.DateTimeFormatOptions;
+  }).format(new Date(date));
 }
 
-/** BCP-47 tag for a locale. `ar-EG` gives Levantine/Egyptian Arabic-Indic. */
-function tag(locale: string) {
-  return locale === "ar" ? "ar-EG" : "en-GB";
-}
-
-export function formatDate(
-  date: Date | string | null | undefined,
-  locale: string = "en",
-): string {
+export function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return "—";
-  return new Intl.DateTimeFormat(tag(locale), dateOpts(locale)).format(new Date(date));
-}
-
-export function formatDateTime(
-  date: Date | string | null | undefined,
-  locale: string = "en",
-): string {
-  if (!date) return "—";
-  return new Intl.DateTimeFormat(
-    tag(locale),
-    dateOpts(locale, { hour: "2-digit", minute: "2-digit" }),
-  ).format(new Date(date));
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
 }
 
 /**
@@ -140,18 +86,17 @@ export function formatRelativeTime(
  */
 export function formatEstCompletion(
   date: Date | string | null | undefined,
-  locale: string = "en",
 ): string {
   if (!date) return "—";
   const d = new Date(date);
   const hasTime = d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0;
-  return new Intl.DateTimeFormat(
-    tag(locale),
-    dateOpts(locale, {
-      ...(hasTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
-      timeZone: "UTC",
-    }),
-  ).format(d);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(hasTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
+    timeZone: "UTC",
+  }).format(d);
 }
 
 /**

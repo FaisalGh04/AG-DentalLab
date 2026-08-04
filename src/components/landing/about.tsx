@@ -25,7 +25,7 @@ const COUNTERS = [
 ];
 
 export function About() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   return (
     <section id="about" className="relative py-24 md:py-36">
       <div className="container-tight">
@@ -58,7 +58,7 @@ export function About() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="mt-4 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
-                  <Counter to={c.to} suffix={c.suffix} locale={locale} />
+                  <Counter to={c.to} suffix={c.suffix} />
                 </div>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground">
                   {t(`about.counters.${c.key}`)}

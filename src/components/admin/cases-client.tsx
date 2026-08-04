@@ -282,10 +282,10 @@ export function CasesClient() {
                     />
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">
-                    {formatEstCompletion(c.estimatedCompletionDate, locale)}
+                    {formatEstCompletion(c.estimatedCompletionDate)}
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">
-                    {formatDate(c.updatedAt, locale)}
+                    {formatDate(c.updatedAt)}
                   </td>
                   <td className="px-5 py-4 text-end">
                     <RowActions id={c.id} />
@@ -348,12 +348,12 @@ export function CasesClient() {
                 <div>
                   <dt className="text-xs text-muted-foreground">{t("cases.colEstCompletion")}</dt>
                   <dd className="text-foreground/80">
-                    {formatEstCompletion(c.estimatedCompletionDate, locale)}
+                    {formatEstCompletion(c.estimatedCompletionDate)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">{t("cases.colUpdated")}</dt>
-                  <dd className="text-foreground/80">{formatDate(c.updatedAt, locale)}</dd>
+                  <dd className="text-foreground/80">{formatDate(c.updatedAt)}</dd>
                 </div>
               </dl>
             </div>

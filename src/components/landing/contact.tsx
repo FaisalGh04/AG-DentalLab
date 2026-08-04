@@ -8,20 +8,18 @@ import { Magnetic } from "@/components/motion/magnetic";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n/language-provider";
 import { SITE } from "@/lib/constants";
-import { toArabicDigits } from "@/lib/utils";
 
 export function Contact() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   // Icon/href are static; the label and (for the address) the value translate.
   const CARDS = [
     {
       icon: Phone,
       label: t("contact.phone"),
-      // Display digits localize; SITE.phoneHref (tel:) stays Western so the
-      // dial action keeps working. `isolate` marks it for <bdi> below.
-      value: locale === "ar" ? toArabicDigits(SITE.phone) : SITE.phone,
+      value: SITE.phone,
       href: SITE.phoneHref,
+      // Needs bidi isolation (see below); the address/instagram cards do not.
       isolate: true,
     },
     {
@@ -74,10 +72,6 @@ export function Contact() {
                       <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-brand-300">
                         {c.label}
                       </p>
-                      {/* <bdi> isolates the phone from the surrounding RTL run.
-                          This — not the digit swap — is what stops "+962 …"
-                          rendering as "962 …+": the leading "+" is bidi class
-                          ES and gets reordered without an isolate. */}
                       <p className="mt-1 break-words font-medium text-white">
                         {"isolate" in c && c.isolate ? (
                           <bdi dir="ltr">{c.value}</bdi>

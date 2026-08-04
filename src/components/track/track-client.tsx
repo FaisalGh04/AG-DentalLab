@@ -98,10 +98,8 @@ export function TrackClient({
    * ag-xxx000-XXXX opens the doctor portal. Each dispatches to its own route.
    */
   const onSubmit = (data: TrackInput) => {
-    // Tracking ids and doctor codes are stored with WESTERN digits, but an
-    // Arabic keyboard produces ٠-٩. Normalize before matching so a code read
-    // off an Arabic screen and typed back still resolves instead of hitting
-    // the deliberately-uninformative "not found".
+    // Codes are stored with WESTERN digits and matched exactly, but an Arabic
+    // keyboard can emit ٠-٩. Normalize so such input still resolves.
     const value = toWesternDigits(data.trackingId.trim());
     if (isDoctorCodeInput(value)) {
       mutation.reset();
@@ -412,7 +410,7 @@ export function TrackClient({
                 <Detail
                   icon={CalendarClock}
                   label={t("track.estCompletion")}
-                  value={formatEstCompletion(result.estimatedCompletionDate, locale)}
+                  value={formatEstCompletion(result.estimatedCompletionDate)}
                 />
               </div>
             </Card>
@@ -429,7 +427,6 @@ export function TrackClient({
               <ProgressTimeline
                 steps={stageProgress}
                 emptyLabel={t("track.noSteps")}
-                locale={locale}
               />
             </Card>
           </motion.div>

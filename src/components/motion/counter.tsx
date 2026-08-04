@@ -7,7 +7,6 @@ import {
   useSpring,
   motion,
 } from "framer-motion";
-import { formatNumber } from "@/lib/utils";
 
 /** Animated number that counts up when scrolled into view. */
 export function Counter({
@@ -16,15 +15,12 @@ export function Counter({
   prefix = "",
   duration = 1.8,
   className,
-  locale = "en",
 }: {
   to: number;
   suffix?: string;
   prefix?: string;
   duration?: number;
   className?: string;
-  /** Arabic renders the tally in Arabic-Indic digits. */
-  locale?: string;
 }) {
   const ref = React.useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
@@ -47,7 +43,7 @@ export function Counter({
   return (
     <motion.span ref={ref} className={className}>
       {prefix}
-      {formatNumber(display, locale)}
+      {display.toLocaleString()}
       {suffix}
     </motion.span>
   );

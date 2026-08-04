@@ -10,7 +10,7 @@ import {
   localizedLabel,
   type ProductionCollection,
 } from "@/lib/production-templates";
-import { formatEstCompletion, formatNumber, cn } from "@/lib/utils";
+import { formatEstCompletion, cn } from "@/lib/utils";
 import type { PublicDoctorPortalDTO } from "@/types/case";
 
 interface Props {
@@ -87,7 +87,7 @@ export function DoctorPortalView({
             className={cn(!archived && "shadow-glow")}
           >
             <FolderOpen className="h-4 w-4" />
-            {t("doctorPortal.active")} ({formatNumber(portal.activeCount, locale)})
+            {t("doctorPortal.active")} ({portal.activeCount})
           </Button>
           <Button
             type="button"
@@ -96,7 +96,7 @@ export function DoctorPortalView({
             className={cn(archived && "shadow-glow")}
           >
             <Archive className="h-4 w-4" />
-            {t("doctorPortal.archive")} ({formatNumber(portal.archivedCount, locale)})
+            {t("doctorPortal.archive")} ({portal.archivedCount})
           </Button>
         </div>
       </div>
@@ -154,7 +154,7 @@ export function DoctorPortalView({
                   {c.estimatedCompletionDate && !c.isCompleted && (
                     <span className="text-[11px] text-brand-100/55">
                       {t("doctorPortal.estCompletion")}{" "}
-                      {formatEstCompletion(c.estimatedCompletionDate, locale)}
+                      {formatEstCompletion(c.estimatedCompletionDate)}
                     </span>
                   )}
                 </button>

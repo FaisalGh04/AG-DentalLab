@@ -33,9 +33,8 @@ export function TrackingIdCopy({
         className,
       )}
     >
-      {/* A tracking id is a CODE, never a quantity: it keeps Western digits in
-          every locale, and <bdi dir="ltr"> isolates it from the surrounding
-          bidi run so "AG-8F3K2A" cannot be visually reordered inside RTL text. */}
+      {/* A tracking id is a CODE: <bdi dir="ltr"> isolates it so "AG-8F3K2A"
+          cannot be visually reordered inside surrounding RTL text. */}
       <bdi dir="ltr">{trackingId}</bdi>
       <Button
         type="button"

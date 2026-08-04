@@ -5,10 +5,9 @@ import { Phone, MapPin, Instagram } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useI18n } from "@/components/i18n/language-provider";
 import { SITE } from "@/lib/constants";
-import { toArabicDigits } from "@/lib/utils";
 
 export function Footer() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   return (
     <footer className="relative isolate px-5 pb-8 pt-6 sm:px-6 lg:px-8">
       {/* Vivid brand light painted directly BEHIND the glass panel so its
@@ -74,9 +73,11 @@ export function Footer() {
                     className="flex items-center gap-2 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
                   >
                     <Phone className="h-4 w-4" />
-                    <bdi dir="ltr">
-                      {locale === "ar" ? toArabicDigits(SITE.phone) : SITE.phone}
-                    </bdi>
+                    {/* <bdi> is what fixes the "+962 …" -> "962 …+" flip: the
+                        leading "+" is bidi class ES and gets reordered inside
+                        an RTL run without an isolate. Independent of which
+                        digit script is used — digits stay Western. */}
+                    <bdi dir="ltr">{SITE.phone}</bdi>
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
@@ -97,12 +98,7 @@ export function Footer() {
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-xs text-muted-foreground md:flex-row">
-            <p>{t("footer.rights", {
-                year:
-                  locale === "ar"
-                    ? toArabicDigits(new Date().getFullYear())
-                    : String(new Date().getFullYear()),
-              })}</p>
+            <p>{t("footer.rights", { year: new Date().getFullYear() })}</p>
             <p>{t("footer.founded", { founder: t("footer.founderName") })}</p>
           </div>
 

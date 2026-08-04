@@ -37,7 +37,7 @@ import {
   useDeleteDoctor,
 } from "@/hooks/use-doctors";
 import { suggestLetters, withDoctorPrefix, buildCode } from "@/lib/doctor-code";
-import { formatDate, formatNumber, cn } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import type { DoctorDTO } from "@/types/doctor";
 
 export function DoctorsClient() {
@@ -135,14 +135,12 @@ function DoctorRow({
   onDelete: () => void;
   onRotate: () => void;
 }) {
-  const { t, locale } = useAdminI18n();
+  const { t } = useAdminI18n();
   const [copied, setCopied] = React.useState(false);
 
   return (
     <tr className={cn("border-b border-border/60", !doctor.isActive && "opacity-60")}>
       <td className="px-4 py-3 text-muted-foreground">
-        {/* Mirrors the sequence embedded in the code, so it is an
-            identifier: Western digits, isolated from the RTL run. */}
         <bdi dir="ltr">{String(doctor.sequence).padStart(3, "0")}</bdi>
       </td>
       <td className="px-4 py-3 font-medium text-ink">{doctor.name}</td>
@@ -166,13 +164,11 @@ function DoctorRow({
         </button>
         {doctor.codeRotatedAt && (
           <span className="ms-2 text-[11px] text-muted-foreground">
-            {t("doctors.rotatedOn")} {formatDate(doctor.codeRotatedAt, locale)}
+            {t("doctors.rotatedOn")} {formatDate(doctor.codeRotatedAt)}
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {formatNumber(doctor.caseCount, locale)}
-      </td>
+      <td className="px-4 py-3 text-muted-foreground">{doctor.caseCount}</td>
       <td className="px-4 py-3">
         <span
           className={cn(

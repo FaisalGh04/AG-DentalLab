@@ -7,13 +7,10 @@ import { cn } from "@/lib/utils";
 export function ProgressTimeline({
   steps,
   emptyLabel = "No production steps have been recorded yet.",
-  locale = "en",
 }: {
   steps: ProgressDTO[];
   /** Optional translated empty-state message; admin passes nothing (English). */
   emptyLabel?: string;
-  /** Drives digit shaping on timestamps; same opt-in pattern as emptyLabel. */
-  locale?: string;
 }) {
   if (steps.length === 0) {
     return (
@@ -58,7 +55,7 @@ export function ProgressTimeline({
               </p>
             )}
             <p className="text-xs text-muted-foreground/70 dark:text-brand-100/45">
-              {formatDateTime(step.createdAt, locale)}
+              {formatDateTime(step.createdAt)}
             </p>
           </div>
         </li>

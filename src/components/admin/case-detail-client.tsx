@@ -250,7 +250,7 @@ export function CaseDetailClient({ id }: { id: string }) {
               {kase.patientFirstName} {kase.patientLastName}
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {t("detail.created", { date: formatDate(kase.createdAt, locale) })}
+              {t("detail.created", { date: formatDate(kase.createdAt) })}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <TrackingIdCopy trackingId={kase.trackingId} />
@@ -391,7 +391,7 @@ export function CaseDetailClient({ id }: { id: string }) {
                         className="px-1 text-xs font-normal text-muted-foreground"
                         title={formatRelativeTime(entered.enteredAt, locale)}
                       >
-                        {formatDateTime(entered.enteredAt, locale)}
+                        {formatDateTime(entered.enteredAt)}
                       </span>
                     )}
 
@@ -440,7 +440,7 @@ export function CaseDetailClient({ id }: { id: string }) {
           <Detail
             icon={CalendarClock}
             label={t("detail.estCompletion")}
-            value={formatEstCompletion(kase.estimatedCompletionDate, locale)}
+            value={formatEstCompletion(kase.estimatedCompletionDate)}
           />
         </div>
 

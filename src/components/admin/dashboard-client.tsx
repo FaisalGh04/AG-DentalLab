@@ -16,7 +16,7 @@ import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
-import { formatDate, formatEstCompletion, formatNumber } from "@/lib/utils";
+import { formatDate, formatEstCompletion } from "@/lib/utils";
 import type { AdminCaseListItem } from "@/types/case";
 
 interface DashboardStats {
@@ -33,7 +33,7 @@ export function DashboardClient({
   stats: DashboardStats;
   recent: AdminCaseListItem[];
 }) {
-  const { t, locale } = useAdminI18n();
+  const { t } = useAdminI18n();
   const { data: lifecycleConfig = [] } = useLifecycleConfig();
 
   const cards = [
@@ -68,7 +68,7 @@ export function DashboardClient({
                 <Icon className="h-5 w-5" />
               </div>
               <p className="mt-4 font-display text-3xl font-bold tabular-nums text-ink">
-                {formatNumber(c.value, locale)}
+                {c.value.toLocaleString()}
               </p>
               <p className="mt-0.5 text-sm font-medium text-muted-foreground">
                 {t(c.key)}
@@ -123,12 +123,12 @@ export function DashboardClient({
                 </p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground/80">
                   {t("dashboard.estCompletion")}:{" "}
-                  {formatEstCompletion(c.estimatedCompletionDate, locale)}
+                  {formatEstCompletion(c.estimatedCompletionDate)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-4">
                 <span className="hidden text-sm text-muted-foreground sm:block">
-                  {formatDate(c.updatedAt, locale)}
+                  {formatDate(c.updatedAt)}
                 </span>
                 <CaseStateBadge
                   config={lifecycleConfig}
