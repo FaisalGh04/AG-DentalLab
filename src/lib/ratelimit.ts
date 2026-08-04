@@ -131,9 +131,36 @@ export async function checkAuthRateLimit(
   return { allowed: true };
 }
 
-/** Resolve the client IP from proxy headers (Vercel / Cloudflare). */
+/**
+ * Resolve the client IP from proxy headers.
+ *
+ * ORDER MATTERS — it is a trust ordering, not a preference.
+ *
+ * `x-forwarded-for` is APPENDED to, never replaced, by the proxy chain. A
+ * client that sends `X-Forwarded-For: 1.2.3.4` reaches the origin as
+ * `1.2.3.4, <real client ip>`, so taking `split(",")[0]` returns a value the
+ * CLIENT chose. Every caller uses the result as a rate-limit key or as the `ip`
+ * recorded on a CaseActionLog, so a spoofable value means both the limiters and
+ * the audit trail can be steered by an attacker: rotating one header yields
+ * unlimited tracking-ID guesses and unlimited admin login attempts.
+ *
+ * `cf-connecting-ip` is SET by Cloudflare from the real TCP peer and overwrites
+ * anything the client sent, so it cannot be forged through the edge. Production
+ * is Railway behind Cloudflare (see docs/deploy.md), so in production this
+ * header is always present and always authoritative.
+ *
+ * The x-forwarded-for / x-real-ip fallbacks remain for local dev and any path
+ * that is not proxied by Cloudflare — identical behaviour to before when
+ * cf-connecting-ip is absent, so this is strictly additive.
+ *
+ * CAVEAT: this only holds for traffic that actually passes THROUGH Cloudflare.
+ * A request sent straight to the Railway origin host has no cf-connecting-ip
+ * and falls back to the spoofable header, so the origin should not be publicly
+ * reachable outside the Cloudflare edge.
+ */
 export function getClientIp(headers: Headers): string {
   return (
+    headers.get("cf-connecting-ip")?.trim() ||
     headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     headers.get("x-real-ip") ||
     "127.0.0.1"
