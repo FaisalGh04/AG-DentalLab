@@ -37,7 +37,7 @@ import {
   useDeleteDoctor,
 } from "@/hooks/use-doctors";
 import { suggestLetters, withDoctorPrefix, buildCode } from "@/lib/doctor-code";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate, formatNumber, cn } from "@/lib/utils";
 import type { DoctorDTO } from "@/types/doctor";
 
 export function DoctorsClient() {
@@ -135,13 +135,15 @@ function DoctorRow({
   onDelete: () => void;
   onRotate: () => void;
 }) {
-  const { t } = useAdminI18n();
+  const { t, locale } = useAdminI18n();
   const [copied, setCopied] = React.useState(false);
 
   return (
     <tr className={cn("border-b border-border/60", !doctor.isActive && "opacity-60")}>
       <td className="px-4 py-3 text-muted-foreground">
-        {String(doctor.sequence).padStart(3, "0")}
+        {/* Mirrors the sequence embedded in the code, so it is an
+            identifier: Western digits, isolated from the RTL run. */}
+        <bdi dir="ltr">{String(doctor.sequence).padStart(3, "0")}</bdi>
       </td>
       <td className="px-4 py-3 font-medium text-ink">{doctor.name}</td>
       <td className="px-4 py-3">
@@ -155,7 +157,7 @@ function DoctorRow({
           title={t("doctors.copyCode")}
           className="inline-flex items-center gap-1.5 rounded-lg bg-muted/50 px-2 py-1 font-mono text-xs hover:bg-muted"
         >
-          {doctor.code}
+          <bdi dir="ltr">{doctor.code}</bdi>
           {copied ? (
             <Check className="h-3 w-3 text-brand-600" />
           ) : (
@@ -164,11 +166,13 @@ function DoctorRow({
         </button>
         {doctor.codeRotatedAt && (
           <span className="ms-2 text-[11px] text-muted-foreground">
-            {t("doctors.rotatedOn")} {formatDate(doctor.codeRotatedAt)}
+            {t("doctors.rotatedOn")} {formatDate(doctor.codeRotatedAt, locale)}
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-muted-foreground">{doctor.caseCount}</td>
+      <td className="px-4 py-3 text-muted-foreground">
+        {formatNumber(doctor.caseCount, locale)}
+      </td>
       <td className="px-4 py-3">
         <span
           className={cn(
@@ -381,7 +385,9 @@ function EditDoctorDialog({
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t("doctors.colCode")}
             </p>
-            <p className="mt-1 font-mono font-medium text-ink">{doctor.code}</p>
+            <p className="mt-1 font-mono font-medium text-ink">
+              <bdi dir="ltr">{doctor.code}</bdi>
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("doctors.codeImmutable")}
             </p>

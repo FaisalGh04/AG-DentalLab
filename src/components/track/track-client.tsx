@@ -41,7 +41,7 @@ import {
   localizedLabel,
   type ProductionCollection,
 } from "@/lib/production-templates";
-import { formatEstCompletion } from "@/lib/utils";
+import { formatEstCompletion, toWesternDigits } from "@/lib/utils";
 import type { PublicCaseDTO } from "@/types/case";
 
 export function TrackClient({
@@ -98,7 +98,11 @@ export function TrackClient({
    * ag-xxx000-XXXX opens the doctor portal. Each dispatches to its own route.
    */
   const onSubmit = (data: TrackInput) => {
-    const value = data.trackingId.trim();
+    // Tracking ids and doctor codes are stored with WESTERN digits, but an
+    // Arabic keyboard produces ٠-٩. Normalize before matching so a code read
+    // off an Arabic screen and typed back still resolves instead of hitting
+    // the deliberately-uninformative "not found".
+    const value = toWesternDigits(data.trackingId.trim());
     if (isDoctorCodeInput(value)) {
       mutation.reset();
       setArchived(false);
@@ -108,7 +112,7 @@ export function TrackClient({
       return;
     }
     setPortalCode(null);
-    mutation.mutate(data);
+    mutation.mutate({ ...data, trackingId: value });
   };
 
   /** Opening a card falls through to the existing single-case tracker. */
@@ -408,7 +412,7 @@ export function TrackClient({
                 <Detail
                   icon={CalendarClock}
                   label={t("track.estCompletion")}
-                  value={formatEstCompletion(result.estimatedCompletionDate)}
+                  value={formatEstCompletion(result.estimatedCompletionDate, locale)}
                 />
               </div>
             </Card>
@@ -425,6 +429,7 @@ export function TrackClient({
               <ProgressTimeline
                 steps={stageProgress}
                 emptyLabel={t("track.noSteps")}
+                locale={locale}
               />
             </Card>
           </motion.div>

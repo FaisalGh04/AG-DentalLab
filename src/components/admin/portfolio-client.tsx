@@ -32,6 +32,7 @@ import {
   useFolders,
 } from "@/hooks/use-portfolio";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
+import { formatNumber } from "@/lib/utils";
 import type { FolderDTO, PortfolioItemDTO } from "@/types/portfolio";
 
 export function PortfolioClient() {
@@ -158,7 +159,7 @@ export function PortfolioClient() {
                   {folderLabel(folder)}
                 </h2>
                 <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600">
-                  {folderItems.length}
+                  {formatNumber(folderItems.length, locale)}
                 </span>
               </div>
 

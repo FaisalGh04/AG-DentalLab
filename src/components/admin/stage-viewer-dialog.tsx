@@ -35,7 +35,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
-import { formatDateTime, formatRelativeTime, cn } from "@/lib/utils";
+import { formatDateTime, formatRelativeTime, formatNumber, cn } from "@/lib/utils";
 import type { ProgressDTO, ImageDTO, StageVisitDTO } from "@/types/case";
 
 interface Props {
@@ -94,7 +94,7 @@ export function StageViewerDialog({
                 className="mt-1.5 font-medium text-ink"
                 title={formatRelativeTime(latest.enteredAt, locale)}
               >
-                {formatDateTime(latest.enteredAt)}
+                {formatDateTime(latest.enteredAt, locale)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {formatRelativeTime(latest.enteredAt, locale)}
@@ -124,7 +124,7 @@ export function StageViewerDialog({
         {visits.length > 1 && (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("stageView.allVisits")} ({visits.length})
+              {t("stageView.allVisits")} ({formatNumber(visits.length, locale)})
             </p>
             <ol className="space-y-1.5">
               {visits.map((v, i) => (
@@ -133,7 +133,7 @@ export function StageViewerDialog({
                   className="flex items-baseline justify-between gap-3 rounded-lg bg-muted/30 px-3 py-1.5 text-xs"
                 >
                   <span title={formatRelativeTime(v.enteredAt, locale)}>
-                    {formatDateTime(v.enteredAt)}
+                    {formatDateTime(v.enteredAt, locale)}
                   </span>
                   {v.staffName && (
                     <span className="flex items-center gap-1 text-muted-foreground">
@@ -151,7 +151,7 @@ export function StageViewerDialog({
         <div>
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <ListChecks className="h-3.5 w-3.5" />
-            {t("stageView.steps")} ({steps.length})
+            {t("stageView.steps")} ({formatNumber(steps.length, locale)})
           </p>
           {steps.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("stageView.noSteps")}</p>
@@ -181,7 +181,7 @@ export function StageViewerDialog({
         <div>
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <ImageIcon className="h-3.5 w-3.5" />
-            {t("stageView.images")} ({images.length})
+            {t("stageView.images")} ({formatNumber(images.length, locale)})
           </p>
           {images.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("stageView.noImages")}</p>

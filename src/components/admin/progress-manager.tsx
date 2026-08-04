@@ -391,7 +391,7 @@ export function ProgressManager({
                 </p>
               )}
               <p className="mt-0.5 text-xs text-muted-foreground/70">
-                {formatDateTime(step.createdAt)}
+                {formatDateTime(step.createdAt, locale)}
               </p>
             </div>
             <Button
