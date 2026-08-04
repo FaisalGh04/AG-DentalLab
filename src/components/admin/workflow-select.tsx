@@ -62,18 +62,58 @@ export function WorkflowSelect({
     if (resolved.type) setType(resolved.type);
   }, [resolved.type]);
 
+  /**
+   * The group is LOCAL state, not read straight off `resolved`.
+   *
+   * Callers that commit immediately (the detail view) only save after the
+   * confirmation gate resolves, so `value` still holds the OLD collectionId
+   * while a change is pending. Driving the <Select> off `resolved` therefore
+   * kept displaying the previous group after a type switch — and because Radix
+   * only fires onValueChange when the value actually differs, re-picking that
+   * still-displayed group was a silent no-op, leaving no way to complete the
+   * change. Local state lets the control show what is PENDING.
+   */
+  const [groupId, setGroupId] = React.useState<string | null>(resolved.groupId);
+  // Re-hydrate when the SAVED value changes (load, successful save, refetch).
+  // A no-op when it merely echoes back a selection just made here.
+  React.useEffect(() => {
+    setGroupId(resolved.groupId);
+  }, [resolved.groupId]);
+
   if (!production) return null;
 
   const groupsForType = type
     ? groups.filter((g) => g.stageSets.some((s) => s.type === type))
     : [];
 
+  /**
+   * Switching Regular<->Digital is itself a workflow change whenever the chosen
+   * group also exists in the new type — so it must EMIT, not just re-filter the
+   * dropdown. Emitting routes the caller through its normal confirmation gate;
+   * this component never saves anything directly.
+   */
   const pickType = (next: CaseWorkflowType) => {
+    if (next === type) return; // re-clicking the active type is not a change
     setType(next);
-    onChange(null); // group must be re-picked for the new type
+
+    const current = groupId ? groups.find((g) => g.id === groupId) : undefined;
+    const set = current?.stageSets.find((s) => s.type === next);
+    if (set) {
+      onChange(set.id); // same group, other type -> a real collection change
+      return;
+    }
+
+    // The selected group has no stage-set of this type, so it no longer
+    // applies: clear it and show the placeholder rather than a stale group.
+    setGroupId(null);
+    onChange(null);
   };
-  const pickGroup = (groupId: string) => {
-    const set = groups.find((g) => g.id === groupId)?.stageSets.find((s) => s.type === type);
+
+  const pickGroup = (nextGroupId: string) => {
+    setGroupId(nextGroupId);
+    const set = groups
+      .find((g) => g.id === nextGroupId)
+      ?.stageSets.find((s) => s.type === type);
     onChange(set?.id ?? null);
   };
 
@@ -103,7 +143,7 @@ export function WorkflowSelect({
 
       {/* Group dropdown, filtered to groups having a stage-set of the chosen type */}
       <Select
-        value={resolved.groupId ?? ""}
+        value={groupId ?? ""}
         disabled={disabled || !type}
         onValueChange={pickGroup}
       >

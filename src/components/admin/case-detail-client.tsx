@@ -74,6 +74,14 @@ export function CaseDetailClient({ id }: { id: string }) {
   // Read-only stage viewer. Plain local state — deliberately NOT routed through
   // confirmGate, because looking at a stage is not a transition.
   const [viewerStageId, setViewerStageId] = React.useState<string | null>(null);
+  /**
+   * Remount key for WorkflowSelect. Dismissing the gate saves nothing, so
+   * `kase.collectionId` is unchanged and the picker would keep showing the
+   * abandoned selection. Bumping this on every close discards its pending
+   * state; on a SUCCESSFUL save the remount simply re-derives from the newly
+   * saved value, so it is harmless there.
+   */
+  const [workflowResetKey, setWorkflowResetKey] = React.useState(0);
 
   const badgeLabels = {
     completed: t("state.completed"),
@@ -262,6 +270,7 @@ export function CaseDetailClient({ id }: { id: string }) {
               ignore incomplete (null) selections. */}
           <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-auto">
             <WorkflowSelect
+              key={workflowResetKey}
               category={kase.category}
               value={kase.collectionId ?? null}
               onChange={(id) => {
@@ -484,7 +493,11 @@ export function CaseDetailClient({ id }: { id: string }) {
       {/* Single gate for entry points 2-5 on this page. */}
       <ConfirmActionDialog
         open={confirmGate.open}
-        onOpenChange={confirmGate.setOpen}
+        onOpenChange={(o) => {
+          confirmGate.setOpen(o);
+          // Closing (confirmed or cancelled) ends the pending workflow change.
+          if (!o) setWorkflowResetKey((k) => k + 1);
+        }}
         intent={confirmGate.intent}
         perform={confirmGate.perform}
       />
