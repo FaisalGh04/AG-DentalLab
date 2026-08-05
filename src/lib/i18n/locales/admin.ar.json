@@ -38,7 +38,7 @@
     "title": "تسجيل دخول المسؤول",
     "email": "البريد الإلكتروني",
     "password": "كلمة المرور",
-    "emailPlaceholder": "Enter email admin",
+    "emailPlaceholder": "owner@agdentallab.com",
     "passwordPlaceholder": "كلمة المرور",
     "signIn": "تسجيل الدخول",
     "welcomeBack": "مرحباً بعودتك!",
