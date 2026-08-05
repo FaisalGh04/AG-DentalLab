@@ -38,12 +38,16 @@
  * Renaming here changes who can be PICKED going forward; past cases keep the
  * name they were logged with, by design.
  */
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
-import { promptVisible, describeTarget } from "./prompt-utils";
+import {
+  promptVisible,
+  describeTarget,
+  createAdminPrismaClient,
+  ADMIN_TX_OPTIONS,
+} from "./prompt-utils";
 
-const prisma = new PrismaClient();
+const prisma = createAdminPrismaClient();
 const BCRYPT_COST = 12;
 
 function arg(name: string): string | undefined {
@@ -178,6 +182,10 @@ async function main() {
     return;
   }
 
+  // Only one statement, so this never hit the default 5 s cap the way
+  // seed-staff.ts did — but note the bcrypt.hash below runs INSIDE the
+  // transaction, and a cost-12 hash is ~300 ms of CPU on top of the round
+  // trips. The explicit budget keeps that off the edge of the limit.
   await prisma.$transaction(async (tx) => {
     await tx.staffMember.update({
       where: { id: row.id },
@@ -191,7 +199,7 @@ async function main() {
           : {}),
       },
     });
-  });
+  }, ADMIN_TX_OPTIONS);
 
   const after = await prisma.staffMember.findUnique({
     where: { id: row.id },

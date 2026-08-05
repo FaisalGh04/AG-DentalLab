@@ -30,16 +30,18 @@
  * lastUsedAt is reset because after rotation the old timestamp refers to the
  * PREVIOUS code, which is actively misleading when auditing "when was this used".
  */
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
   promptSecretTwice,
   promptVisible,
   requireTTY,
   describeTarget,
+  createAdminPrismaClient,
 } from "./prompt-utils";
 
-const prisma = new PrismaClient();
+// No $transaction here — the rotation is a single update — so this script only
+// needs the connection fix, not ADMIN_TX_OPTIONS.
+const prisma = createAdminPrismaClient();
 
 /** Same cost as Admin.passwordHash and StaffMember.pinHash. */
 const BCRYPT_COST = 12;

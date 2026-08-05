@@ -25,7 +25,6 @@
  * FK. Renaming a staff member here changes who can be PICKED going forward; it
  * never rewrites who received a past case.
  */
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import {
@@ -33,9 +32,11 @@ import {
   promptVisible,
   requireTTY,
   describeTarget,
+  createAdminPrismaClient,
+  ADMIN_TX_OPTIONS,
 } from "./prompt-utils";
 
-const prisma = new PrismaClient();
+const prisma = createAdminPrismaClient();
 
 /** bcrypt cost — same as Admin.passwordHash (src/auth.ts). */
 const BCRYPT_COST = 12;
@@ -226,7 +227,11 @@ async function main() {
       update: { codeHash: breakGlassHash, lastUsedAt: null },
       create: { kind: "BREAK_GLASS", codeHash: breakGlassHash },
     });
-  });
+    // EIGHT statements. Prisma's default 5 s interactive-transaction cap is not
+    // enough for that many round trips against a remote database — see
+    // ADMIN_TX_OPTIONS for the measurements. All hashing already happened above,
+    // so nothing slow runs inside here; it is purely round-trip bound.
+  }, ADMIN_TX_OPTIONS);
 
   console.log(
     `\n✔ Seeded ${staffHashes.length} staff with passwords, plus "${MANAGER_NAME}"` +

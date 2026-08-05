@@ -1,6 +1,7 @@
 /**
- * Shared interactive-prompt helpers for the credential scripts
- * (seed-staff.ts, rotate-manager-code.ts).
+ * Shared helpers for the credential scripts (seed-staff.ts, rename-staff.ts,
+ * rotate-manager-code.ts): interactive prompting, and the ONE definition of
+ * which database those scripts talk to.
  *
  * Extracted so the SECRET-HANDLING RULES have exactly one implementation. Two
  * copies of "never echo a keystroke, never print a secret, require it twice"
@@ -14,6 +15,7 @@
  *   - callers must refuse to run outside a TTY, so secrets cannot be piped in
  */
 import * as readline from "node:readline";
+import { PrismaClient } from "@prisma/client";
 
 /** Read a line with the keystrokes hidden (no echo, no history). */
 export function promptHidden(question: string): Promise<string> {
@@ -92,9 +94,59 @@ export function requireTTY(): void {
   }
 }
 
+/**
+ * The connection the credential scripts use — DIRECT_URL first.
+ *
+ * These scripts previously did a bare `new PrismaClient()`, which resolves
+ * DATABASE_URL: in production that is Supabase's TRANSACTION-mode pooler on
+ * 6543. Measured from a remote operator machine, an interactive transaction
+ * costs ~570 ms per statement through that pooler versus ~355 ms through the
+ * 5432 session pooler. seed-staff.ts's write block holds EIGHT statements, so
+ * over 6543 it lands at roughly 5.4 s — past Prisma's 5000 ms interactive
+ * transaction cap. Prisma then reaps the transaction and the next statement
+ * fails with "Transaction not found. Transaction ID is invalid…".
+ *
+ * That is a LATENCY cliff, not a pooler incompatibility: 1-4 statements
+ * succeed over 6543. It never appeared against a local scratch database
+ * because loopback round-trips are sub-millisecond. Preferring DIRECT_URL
+ * takes the faster path and keeps admin CLI work on the same connection
+ * Prisma Migrate already uses (schema.prisma's `directUrl`).
+ *
+ * Returns undefined when neither is set, so the caller falls back to Prisma's
+ * own resolution and its error message, rather than inventing a worse one.
+ */
+export function resolveAdminDatabaseUrl(): string | undefined {
+  return process.env.DIRECT_URL || process.env.DATABASE_URL || undefined;
+}
+
+/**
+ * Prisma client for the credential scripts.
+ *
+ * Uses resolveAdminDatabaseUrl so the connection and the describeTarget()
+ * banner can never disagree — before this, the banner read DIRECT_URL while
+ * the client used DATABASE_URL, so a confirmation prompt could in principle
+ * name a different database than the one about to be written.
+ */
+export function createAdminPrismaClient(): PrismaClient {
+  const url = resolveAdminDatabaseUrl();
+  return url ? new PrismaClient({ datasources: { db: { url } } }) : new PrismaClient();
+}
+
+/**
+ * Transaction budget for the credential scripts.
+ *
+ * Prisma's defaults are timeout 5000 ms / maxWait 2000 ms. Preferring
+ * DIRECT_URL alone would leave seed-staff.ts at ~2.8 s against a 5 s cap —
+ * enough headroom to pass today and to break again from a slower network. An
+ * explicit budget removes the cliff instead of moving it. These writes are a
+ * handful of upserts against tiny tables, so a long ceiling costs nothing:
+ * it bounds a hang, it does not make the normal path slower.
+ */
+export const ADMIN_TX_OPTIONS = { timeout: 30_000, maxWait: 10_000 } as const;
+
 /** The target database, with credentials stripped, for the confirmation banner. */
 export function describeTarget(): string {
-  const raw = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+  const raw = resolveAdminDatabaseUrl() ?? "";
   try {
     const u = new URL(raw);
     return `${u.hostname}:${u.port || "5432"}${u.pathname}`;
