@@ -202,7 +202,7 @@ error messages, or the audit trail.
 Two complementary layers — the short secrets mean throttling, not hash cost,
 carries the load:
 
-- **Rate limit** — 5 attempts / 15 min, keyed on `staffId + IP`
+- **Rate limit** — 15 attempts / 15 min, keyed on `staffId + IP`
   (`confirmationRatelimit`). Stops bursts. In production, if Upstash is
   unconfigured this **fails closed**.
 - **Lockout** — 5 consecutive failures sets `lockedUntil` 15 minutes out
@@ -210,12 +210,27 @@ carries the load:
   waits out each rate-limit window, since the counter accumulates across them.
   Cleared on any successful confirmation.
 
-Both thresholds are 5, so against a single IP the **lockout** is what actually
-fires first: attempts 1–5 spend the rate-limit budget while incrementing
-`failed_attempts`, and the fifth failure sets `locked_until` — so attempt 5 comes
-back `locked`, and only attempt 6 onward comes back `throttled`. The rate limit's
-distinct job is capping the cost of a burst from one address; the lockout is the
-layer that both catches patient, low-rate grinding and survives IP rotation.
+The two numbers are deliberately different, and the **lockout is the smaller
+one**, so against a single IP it is what fires first:
+
+| attempt | result | who refused it |
+| --- | --- | --- |
+| 1–4 | `failed` | — (`failed_attempts` counting up) |
+| 5 | `locked` | **DB lockout** — the guess budget ends here |
+| 6–15 | `locked` | **DB lockout**, while the limiter still has budget |
+| 16+ | `throttled` | rate limiter |
+
+The rate limit's budget is spent by **successful** confirmations too, which is
+what sets it at 15: at 5 a staff member doing five legitimate confirmations in a
+quarter of an hour was throttled on the sixth, worst of all for the manager, who
+performs most actions. Raising it does not widen the guess budget, because rows
+6–15 above are refused by the database, not the limiter. What it does cost is
+bcrypt work: every admitted request burns a cost-12 compare even when it only
+reports `locked`, so one IP can force 15 of those per window instead of 5.
+
+Verify both after touching either — `prisma/verify-confirm-ratelimit.ts` for the
+limiter (needs real Upstash, no DB) and `prisma/verify-confirm-lockout.ts` for
+the table above (needs a scratch DB; it refuses to run against production).
 
 **These two layers carry more weight than they used to.** On the two-factor path
 they back up a pair of secrets; on the manager path they back up **one**, and

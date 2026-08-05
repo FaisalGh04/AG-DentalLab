@@ -41,8 +41,6 @@ process.loadEnvFile(); // Node >= 20.12
 type RatelimitModule = typeof import("../src/lib/ratelimit");
 type RedisModule = typeof import("../src/lib/redis");
 
-// Mirrors MAX_FAILED_ATTEMPTS / the 5-per-15-min sliding window.
-const EXPECTED_BUDGET = 5;
 const PROBE_PREFIX = "rl:confirm";
 
 const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -83,10 +81,17 @@ async function cleanup(redis: RedisModule["redis"]) {
 }
 
 async function main() {
-  const { confirmationRatelimit, limit }: RatelimitModule = await import(
-    "../src/lib/ratelimit"
-  );
+  const {
+    confirmationRatelimit,
+    limit,
+    CONFIRMATION_MAX_ATTEMPTS,
+    CONFIRMATION_WINDOW,
+  }: RatelimitModule = await import("../src/lib/ratelimit");
   const { redis }: RedisModule = await import("../src/lib/redis");
+
+  // Read the budget from the limiter's own config rather than restating it, so
+  // this can never quietly go on asserting a number the app no longer uses.
+  const EXPECTED_BUDGET = CONFIRMATION_MAX_ATTEMPTS;
 
   if (process.argv.includes("--cleanup")) {
     console.log("\nCleanup only\n");
@@ -95,7 +100,10 @@ async function main() {
   }
 
   console.log("\n=== Confirmation limiter — live Upstash ===\n");
-  console.log(`  identifier: ${PROBE_ID}\n`);
+  console.log(`  identifier: ${PROBE_ID}`);
+  console.log(
+    `  config:     ${CONFIRMATION_MAX_ATTEMPTS} attempts / ${CONFIRMATION_WINDOW} (from src/lib/ratelimit.ts)\n`,
+  );
 
   // --- A. the limiter is actually wired to Upstash at all ------------------
   // If env were missing/malformed, src/lib/redis.ts yields null and the whole
@@ -188,7 +196,7 @@ async function main() {
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: "deliberately-invalid-token-for-failclosed-probe",
     }),
-    limiter: Ratelimit.slidingWindow(5, "15 m"),
+    limiter: Ratelimit.slidingWindow(CONFIRMATION_MAX_ATTEMPTS, CONFIRMATION_WINDOW),
     analytics: false, // don't pollute real analytics with the broken-auth probe
     prefix: "rl:probe-failclosed",
   });

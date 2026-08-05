@@ -41,11 +41,29 @@ export const adminMutationRatelimit = redis
  * Keyed on `staffId + IP` by the caller (src/lib/staff-auth.ts), which caps one
  * IP but leaves a distributed attacker a fresh bucket per address — see the
  * comment at step 1 there for why the DB lockout, not this, is the backstop.
+ *
+ * BUDGET COVERS SUCCESSES TOO, which is what sets the number. At the original 5
+ * a staff member doing five legitimate confirmations in fifteen minutes was
+ * throttled on the sixth — plausible on a busy day, and worst for the manager,
+ * who performs most actions. 15 leaves ordinary work clear of the limit.
+ *
+ * This does NOT widen the credential-guessing window. Guesses are bounded by
+ * MAX_FAILED_ATTEMPTS (5) in src/lib/staff-auth.ts, which locks the staff row
+ * before this budget is anywhere near spent, and is IP-independent. What the
+ * larger number does buy an attacker is bcrypt work: every admitted request
+ * costs a cost-12 compare even when it only ends up reporting `locked`, so a
+ * single IP can now force 15 of those per 15 min rather than 5.
  */
+export const CONFIRMATION_MAX_ATTEMPTS = 15;
+export const CONFIRMATION_WINDOW = "15 m" as const;
+
 export const confirmationRatelimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      limiter: Ratelimit.slidingWindow(
+        CONFIRMATION_MAX_ATTEMPTS,
+        CONFIRMATION_WINDOW,
+      ),
       analytics: true,
       prefix: "rl:confirm",
     })

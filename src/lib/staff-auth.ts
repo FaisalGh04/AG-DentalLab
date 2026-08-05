@@ -82,9 +82,13 @@ export async function verifyConfirmation(
   //
   //    What actually stops that is the per-staff lockout below (failedAttempts /
   //    lockedUntil, steps 3 and 5): it lives on the staff row, so it counts every
-  //    failure against that identity no matter where it came from, and it is a
-  //    ratchet — failedAttempts only clears on SUCCESS, so once past the
-  //    threshold each further failure re-locks for another LOCKOUT_MINUTES.
+  //    failure against that identity no matter where it came from. It is also a
+  //    ratchet, because failedAttempts clears ONLY on success — note the shape
+  //    though: while the lock is live, step 3 returns early, so those attempts
+  //    neither increment the counter nor extend the lock. The ratchet bites at
+  //    the NEXT attempt after lockedUntil expires, which re-locks immediately
+  //    (failedAttempts is still >= MAX_FAILED_ATTEMPTS) rather than granting a
+  //    fresh set of tries.
   //
   //    This ordering matters most for the manager: the single-factor path at 4a
   //    has one secret behind it, so the DB lockout — not this limiter — is the
