@@ -77,6 +77,10 @@ export async function POST(req: NextRequest) {
           action: "CASE_CREATED",
           outcome: check.reason === "locked" ? "LOCKED_OUT" : "CONFIRMATION_FAILED",
           staffId: confirmation.staffId,
+          // Recorded on failures too: a run of failed SINGLE-FACTOR attempts is
+          // the brute-force signal that matters most, that path having only one
+          // secret behind it.
+          singleFactor: check.singleFactor,
           adminEmail: session?.user?.email ?? null,
           ip,
         }),
@@ -153,6 +157,7 @@ export async function POST(req: NextRequest) {
           staffId: check.staffId,
           staffName: check.staffName,
           usedBreakGlass: check.usedBreakGlass,
+          singleFactor: check.singleFactor,
           adminEmail: session?.user?.email ?? null,
           ip,
         }),

@@ -17,6 +17,13 @@ import { prisma } from "@/lib/prisma";
 export interface StaffOption {
   id: string;
   name: string;
+  /**
+   * The manager identity. Drives RENDERING ONLY — the single-code prompt and the
+   * localized "Manager" label. Not a secret (it is a role marker, and the
+   * reduced path is visible in the UI by design), and never trusted as an
+   * assertion: verifyConfirmation re-reads it from the DB on every attempt.
+   */
+  isManager: boolean;
 }
 
 /**
@@ -28,7 +35,7 @@ export interface StaffOption {
 export const getActiveStaff = cache(async (): Promise<StaffOption[]> => {
   const rows = await prisma.staffMember.findMany({
     where: { isActive: true },
-    select: { id: true, name: true },
+    select: { id: true, name: true, isManager: true },
     orderBy: [{ order: "asc" }, { name: "asc" }],
   });
   return rows;

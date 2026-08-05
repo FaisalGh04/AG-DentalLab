@@ -34,10 +34,13 @@ export const adminMutationRatelimit = redis
   : null;
 
 /**
- * Two-factor confirmation attempts (case creation + stage transitions).
+ * Staff confirmation attempts (case creation + stage transitions) — both the
+ * two-factor path and the manager's single-factor one.
  * Deliberately far stricter than adminMutationRatelimit's 60/min: the secrets
  * behind it are short, so throttling — not hash cost — is the real control.
- * Keyed on `staffId + IP` by the caller (src/lib/staff-auth.ts).
+ * Keyed on `staffId + IP` by the caller (src/lib/staff-auth.ts), which caps one
+ * IP but leaves a distributed attacker a fresh bucket per address — see the
+ * comment at step 1 there for why the DB lockout, not this, is the backstop.
  */
 export const confirmationRatelimit = redis
   ? new Ratelimit({

@@ -315,6 +315,8 @@
     "managerCode": "Manager confirmation code",
     "managerCodePlaceholder": "Enter the manager code",
     "managerRequired": "Enter the manager confirmation code.",
+    "singleFactorNotice": "Single-factor approval — as the manager, this one code authorises the action by itself. No separate staff password is required, and the audit log records it as a single-factor approval.",
+    "managerSelfHint": "Enter the manager code to approve this action.",
     "managerHint": "Ask the manager to enter the code to approve this action.",
     "performedBy": "Performed by",
     "failed": "Confirmation failed.",
@@ -341,6 +343,9 @@
     "images": "Images",
     "noImages": "No images tagged to this stage.",
     "readOnlyNote": "Viewing only — to move the case to this stage, use the stage picker or the stepper (both require confirmation)."
+  },
+  "staff": {
+    "manager": "Manager"
   },
   "caseHistory": {
     "title": "Stage history",

@@ -88,6 +88,12 @@ export interface ActionLogInput {
   staffId?: string | null;
   staffName?: string | null;
   usedBreakGlass?: boolean;
+  /**
+   * Approved (or attempted) through the reduced one-code manager path. Recorded
+   * EXPLICITLY so a one-person approval can never be mistaken for a genuine
+   * two-person confirmation when the trail is reviewed.
+   */
+  singleFactor?: boolean;
   adminEmail?: string | null;
   ip?: string | null;
 }
@@ -118,6 +124,7 @@ export function buildActionLog(
     isCompletedAfter: c?.to.isCompleted ?? null,
     staffNameSnapshot: input.staffName ?? null,
     usedBreakGlass: input.usedBreakGlass ?? false,
+    singleFactor: input.singleFactor ?? false,
     adminEmail: input.adminEmail ?? null,
     ip: input.ip ?? null,
     ...(input.caseId ? { case: { connect: { id: input.caseId } } } : {}),

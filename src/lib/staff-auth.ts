@@ -27,7 +27,12 @@ const LOCKOUT_MINUTES = 15;
 
 export interface ConfirmationInput {
   staffId: string;
-  staffPassword: string;
+  /**
+   * OMITTED for the manager identity, which authenticates with the manager code
+   * alone (see the branch in verifyConfirmation). For every other staff member a
+   * missing password is a FAILED attempt, never a bypass.
+   */
+  staffPassword?: string;
   managerCode: string;
 }
 
@@ -38,8 +43,21 @@ export type ConfirmationResult =
       /** Snapshot for the audit log — never re-resolved from the FK later. */
       staffName: string;
       usedBreakGlass: boolean;
+      /** Approved via the reduced one-code manager path. Audited explicitly. */
+      singleFactor: boolean;
     }
-  | { ok: false; reason: "failed" | "locked" | "throttled"; retryAfter?: number };
+  | {
+      ok: false;
+      reason: "failed" | "locked" | "throttled";
+      retryAfter?: number;
+      /**
+       * Whether the ATTEMPT was against the manager identity. Recorded on
+       * failures too: single-factor failures are the brute-force signal that
+       * matters most, since that path has only one secret to guess.
+       * False when the staff row could not be loaded (unknown/throttled).
+       */
+      singleFactor: boolean;
+    };
 
 /**
  * Verify both factors. Returns a discriminated result rather than throwing, so
@@ -52,15 +70,33 @@ export async function verifyConfirmation(
   input: ConfirmationInput,
   ip: string,
 ): Promise<ConfirmationResult> {
-  // 1. Throttle first — keyed on staff + IP so one actor cannot burn through
-  //    the whole roster, and one staff id cannot be attacked from many IPs
-  //    without also tripping the per-IP dimension.
+  // 1. Throttle first, before any bcrypt work, so throttled attempts stay cheap.
+  //
+  //    Keyed on staff + IP. Be precise about what that does and does not buy:
+  //
+  //      - it BOUNDS ONE IP to 5 attempts per 15 min against a given staff id,
+  //        which is what keeps a single attacker from burning through the roster
+  //      - it does NOT bound a DISTRIBUTED attack. The IP is part of the key, so
+  //        an attacker with N source addresses gets N fresh buckets against the
+  //        SAME staff id — 5N attempts, with the limiter never once denying.
+  //
+  //    What actually stops that is the per-staff lockout below (failedAttempts /
+  //    lockedUntil, steps 3 and 5): it lives on the staff row, so it counts every
+  //    failure against that identity no matter where it came from, and it is a
+  //    ratchet — failedAttempts only clears on SUCCESS, so once past the
+  //    threshold each further failure re-locks for another LOCKOUT_MINUTES.
+  //
+  //    This ordering matters most for the manager: the single-factor path at 4a
+  //    has one secret behind it, so the DB lockout — not this limiter — is the
+  //    control carrying that weight. Verify both after any change to either:
+  //    the limiter with prisma/verify-confirm-ratelimit.ts (needs real Upstash),
+  //    the lockout against a scratch DB (it touches no Redis at all).
   const { success, reset } = await limit(
     confirmationRatelimit,
     `confirm:${input.staffId}:${ip}`,
   );
   if (!success) {
-    return { ok: false, reason: "throttled", retryAfter: reset };
+    return { ok: false, reason: "throttled", retryAfter: reset, singleFactor: false };
   }
 
   const staff = await prisma.staffMember.findUnique({
@@ -69,20 +105,27 @@ export async function verifyConfirmation(
 
   // 2. Unknown or inactive staff: burn a comparison so the timing profile
   //    matches the real path, then fail generically.
+  //
+  //    DELIBERATELY BEFORE the isManager branch below. isManager is a role
+  //    marker, never an exemption: a deactivated manager must fail here, exactly
+  //    like anyone else, without its credential ever being compared.
   if (!staff || !staff.isActive) {
-    await bcrypt.compare(input.staffPassword, DUMMY_HASH);
-    return { ok: false, reason: "failed" };
+    await bcrypt.compare(input.staffPassword ?? "", DUMMY_HASH);
+    return { ok: false, reason: "failed", singleFactor: false };
   }
 
-  // 3. Locked out?
+  // 3. Locked out? Also before the branch. The manager is subject to the SAME
+  //    lockout as everyone else — and needs it more than anyone, because after
+  //    the branch below there is only one secret standing behind that identity.
   if (staff.lockedUntil && staff.lockedUntil > new Date()) {
-    await bcrypt.compare(input.staffPassword, DUMMY_HASH);
-    return { ok: false, reason: "locked", retryAfter: staff.lockedUntil.getTime() };
+    await bcrypt.compare(input.staffPassword ?? "", DUMMY_HASH);
+    return {
+      ok: false,
+      reason: "locked",
+      retryAfter: staff.lockedUntil.getTime(),
+      singleFactor: staff.isManager,
+    };
   }
-
-  // 4. Both factors. Evaluate BOTH regardless of the first result so the
-  //    response time does not reveal which one failed.
-  const staffOk = await bcrypt.compare(input.staffPassword, staff.pinHash);
 
   const secrets = await prisma.managerSecret.findMany();
   const primary = secrets.find((s) => s.kind === "PRIMARY");
@@ -91,13 +134,53 @@ export async function verifyConfirmation(
   const primaryOk = primary
     ? await bcrypt.compare(input.managerCode, primary.codeHash)
     : await bcrypt.compare(input.managerCode, DUMMY_HASH);
-  const breakGlassOk = breakGlass
-    ? await bcrypt.compare(input.managerCode, breakGlass.codeHash)
-    : false;
 
-  const managerOk = primaryOk || breakGlassOk;
+  let authorised: boolean;
+  let usedBreakGlass = false;
 
-  if (!staffOk || !managerOk) {
+  if (staff.isManager) {
+    // 4a. SINGLE-FACTOR path — the manager approving their own action.
+    //
+    // One code satisfies both factors. This is a deliberate, accepted reduction
+    // in assurance; docs/staff-auth.md carries the full revised threat model.
+    //
+    // PRIMARY ONLY — break-glass is deliberately NOT honoured here. Break-glass
+    // exists to survive the manager being unreachable, which by definition means
+    // somebody ELSE is acting, and that person uses the two-factor path with
+    // their own password. Accepting it here would make a single long code
+    // sufficient for full authority attributed to "Manager", with no staff
+    // password anywhere in the chain — amplifying the emergency override into a
+    // general-purpose one.
+    //
+    // staff.pinHash is never read on this path; the column is unreachable for
+    // this row by construction, not merely unused.
+    authorised = primaryOk;
+  } else {
+    // 4b. TWO-FACTOR path — every other staff member, unchanged behaviour.
+    //
+    // A MISSING password is a FAILED attempt, never a bypass. This is the line
+    // that stops confirmationSchema's now-optional staffPassword from silently
+    // dropping the first factor for the entire roster: only the DB's isManager
+    // flag can reach 4a, and a client cannot assert it.
+    let staffOk = false;
+    if (input.staffPassword) {
+      staffOk = await bcrypt.compare(input.staffPassword, staff.pinHash);
+    } else {
+      // Burn a comparison so an omitted password costs the same as a wrong one.
+      await bcrypt.compare("", DUMMY_HASH);
+    }
+
+    // Evaluate BOTH factors regardless of the first result so the response time
+    // does not reveal which one failed.
+    const breakGlassOk = breakGlass
+      ? await bcrypt.compare(input.managerCode, breakGlass.codeHash)
+      : false;
+
+    usedBreakGlass = breakGlassOk && !primaryOk;
+    authorised = staffOk && (primaryOk || breakGlassOk);
+  }
+
+  if (!authorised) {
     const failed = staff.failedAttempts + 1;
     const lock = failed >= MAX_FAILED_ATTEMPTS;
     await prisma.staffMember.update({
@@ -109,7 +192,11 @@ export async function verifyConfirmation(
           : staff.lockedUntil,
       },
     });
-    return { ok: false, reason: lock ? "locked" : "failed" };
+    return {
+      ok: false,
+      reason: lock ? "locked" : "failed",
+      singleFactor: staff.isManager,
+    };
   }
 
   // 5. Success — clear the counters.
@@ -118,7 +205,7 @@ export async function verifyConfirmation(
     data: { failedAttempts: 0, lockedUntil: null },
   });
 
-  if (breakGlassOk && !primaryOk) {
+  if (usedBreakGlass) {
     // Emergency override must never be quiet, or it becomes the default path.
     Sentry.captureMessage(
       `[staff-auth] BREAK-GLASS code used by staff "${staff.name}" (${staff.id})`,
@@ -140,6 +227,7 @@ export async function verifyConfirmation(
     ok: true,
     staffId: staff.id,
     staffName: staff.name,
-    usedBreakGlass: breakGlassOk && !primaryOk,
+    usedBreakGlass,
+    singleFactor: staff.isManager,
   };
 }

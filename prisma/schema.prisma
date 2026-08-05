@@ -366,7 +366,26 @@ model StaffMember {
   id             String    @id @default(cuid())
   name           String    @unique
   // bcrypt, cost 12 — same as Admin.passwordHash (src/auth.ts).
+  //
+  // NOT consulted for the manager row (isManager = true): that identity
+  // authenticates against ManagerSecret.PRIMARY instead, and src/lib/staff-auth.ts
+  // branches BEFORE ever reaching this column. It is still NOT NULL, and is set
+  // to a bcrypt hash of 32 random bytes nobody holds, so the column is
+  // unusable rather than merely unused — defence in depth if that branch is
+  // ever refactored wrongly.
   pinHash        String    @map("pin_hash")
+  // The single "Manager" identity. When this staff member performs a gated
+  // action they supply ONE code (the manager code) which satisfies both factors
+  // — a DELIBERATE, accepted reduction in assurance, documented with its full
+  // threat model in docs/staff-auth.md. Every other staff member is unaffected
+  // and still requires their own password PLUS the manager code.
+  //
+  // At most one row may hold this, enforced by a PARTIAL UNIQUE INDEX created in
+  // raw SQL by migration 20260805132105_add_manager_single_factor. Prisma cannot
+  // express `WHERE is_manager = true`, so that index is invisible here — verified
+  // not to be treated as drift on Prisma 6.19, but if a future version ever
+  // generates a DROP for it, delete the statement rather than accepting it.
+  isManager      Boolean   @default(false) @map("is_manager")
   isActive       Boolean   @default(true) @map("is_active")
   order          Int       @default(0)
   // Lockout counters. Reset to (0, null) on any successful confirmation.
@@ -424,6 +443,14 @@ model CaseActionLog {
   staffId           String?  @map("staff_id")
   staffNameSnapshot String?  @map("staff_name_snapshot")
   usedBreakGlass    Boolean  @default(false) @map("used_break_glass")
+  // TRUE when the action was approved through the reduced SINGLE-FACTOR manager
+  // path — one code satisfying both factors — rather than a genuine two-person
+  // confirmation. Recorded EXPLICITLY, never inferred from staffNameSnapshot:
+  // that is a mutable snapshot (the manager has already been renamed once), and
+  // inference would silently break if a second manager identity ever existed.
+  // Without this column a one-person approval is indistinguishable from a real
+  // two-factor one, which would make the trail quietly dishonest.
+  singleFactor      Boolean  @default(false) @map("single_factor")
   // Who was signed in to /admin at the time (NextAuth session), so both layers
   // are recorded: the logged-in admin AND the staff member who confirmed.
   adminEmail        String?  @map("admin_email")

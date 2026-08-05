@@ -110,6 +110,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               confirmed.reason === "locked" ? "LOCKED_OUT" : "CONFIRMATION_FAILED",
             change,
             staffId: parsed.data.staffId,
+            // Recorded on failures too: a run of failed SINGLE-FACTOR attempts
+            // is the brute-force signal that matters most, that path having
+            // only one secret behind it.
+            singleFactor: confirmed.singleFactor,
             adminEmail: session?.user?.email ?? null,
             ip,
           }),
@@ -161,6 +165,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             staffId: confirmed.staffId,
             staffName: confirmed.staffName,
             usedBreakGlass: confirmed.usedBreakGlass,
+            singleFactor: confirmed.singleFactor,
             adminEmail: session?.user?.email ?? null,
             ip,
           }),

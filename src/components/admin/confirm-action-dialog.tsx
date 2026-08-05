@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, ShieldCheck, UserCheck, KeyRound } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldAlert, UserCheck, KeyRound } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStaff } from "@/hooks/use-staff";
+import { staffDisplayName } from "@/lib/staff-display";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import type { ConfirmationInputDTO } from "@/lib/validations";
 
@@ -75,7 +76,28 @@ export function ConfirmActionDialog({
     if (!open) reset();
   }, [open, reset]);
 
-  const staffName = (staff.data ?? []).find((s) => s.id === staffId)?.name ?? "";
+  const selected = (staff.data ?? []).find((s) => s.id === staffId) ?? null;
+  const staffName = selected ? staffDisplayName(selected, t) : "";
+
+  /**
+   * The manager approving their own action: ONE code, no separate staff
+   * password (docs/staff-auth.md carries the accepted trade-off).
+   *
+   * `isManager` is a RENDERING hint only. The server re-reads the flag from the
+   * database for the submitted staffId and decides the path itself, so a
+   * tampered client can at most produce a request that fails verification — it
+   * can never talk its way onto the reduced path.
+   */
+  const isManagerFlow = !!selected?.isManager;
+
+  /** Switching identity must never carry a typed secret across. */
+  function chooseStaff(id: string) {
+    setStaffId(id);
+    setStaffPassword("");
+    setManagerCode("");
+    setError(null);
+    setPane("staff");
+  }
 
   function goToManager(e: React.FormEvent) {
     e.preventDefault();
@@ -89,6 +111,10 @@ export function ConfirmActionDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (isManagerFlow && !staffId) {
+      setError(t("confirm.staffRequired"));
+      return;
+    }
     if (!managerCode) {
       setError(t("confirm.managerRequired"));
       return;
@@ -96,7 +122,14 @@ export function ConfirmActionDialog({
     setPending(true);
     setError(null);
     try {
-      await perform({ staffId, staffPassword, managerCode });
+      // staffPassword is OMITTED on the manager path rather than sent-and-
+      // ignored: there is no reason to put a secret on the wire that the server
+      // will not read.
+      await perform(
+        isManagerFlow
+          ? { staffId, managerCode }
+          : { staffId, staffPassword, managerCode },
+      );
       onOpenChange(false);
       onDone?.();
     } catch (err) {
@@ -113,6 +146,32 @@ export function ConfirmActionDialog({
       setPending(false);
     }
   }
+
+  /**
+   * Shared by both flows so the two can never drift apart. The option VALUE is
+   * the staff id (not the name), and the label goes through staffDisplayName so
+   * the manager reads "Manager"/"المدير" while every other name stays raw.
+   */
+  const staffPicker = (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1.5">
+        <UserCheck className="h-3.5 w-3.5" />
+        {t("confirm.staffName")}
+      </Label>
+      <Select value={staffId} onValueChange={chooseStaff} disabled={pending}>
+        <SelectTrigger>
+          <SelectValue placeholder={t("confirm.selectStaff")} />
+        </SelectTrigger>
+        <SelectContent>
+          {(staff.data ?? []).map((s) => (
+            <SelectItem key={s.id} value={s.id}>
+              {staffDisplayName(s, t)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
@@ -136,34 +195,69 @@ export function ConfirmActionDialog({
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <StepDot active={pane === "staff"} done={pane === "manager"} />
-          <span>{t("confirm.step1")}</span>
-          <span className="mx-1 opacity-40">—</span>
-          <StepDot active={pane === "manager"} done={false} />
-          <span>{t("confirm.step2")}</span>
-        </div>
+        {/* Two-step indicator only where there ARE two steps. Showing it on the
+            manager path would misrepresent a one-person approval as a
+            two-person one, in the very dialog that performs it. */}
+        {!isManagerFlow && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <StepDot active={pane === "staff"} done={pane === "manager"} />
+            <span>{t("confirm.step1")}</span>
+            <span className="mx-1 opacity-40">—</span>
+            <StepDot active={pane === "manager"} done={false} />
+            <span>{t("confirm.step2")}</span>
+          </div>
+        )}
 
-        {pane === "staff" ? (
-          <form onSubmit={goToManager} className="space-y-4">
+        {isManagerFlow ? (
+          /* ---- SINGLE-FACTOR: the manager approving their own action ------ */
+          <form onSubmit={submit} className="space-y-4">
+            {staffPicker}
+
+            {/* The reduction in assurance is stated ON SCREEN, not just in the
+                audit log. Whoever uses this path should see what it is. */}
+            <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              {t("confirm.singleFactorNotice")}
+            </p>
+
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
-                <UserCheck className="h-3.5 w-3.5" />
-                {t("confirm.staffName")}
+                <KeyRound className="h-3.5 w-3.5" />
+                {t("confirm.managerCode")}
               </Label>
-              <Select value={staffId} onValueChange={setStaffId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("confirm.selectStaff")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(staff.data ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                type="password"
+                autoComplete="off"
+                value={managerCode}
+                onChange={(e) => setManagerCode(e.target.value)}
+                placeholder={t("confirm.managerCodePlaceholder")}
+                disabled={pending}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("confirm.managerSelfHint")}
+              </p>
             </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => onOpenChange(false)}
+              >
+                {t("confirm.cancel")}
+              </Button>
+              <Button type="submit" variant="gradient" disabled={pending}>
+                {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {t("confirm.approve")}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : pane === "staff" ? (
+          <form onSubmit={goToManager} className="space-y-4">
+            {staffPicker}
 
             <div className="space-y-1.5">
               <Label>{t("confirm.staffPassword")}</Label>

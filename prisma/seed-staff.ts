@@ -27,8 +27,13 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import * as readline from "node:readline";
 import { randomBytes } from "node:crypto";
+import {
+  promptSecretTwice,
+  promptVisible,
+  requireTTY,
+  describeTarget,
+} from "./prompt-utils";
 
 const prisma = new PrismaClient();
 
@@ -42,112 +47,62 @@ const BCRYPT_COST = 12;
 const MIN_STAFF_SECRET_LENGTH = 6;
 
 /**
- * Minimum length for the MANAGER code — deliberately SHORTER than the staff
- * minimum. This is an EXPLICIT TRADE-OFF, not an oversight.
+ * Minimum length for the MANAGER code. RAISED FROM 4 TO 6.
  *
- * Why: the manager types this code dozens of times a day, on every case
- * creation and every stage transition. A long code creates enough friction that
- * the realistic outcome is it gets written on a sticky note by the workstation
- * or shared with staff to avoid the interruption — at which point the second
- * factor stops being a control at all. A short code that stays secret is worth
- * more than a long one that gets shared.
+ * The old value of 4 was a deliberate trade-off, justified like this: the
+ * manager types this code many times a day, so friction risks it ending up on a
+ * sticky note or shared with staff, and online guessing stayed well defended
+ * because "an attacker also needs a valid staff password".
  *
- * What it costs:
- *   - ONLINE guessing is still well defended, and length barely matters there:
- *     an attacker also needs a valid staff password, and confirmationRatelimit
- *     (5 / 15 min per staffId+IP) plus the 5-failure lockout make grinding
- *     impractical.
- *   - OFFLINE resistance is what drops. If the database is ever exposed, a
- *     4-character code falls to brute force in seconds even at bcrypt cost 12 —
- *     the hash stops being meaningful protection for this particular secret.
+ * THAT LAST CLAUSE IS NO LONGER TRUE. The manager identity now authenticates
+ * with this code ALONE (StaffMember.isManager — the single-factor path in
+ * src/lib/staff-auth.ts). For that path there is no second secret, so the entire
+ * online defence is confirmationRatelimit plus the 5-failure lockout, and the
+ * code's own length went from "barely matters" to "is the search space".
  *
- * Consequences, which docs/staff-auth.md spells out:
- *   - treat the manager code as MORE sensitive, not less
- *   - never write it down anywhere near the workstation
- *   - rotate it periodically, and immediately if anyone else sees it typed
- *   - the break-glass code stays long and random precisely because it is rare
+ * At 4 characters that space is 10,000; the lockout allows roughly 20 guesses an
+ * hour, so exhausting it is a patient fortnight, not a fantasy. Six characters
+ * raises it a hundredfold for two extra keystrokes.
+ *
+ * Offline resistance is unchanged in kind and still weak: if the database leaks,
+ * a short code falls to brute force regardless of bcrypt cost. Treat this secret
+ * as MORE sensitive than a staff password, not less — never written down near
+ * the workstation, never shared, rotated on a schedule you can actually keep
+ * (`npx tsx prisma/rotate-manager-code.ts` rotates it WITHOUT touching staff
+ * passwords, so there is no excuse to skip it). The break-glass code stays long
+ * and random precisely because it is used rarely.
  */
-const MIN_MANAGER_CODE_LENGTH = 4;
+const MIN_MANAGER_CODE_LENGTH = 6;
 
 /**
- * The roster. Names are DATA, not secrets — safe to keep in the repo, and they
- * are never translated. StaffMember is the single source of truth for both the
- * confirmation gate and the "Received By" dropdown.
+ * Staff who hold a PERSONAL PASSWORD. Names are DATA, not secrets — safe to keep
+ * in the repo, and they are never translated. StaffMember is the single source
+ * of truth for both the confirmation gate and the "Received By" dropdown.
+ *
+ * MANAGER_NAME is deliberately NOT in this list: that identity has no personal
+ * password to prompt for (see below).
  */
-const STAFF_NAMES = ["روان", "حسام", "معتصم", "ابو عمر", "عبدالله"] as const;
+const STAFF_NAMES = ["روان", "حسام", "معتصم", "عبدالله"] as const;
+
+/**
+ * The manager identity. Authenticates with the manager code itself, so this row
+ * gets NO prompt and an unusable random pinHash — the column is never read for
+ * it (src/lib/staff-auth.ts branches before touching pinHash), and storing a
+ * real password here would create a second, silently-drifting copy of a secret.
+ *
+ * Renamed from "ابو عمر". Note the outgoing name is spelled with a BARE ALIF
+ * (U+0627); "أبو عمر" (U+0623) is a different string and would not have matched.
+ * To rename an EXISTING row use prisma/rename-staff.ts, which targets by id —
+ * this seeder upserts by name and would create a duplicate instead.
+ */
+const MANAGER_NAME = "المدير";
 
 /** Ambiguity-free alphabet, same convention as TRACKING_ID_ALPHABET. */
 const BG_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const BG_LENGTH = 24;
 
-// ---------------------------------------------------------------- prompts --
-
-/** Read a line with the keystrokes hidden (no echo, no history). */
-function promptHidden(question: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      terminal: true,
-    });
-    // Suppress echo: write the prompt once, then nothing for keystrokes.
-    let shown = false;
-    const iface = rl as unknown as {
-      _writeToOutput: (s: string) => void;
-      output: NodeJS.WriteStream;
-    };
-    iface._writeToOutput = (s: string) => {
-      if (!shown) {
-        iface.output.write(question);
-        shown = true;
-      } else if (s.includes("\n")) {
-        iface.output.write("\n");
-      }
-      // every other keystroke is swallowed
-    };
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-    rl.on("error", reject);
-  });
-}
-
-function promptVisible(question: string): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    rl.question(question, (a) => {
-      rl.close();
-      resolve(a);
-    });
-  });
-}
-
-/**
- * Ask for a secret twice and require a match. Never reports the value back —
- * only whether it was too short or mismatched.
- */
-async function promptSecretTwice(
-  label: string,
-  minLength: number,
-): Promise<string> {
-  for (;;) {
-    const first = (await promptHidden(`  ${label}: `)).trim();
-    if (first.length < minLength) {
-      console.log(`  ✗ too short (minimum ${minLength} characters). Try again.`);
-      continue;
-    }
-    const second = (await promptHidden(`  ${label} (again): `)).trim();
-    if (first !== second) {
-      console.log("  ✗ entries did not match. Try again.");
-      continue;
-    }
-    return first;
-  }
-}
+// The prompt helpers live in ./prompt-utils so this script and
+// rotate-manager-code.ts share ONE implementation of the secret-handling rules.
 
 /** Cryptographically random, rejection-sampled to avoid modulo bias. */
 function generateBreakGlassCode(): string {
@@ -166,25 +121,10 @@ function generateBreakGlassCode(): string {
 // ------------------------------------------------------------------- main --
 
 async function main() {
-  if (!process.stdin.isTTY) {
-    throw new Error(
-      "Refusing to run without an interactive terminal. Secrets must be typed, " +
-        "never piped — run this directly in your own shell.",
-    );
-  }
-
-  // Show WHICH database is about to be written to, with credentials stripped.
-  const raw = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
-  let target = "(unknown)";
-  try {
-    const u = new URL(raw);
-    target = `${u.hostname}:${u.port || "5432"}${u.pathname}`;
-  } catch {
-    /* leave as unknown */
-  }
+  requireTTY();
 
   console.log("\n=== Staff confirmation layer — credential seeding ===");
-  console.log(`Target database: ${target}`);
+  console.log(`Target database: ${describeTarget()}`);
   console.log(
     "\nThis writes ONLY bcrypt hashes. Existing secrets for these names are ROTATED.",
   );
@@ -195,6 +135,10 @@ async function main() {
   }
 
   console.log("\n--- Staff passwords (input is hidden) ---");
+  console.log(
+    `  "${MANAGER_NAME}" is NOT prompted for: that identity authenticates with the\n` +
+      "  manager code itself, so it gets an unusable random pinHash instead.",
+  );
   const staffHashes: { name: string; hash: string }[] = [];
   for (const name of STAFF_NAMES) {
     const secret = await promptSecretTwice(
@@ -206,10 +150,12 @@ async function main() {
 
   console.log("\n--- Manager confirmation code (input is hidden) ---");
   console.log(
-    `  Minimum ${MIN_MANAGER_CODE_LENGTH} characters — deliberately shorter than the\n` +
-      "  staff minimum because this is typed many times a day. A short code that\n" +
-      "  stays secret beats a long one that gets written down or shared.\n" +
-      "  Keep it off sticky notes, and rotate it periodically.",
+    `  Minimum ${MIN_MANAGER_CODE_LENGTH} characters. This is no longer merely a\n` +
+      "  SECOND factor: for the manager identity it is the ONLY one, so its length\n" +
+      "  is the whole online search space. Avoid short repeating patterns (1212,\n" +
+      "  7171) — they are the first thing a guess tries.\n" +
+      "  Keep it off sticky notes, never share it, and rotate it routinely with\n" +
+      "  `npx tsx prisma/rotate-manager-code.ts` (which leaves staff passwords alone).",
   );
   const managerSecret = await promptSecretTwice(
     "Manager code",
@@ -222,6 +168,13 @@ async function main() {
   const breakGlass = generateBreakGlassCode();
   const breakGlassHash = await bcrypt.hash(breakGlass, BCRYPT_COST);
 
+  // The manager row never holds a real password: its pinHash is bcrypt over 32
+  // random bytes that nobody — including this script — retains.
+  const managerPinHash = await bcrypt.hash(
+    randomBytes(32).toString("hex"),
+    BCRYPT_COST,
+  );
+
   await prisma.$transaction(async (tx) => {
     for (const [i, s] of staffHashes.entries()) {
       await tx.staffMember.upsert({
@@ -229,12 +182,38 @@ async function main() {
         update: {
           pinHash: s.hash,
           isActive: true,
+          isManager: false,
           failedAttempts: 0,
           lockedUntil: null,
         },
         create: { name: s.name, pinHash: s.hash, order: i },
       });
     }
+
+    // Clear any OTHER manager BEFORE setting this one. A partial unique index
+    // allows only one is_manager = true row, so doing it in the other order
+    // would hit the constraint whenever the flag had drifted onto a different
+    // row. Clearing first makes re-running this seeder self-correcting.
+    await tx.staffMember.updateMany({
+      where: { isManager: true, name: { not: MANAGER_NAME } },
+      data: { isManager: false },
+    });
+    await tx.staffMember.upsert({
+      where: { name: MANAGER_NAME },
+      update: {
+        pinHash: managerPinHash,
+        isActive: true,
+        isManager: true,
+        failedAttempts: 0,
+        lockedUntil: null,
+      },
+      create: {
+        name: MANAGER_NAME,
+        pinHash: managerPinHash,
+        isManager: true,
+        order: STAFF_NAMES.length,
+      },
+    });
     await tx.managerSecret.upsert({
       where: { kind: "PRIMARY" },
       // Reset lastUsedAt too: after rotation the old timestamp refers to the
@@ -249,7 +228,10 @@ async function main() {
     });
   });
 
-  console.log(`\n✔ Seeded ${staffHashes.length} staff + manager code (hashes only).`);
+  console.log(
+    `\n✔ Seeded ${staffHashes.length} staff with passwords, plus "${MANAGER_NAME}"` +
+      " (no password — single-factor) and the manager code. Hashes only.",
+  );
 
   // The ONLY secret this script ever prints, shown exactly once.
   console.log("\n" + "=".repeat(64));

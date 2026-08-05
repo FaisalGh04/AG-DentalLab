@@ -31,6 +31,7 @@ import {
 } from "@/lib/validations";
 import { CASE_CATEGORY_ORDER } from "@/lib/constants";
 import { useStaff } from "@/hooks/use-staff";
+import { staffDisplayName } from "@/lib/staff-display";
 import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
@@ -428,9 +429,12 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                   <SelectValue placeholder={t("form.selectReceivedBy")} />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* VALUE is the raw s.name, never the localized label: this
+                      selection is stored as PatientCase.receivedBy, a historical
+                      snapshot that must not depend on the operator's language. */}
                   {(staff.data ?? []).map((s) => (
                     <SelectItem key={s.id} value={s.name}>
-                      {s.name}
+                      {staffDisplayName(s, t)}
                     </SelectItem>
                   ))}
                 </SelectContent>

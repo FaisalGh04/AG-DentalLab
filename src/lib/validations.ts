@@ -181,7 +181,21 @@ const caseCreateBaseSchema = caseInputBaseSchema.extend({
  */
 export const confirmationSchema = z.object({
   staffId: z.string().trim().min(1, "Select who is performing this action"),
-  staffPassword: z.string().min(1, "Password is required").max(200),
+  /**
+   * OPTIONAL at the schema level ONLY because the manager identity authenticates
+   * with a single code. This is NOT a relaxation of the gate:
+   *
+   *   - the SERVER decides which path applies, by reading isManager from the DB
+   *     row for this staffId — a client can never assert that it is the manager
+   *   - for any other staff member, src/lib/staff-auth.ts treats a missing or
+   *     empty password as a FAILED attempt (counting toward lockout), never as
+   *     a bypass
+   *
+   * Rejecting it here instead would be the wrong layer: the schema does not know
+   * who the staffId belongs to, and asking it to would mean a DB read inside
+   * validation.
+   */
+  staffPassword: z.string().max(200).optional(),
   managerCode: z.string().min(1, "Manager code is required").max(200),
 });
 export type ConfirmationInputDTO = z.infer<typeof confirmationSchema>;
