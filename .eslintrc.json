@@ -8,7 +8,10 @@
   },
   "overrides": [
     {
-      "files": ["src/components/admin/stage-viewer-dialog.tsx"],
+      "files": [
+        "src/components/admin/stage-viewer-dialog.tsx",
+        "src/components/admin/case-history-dialog.tsx"
+      ],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -16,25 +19,25 @@
             "paths": [
               {
                 "name": "@/hooks/use-cases",
-                "message": "stage-viewer-dialog is READ-ONLY: it must never import a case mutation hook (useUpdateCase / useCreateCase / useDeleteCase)."
+                "message": "This dialog is READ-ONLY: it must never import a case mutation hook (useUpdateCase / useCreateCase / useDeleteCase). Note this also blocks useCase — a read — because the module exports the mutations alongside it; the PARENT owns the query and passes plain data in."
               },
               {
                 "name": "@/hooks/use-confirm-action",
-                "message": "stage-viewer-dialog is READ-ONLY: viewing a stage must never open the confirmation gate."
+                "message": "This dialog is READ-ONLY: viewing history must never open the confirmation gate."
               },
               {
                 "name": "@/components/admin/confirm-action-dialog",
-                "message": "stage-viewer-dialog is READ-ONLY: viewing a stage must never open the confirmation gate."
+                "message": "This dialog is READ-ONLY: viewing history must never open the confirmation gate."
               },
               {
                 "name": "@/lib/prisma",
-                "message": "stage-viewer-dialog is a client component and must not touch the database directly."
+                "message": "This is a client component and must not touch the database directly."
               }
             ],
             "patterns": [
               {
                 "group": ["**/hooks/use-cases", "**/hooks/use-confirm-action"],
-                "message": "stage-viewer-dialog is READ-ONLY: relative imports of the mutation/confirmation hooks are blocked too."
+                "message": "This dialog is READ-ONLY: relative imports of the mutation/confirmation hooks are blocked too."
               }
             ]
           }

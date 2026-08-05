@@ -14,6 +14,7 @@ import {
   Eye,
   Loader2,
   ClipboardList,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,12 +38,14 @@ import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { useLifecycleConfig } from "@/hooks/use-lifecycle";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
+import { CaseHistoryDialog } from "@/components/admin/case-history-dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAdminUI } from "@/store/admin-ui";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
-import { useCaseList, useDeleteCase } from "@/hooks/use-cases";
+import { useCase, useCaseList, useDeleteCase } from "@/hooks/use-cases";
 import { CASE_CATEGORY_ORDER } from "@/lib/constants";
-import { formatDate, formatEstCompletion } from "@/lib/utils";
+import { formatDate, formatDateTime, formatEstCompletion } from "@/lib/utils";
+import type { AdminCaseListItem } from "@/types/case";
 import type { CaseCategory } from "@prisma/client";
 
 export function CasesClient() {
@@ -70,6 +73,18 @@ export function CasesClient() {
 
   const [dialogOpen, setDialogOpen] = React.useState(openNew);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  /**
+   * LAZY per-case stage history. Nothing is fetched for the list at all —
+   * useCase is disabled while `historyId` is null, so the query fires only when
+   * a row's Created cell is clicked. Deliberately not eager: stageHistory costs
+   * an extra audit-log query per case, which across a 20-row page would be 20
+   * queries to render a column almost nobody expands.
+   *
+   * Its key is ["case", id] — the SAME key the detail page uses — so opening
+   * history here also warms that page's cache, and vice versa.
+   */
+  const [historyId, setHistoryId] = React.useState<string | null>(null);
+  const historyQuery = useCase(historyId);
 
   // Debounce the search box.
   const [debounced, setDebounced] = React.useState(search);
@@ -85,6 +100,10 @@ export function CasesClient() {
     page,
     pageSize: 20,
   });
+
+  // The clicked row, for the dialog header — already in hand, so the patient
+  // name and created date render immediately while the history is still loading.
+  const historyRow = data?.items.find((c) => c.id === historyId) ?? null;
 
   const del = useDeleteCase();
 
@@ -138,6 +157,34 @@ export function CasesClient() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+
+  /**
+   * The "Created" value, doubling as the entry point to that case's read-only
+   * stage history. Shared by the desktop table and the mobile cards.
+   *
+   * A real <button> INSIDE the cell — never a clickable <td>/<dd>. The row
+   * already contains a <Link> (patient name) and a dropdown trigger, and all
+   * three must stay non-nesting siblings: a control inside a control is invalid
+   * HTML and the click would bubble into the wrong handler.
+   *
+   * Shows the date only, matching the neighbouring Updated column — the full
+   * timestamp is the `title` tooltip and is always spelled out in the dialog
+   * header, so nothing is lost by keeping a 9-column table readable.
+   */
+  const CreatedCell = ({ c }: { c: AdminCaseListItem }) => (
+    <button
+      type="button"
+      onClick={() => setHistoryId(c.id)}
+      title={formatDateTime(c.createdAt)}
+      aria-label={t("cases.openHistory", {
+        name: `${c.patientFirstName} ${c.patientLastName}`,
+      })}
+      className="-mx-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-muted-foreground transition-colors hover:bg-brand-100 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+    >
+      <History className="h-3.5 w-3.5 shrink-0" />
+      <span className="whitespace-nowrap">{formatDate(c.createdAt)}</span>
+    </button>
   );
 
   const emptyState = (
@@ -210,6 +257,7 @@ export function CasesClient() {
                 <th className="px-5 py-3 font-semibold">{t("cases.colStage")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colEstCompletion")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colUpdated")}</th>
+                <th className="px-5 py-3 font-semibold">{t("cases.colCreated")}</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -240,6 +288,9 @@ export function CasesClient() {
                       <Skeleton className="h-5 w-24" />
                     </td>
                     <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-24" />
+                    </td>
+                    <td className="px-5 py-4">
                       <Skeleton className="ms-auto h-9 w-9" />
                     </td>
                   </tr>
@@ -247,7 +298,7 @@ export function CasesClient() {
 
               {!isLoading && data?.items.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-6">
+                  <td colSpan={9} className="px-5 py-6">
                     {emptyState}
                   </td>
                 </tr>
@@ -286,6 +337,9 @@ export function CasesClient() {
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">
                     {formatDate(c.updatedAt)}
+                  </td>
+                  <td className="px-5 py-4">
+                    <CreatedCell c={c} />
                   </td>
                   <td className="px-5 py-4 text-end">
                     <RowActions id={c.id} />
@@ -355,6 +409,12 @@ export function CasesClient() {
                   <dt className="text-xs text-muted-foreground">{t("cases.colUpdated")}</dt>
                   <dd className="text-foreground/80">{formatDate(c.updatedAt)}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">{t("cases.colCreated")}</dt>
+                  <dd>
+                    <CreatedCell c={c} />
+                  </dd>
+                </div>
               </dl>
             </div>
           ))}
@@ -392,6 +452,21 @@ export function CasesClient() {
       </Card>
 
       <CaseFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {/* READ-ONLY history viewer. The query lives HERE, not in the dialog:
+          @/hooks/use-cases also exports the mutation hooks, and that file is
+          under an ESLint import lockdown that forbids reaching them. */}
+      {historyRow && (
+        <CaseHistoryDialog
+          open={!!historyId}
+          onOpenChange={(o) => !o && setHistoryId(null)}
+          patientName={`${historyRow.patientFirstName} ${historyRow.patientLastName}`}
+          createdAt={historyRow.createdAt}
+          config={lifecycleConfig}
+          kase={historyQuery.data}
+          isLoading={historyQuery.isLoading}
+          isError={historyQuery.isError}
+        />
+      )}
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(o) => !o && setDeleteId(null)}

@@ -66,6 +66,8 @@
     "colStage": "Stage",
     "colEstCompletion": "Est. Completion",
     "colUpdated": "Updated",
+    "colCreated": "Created",
+    "openHistory": "View stage history for {name}",
     "noCasesFound": "No cases found",
     "noCasesHint": "Try adjusting your search, status, or category filters.",
     "viewManage": "View / Manage",
@@ -339,6 +341,16 @@
     "images": "Images",
     "noImages": "No images tagged to this stage.",
     "readOnlyNote": "Viewing only — to move the case to this stage, use the stage picker or the stepper (both require confirmation)."
+  },
+  "caseHistory": {
+    "title": "Stage history",
+    "subtitle": "{name} · created {date}",
+    "loadError": "Could not load this case's history.",
+    "noWorkflow": "No workflow has been selected for this case yet, so it has no stages to track.",
+    "current": "Current",
+    "hidden": "Hidden",
+    "earlierWorkflow": "Entries from an earlier workflow",
+    "readOnlyNote": "Viewing only — open the case to make changes."
   },
   "doctors": {
     "title": "Doctors",
