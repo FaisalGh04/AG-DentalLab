@@ -67,7 +67,7 @@ export function LoginForm() {
             type="email"
             autoComplete="username"
             placeholder={t("login.emailPlaceholder")}
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-brand-50 caret-brand-50 shadow-inner-glow placeholder:text-brand-200/50 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("email")}
           />
         </div>
@@ -87,7 +87,7 @@ export function LoginForm() {
             type="password"
             autoComplete="current-password"
             placeholder={t("login.passwordPlaceholder")}
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-cream shadow-inner-glow placeholder:text-brand-100/45 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-brand-50 caret-brand-50 shadow-inner-glow placeholder:text-brand-200/50 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
             {...register("password")}
           />
         </div>

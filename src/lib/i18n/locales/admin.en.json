@@ -58,7 +58,7 @@
     "title": "Admin Sign In",
     "email": "Email",
     "password": "Password",
-    "emailPlaceholder": "owner@agdentallab.com",
+    "emailPlaceholder": "Enter admin email",
     "passwordPlaceholder": "Password",
     "signIn": "Sign In",
     "welcomeBack": "Welcome back!",
