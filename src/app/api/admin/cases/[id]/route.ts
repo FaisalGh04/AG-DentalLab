@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { caseUpdateSchema } from "@/lib/validations";
 import { normalizeName } from "@/lib/utils";
 import { deleteObject } from "@/lib/s3";
+import { getStaffConfirmationEnabled } from "@/lib/security-settings";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
 
@@ -91,9 +92,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     // identical, so `change` is null and they pass through completely ungated.
     // Only an actual transition demands the two-factor confirmation.
     const change = detectLifecycleChange(existing, life);
+    const protectionEnabled = change
+      ? await getStaffConfirmationEnabled()
+      : true;
     let confirmed: Awaited<ReturnType<typeof verifyConfirmation>> | null = null;
 
-    if (change) {
+    if (change && protectionEnabled) {
       const parsed = confirmationSchema.safeParse(body?.confirmation);
       if (!parsed.success) {
         return apiError("This change requires confirmation.", 401);
@@ -152,9 +156,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         },
       });
 
-      // Same transaction as the mutation: a gated action cannot commit without
-      // its log line. Ungated plain edits write nothing here.
-      if (change && confirmed?.ok) {
+      // Same transaction as the mutation. Lifecycle changes are logged whether
+      // confirmed or explicitly bypassed; ordinary field edits remain unlogged.
+      if (change) {
         await tx.caseActionLog.create({
           data: buildActionLog({
             caseId: row.id,
@@ -162,10 +166,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             action: change.action,
             outcome: "SUCCESS",
             change,
-            staffId: confirmed.staffId,
-            staffName: confirmed.staffName,
-            usedBreakGlass: confirmed.usedBreakGlass,
-            singleFactor: confirmed.singleFactor,
+            staffId: confirmed?.ok ? confirmed.staffId : null,
+            staffName: confirmed?.ok ? confirmed.staffName : null,
+            usedBreakGlass: confirmed?.ok ? confirmed.usedBreakGlass : false,
+            singleFactor: confirmed?.ok ? confirmed.singleFactor : false,
+            protectionBypassed: !protectionEnabled,
             adminEmail: session?.user?.email ?? null,
             ip,
           }),

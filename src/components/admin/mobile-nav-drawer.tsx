@@ -3,25 +3,26 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Menu, X, ExternalLink, LogOut } from "lucide-react";
+import { Menu, X, ExternalLink, Settings } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
 import { ADMIN_NAV_LINKS } from "@/components/admin/nav-links";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { cn } from "@/lib/utils";
+import { AdminSettingsDialog } from "@/components/admin/admin-settings-dialog";
 
 /**
  * Mobile admin navigation. A slide-over drawer (from the start edge — left in
  * LTR, right in RTL) holding every destination the desktop sidebar has, plus
- * View Website, the language toggle, and Sign Out. Radix Dialog gives focus
+ * View Website, the language toggle, and Settings. Radix Dialog gives focus
  * trap + escape + scroll lock for free.
  */
 export function MobileNavDrawer() {
   const { t, dir } = useAdminI18n();
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   // Close on client-side navigation.
   React.useEffect(() => {
@@ -29,7 +30,8 @@ export function MobileNavDrawer() {
   }, [pathname]);
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <button
           type="button"
@@ -111,16 +113,24 @@ export function MobileNavDrawer() {
               <AdminLanguageToggle />
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+                onClick={() => {
+                  setOpen(false);
+                  setSettingsOpen(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-brand-50/60 hover:text-brand-800"
               >
-                <LogOut className="h-4 w-4" />
-                {t("nav.signOut")}
+                <Settings className="h-4 w-4" />
+                {t("nav.settings")}
               </button>
             </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
-    </Dialog.Root>
+      </Dialog.Root>
+      <AdminSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+    </>
   );
 }

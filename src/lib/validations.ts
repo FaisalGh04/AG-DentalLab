@@ -200,6 +200,18 @@ export const confirmationSchema = z.object({
 });
 export type ConfirmationInputDTO = z.infer<typeof confirmationSchema>;
 
+// --- Admin security settings ---------------------------------------
+// Deliberately accepts ONLY the manager code. The server resolves the one
+// isManager staff row itself, so a client cannot choose another identity or
+// smuggle the ordinary staff confirmation path into this always-protected action.
+export const securitySettingUpdateSchema = z.object({
+  enabled: z.boolean(),
+  managerCode: z.string().min(1, "Manager code is required").max(200),
+});
+export type SecuritySettingUpdateInput = z.infer<
+  typeof securitySettingUpdateSchema
+>;
+
 export const caseCreateSchema = caseCreateBaseSchema.superRefine((data, ctx) => {
   if (!isValidCaseTypeForCategory(data.category, data.caseType)) {
     ctx.addIssue({

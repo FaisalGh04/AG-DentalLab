@@ -15,6 +15,7 @@ import { normalizeName } from "@/lib/utils";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
+import { getStaffConfirmationEnabled } from "@/lib/security-settings";
 import type { CaseCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -48,7 +49,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const input = caseCreateSchema.parse(body);
-    const confirmation = confirmationSchema.parse(body?.confirmation);
+    const protectionEnabled = await getStaffConfirmationEnabled();
+    const confirmation = protectionEnabled
+      ? confirmationSchema.parse(body?.confirmation)
+      : null;
 
     // Production categories require a workflow on create (backstop for the form).
     if (isProductionCategory(input.category) && !input.collectionId) {
@@ -62,12 +66,15 @@ export async function POST(req: NextRequest) {
       return apiError("Select a valid staff member for Received By.", 422);
     }
 
-    // Creation is ALWAYS gated — no diff to inspect.
+    // Creation normally requires staff confirmation. An explicit global setting
+    // can bypass it, but changing that setting always remains manager-gated.
     const ip = getClientIp(req.headers);
     const session = await auth();
-    const check = await verifyConfirmation(confirmation, ip);
+    const check = confirmation
+      ? await verifyConfirmation(confirmation, ip)
+      : null;
 
-    if (!check.ok) {
+    if (check && !check.ok) {
       // Log the failed attempt (never the attempted secret) — this is the
       // brute-force signal. No case exists yet, so caseId stays null.
       await prisma.caseActionLog.create({
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest) {
           trackingId: null,
           action: "CASE_CREATED",
           outcome: check.reason === "locked" ? "LOCKED_OUT" : "CONFIRMATION_FAILED",
-          staffId: confirmation.staffId,
+          staffId: confirmation?.staffId,
           // Recorded on failures too: a run of failed SINGLE-FACTOR attempts is
           // the brute-force signal that matters most, that path having only one
           // secret behind it.
@@ -105,8 +112,8 @@ export async function POST(req: NextRequest) {
       input.hiddenStageIds,
     );
 
-    // The case and its log line are written together: a confirmed action must
-    // never exist without its audit record, and vice versa.
+    // The case and its audit line are written together. Bypassed actions remain
+    // visible in the trail through protectionBypassed.
     const created = await prisma.$transaction(async (tx) => {
       const row = await tx.patientCase.create({
         data: {
@@ -154,10 +161,11 @@ export async function POST(req: NextRequest) {
               isCompleted: life.isCompleted,
             },
           },
-          staffId: check.staffId,
-          staffName: check.staffName,
-          usedBreakGlass: check.usedBreakGlass,
-          singleFactor: check.singleFactor,
+          staffId: check?.ok ? check.staffId : null,
+          staffName: check?.ok ? check.staffName : null,
+          usedBreakGlass: check?.ok ? check.usedBreakGlass : false,
+          singleFactor: check?.ok ? check.singleFactor : false,
+          protectionBypassed: !protectionEnabled,
           adminEmail: session?.user?.email ?? null,
           ip,
         }),

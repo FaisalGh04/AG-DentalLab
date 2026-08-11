@@ -350,6 +350,8 @@ enum CaseActionType {
   STAGE_CHANGED
   COLLECTION_CHANGED
   STAGE_VISIBILITY_CHANGED
+  STAFF_CONFIRMATION_ENABLED
+  STAFF_CONFIRMATION_DISABLED
 }
 
 enum CaseActionOutcome {
@@ -440,9 +442,9 @@ model CaseActionLog {
 
   // Snapshot the name alongside the FK: renaming or deleting staff must not
   // rewrite who performed a past action.
-  staffId           String?  @map("staff_id")
-  staffNameSnapshot String?  @map("staff_name_snapshot")
-  usedBreakGlass    Boolean  @default(false) @map("used_break_glass")
+  staffId            String?  @map("staff_id")
+  staffNameSnapshot  String?  @map("staff_name_snapshot")
+  usedBreakGlass     Boolean  @default(false) @map("used_break_glass")
   // TRUE when the action was approved through the reduced SINGLE-FACTOR manager
   // path — one code satisfying both factors — rather than a genuine two-person
   // confirmation. Recorded EXPLICITLY, never inferred from staffNameSnapshot:
@@ -450,12 +452,16 @@ model CaseActionLog {
   // inference would silently break if a second manager identity ever existed.
   // Without this column a one-person approval is indistinguishable from a real
   // two-factor one, which would make the trail quietly dishonest.
-  singleFactor      Boolean  @default(false) @map("single_factor")
+  singleFactor       Boolean  @default(false) @map("single_factor")
+  // TRUE when a sensitive case action ran while the global staff confirmation
+  // protection was explicitly disabled. This keeps those actions distinct from
+  // legacy/null-staff audit rows without pretending that a person confirmed.
+  protectionBypassed Boolean  @default(false) @map("protection_bypassed")
   // Who was signed in to /admin at the time (NextAuth session), so both layers
   // are recorded: the logged-in admin AND the staff member who confirmed.
-  adminEmail        String?  @map("admin_email")
-  ip                String?
-  createdAt         DateTime @default(now()) @map("created_at")
+  adminEmail         String?  @map("admin_email")
+  ip                 String?
+  createdAt          DateTime @default(now()) @map("created_at")
 
   case  PatientCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
   staff StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
@@ -520,4 +526,15 @@ model Doctor {
 
   @@index([isActive, sequence])
   @@map("doctors")
+}
+
+// Singleton global security configuration. The application always reads/upserts
+// the row with id = "global" and fails safe to enabled if it is absent or cannot
+// be read. Changing it is itself manager-confirmed and audited.
+model AdminSecuritySetting {
+  id                       String   @id @default("global")
+  staffConfirmationEnabled Boolean  @default(true) @map("staff_confirmation_enabled")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_security_settings")
 }

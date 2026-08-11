@@ -54,13 +54,15 @@ export function useCase(id: string | null) {
 }
 
 /**
- * Case creation is ALWAYS gated, so the confirmation payload is required here —
- * the type makes it impossible to call this without one.
+ * Confirmation is optional on the transport because the persisted global
+ * setting can disable the gate. The server remains authoritative.
  */
 export function useCreateCase() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CaseCreateInput & { confirmation: ConfirmationInputDTO }) =>
+    mutationFn: (
+      input: CaseCreateInput & { confirmation?: ConfirmationInputDTO },
+    ) =>
       apiFetch<{ id: string; trackingId: string }>("/api/admin/cases", {
         method: "POST",
         body: JSON.stringify(input),

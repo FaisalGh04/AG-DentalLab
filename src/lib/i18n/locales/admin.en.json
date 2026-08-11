@@ -14,7 +14,26 @@
     "language": "Language",
     "portfolio": "Portfolio",
     "caseGroups": "Workflows",
-    "doctors": "Doctors"
+    "doctors": "Doctors",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage admin security and your current session.",
+    "staffProtection": "Staff confirmation protection",
+    "staffProtectionDescription": "Require staff credentials and manager approval for case creation and lifecycle changes.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "enable": "Enable protection",
+    "disable": "Disable protection",
+    "managerPassword": "Manager password",
+    "managerRequired": "Manager password is required.",
+    "managerIncorrect": "The manager password is incorrect. Nothing was changed.",
+    "enableWarning": "Enter the manager password to restore staff confirmation protection.",
+    "disableWarning": "While disabled, case creation and lifecycle changes will not ask for staff or manager credentials.",
+    "enabledToast": "Staff confirmation protection enabled.",
+    "disabledToast": "Staff confirmation protection disabled.",
+    "loadFailed": "Security settings could not be loaded. Protection remains enabled."
   },
   "dashboard": {
     "title": "Dashboard",

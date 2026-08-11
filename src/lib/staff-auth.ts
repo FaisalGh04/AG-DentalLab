@@ -235,3 +235,27 @@ export async function verifyConfirmation(
     singleFactor: staff.isManager,
   };
 }
+
+/**
+ * Verify the PRIMARY manager secret for an action that must never be bypassed.
+ * The server resolves the manager identity; callers submit no staff id and
+ * cannot select the weaker/non-manager branch. Reuses the same limiter,
+ * lockout, last-used tracking, and generic failure behavior as case actions.
+ */
+export async function verifyManagerConfirmation(
+  managerCode: string,
+  ip: string,
+): Promise<ConfirmationResult> {
+  const manager = await prisma.staffMember.findFirst({
+    where: { isManager: true },
+    select: { id: true },
+  });
+
+  return verifyConfirmation(
+    {
+      staffId: manager?.id ?? "__missing_manager__",
+      managerCode,
+    },
+    ip,
+  );
+}

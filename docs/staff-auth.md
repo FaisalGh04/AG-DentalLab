@@ -26,6 +26,15 @@ one for the manager (see below).
 | 5 | Show/hide a stage | Stage visibility toggle |
 | 6 | Change workflow | Edit dialog |
 
+These six entry points are subject to the global **Staff confirmation
+protection** setting in Admin Settings. It defaults to enabled. The manager can
+disable or re-enable it only by entering the PRIMARY manager code; that settings
+change is always protected even while the case-action gate is disabled.
+
+When disabled, the six actions proceed without staff/manager credentials but
+still write their normal action-log rows with `protectionBypassed = true`.
+Missing settings data or a settings read failure always resolves to **enabled**.
+
 **Not gated** — ordinary edits to `notes`, `doctorName`, `estimatedCompletionDate`,
 patient name, progress steps and images. The server decides by **diffing** the
 would-be lifecycle against the stored row (`src/lib/case-audit.ts`), so plain
@@ -329,6 +338,10 @@ WHERE locked_until > now();
 
 ## Audit trail guarantees
 
+- Enabling and disabling the global protection writes
+  `STAFF_CONFIRMATION_ENABLED` / `STAFF_CONFIRMATION_DISABLED` audit actions.
+- Sensitive case actions performed while protection is disabled are marked
+  explicitly with `protectionBypassed = true`.
 - Written in the **same transaction** as the mutation — a confirmed action cannot
   exist without its log line, and vice versa.
 - **Failures are logged too** (`CONFIRMATION_FAILED`, `LOCKED_OUT`), never with

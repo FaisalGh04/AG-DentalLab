@@ -94,6 +94,8 @@ export interface ActionLogInput {
    * two-person confirmation when the trail is reviewed.
    */
   singleFactor?: boolean;
+  /** The global confirmation protection was explicitly disabled. */
+  protectionBypassed?: boolean;
   adminEmail?: string | null;
   ip?: string | null;
 }
@@ -125,6 +127,7 @@ export function buildActionLog(
     staffNameSnapshot: input.staffName ?? null,
     usedBreakGlass: input.usedBreakGlass ?? false,
     singleFactor: input.singleFactor ?? false,
+    protectionBypassed: input.protectionBypassed ?? false,
     adminEmail: input.adminEmail ?? null,
     ip: input.ip ?? null,
     ...(input.caseId ? { case: { connect: { id: input.caseId } } } : {}),

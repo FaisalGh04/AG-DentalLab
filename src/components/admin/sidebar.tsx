@@ -4,8 +4,11 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { LogOut, ExternalLink, ChevronsUpDown } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  ExternalLink,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import {
   DropdownMenu,
@@ -13,7 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { AdminSettingsDialog } from "@/components/admin/admin-settings-dialog";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
 import { ADMIN_NAV_LINKS } from "@/components/admin/nav-links";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
@@ -22,7 +25,7 @@ import { cn } from "@/lib/utils";
 export function Sidebar({ adminName }: { adminName: string }) {
   const { t } = useAdminI18n();
   const pathname = usePathname();
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-e border-border/80 bg-white/[0.72] p-4 shadow-soft backdrop-blur-xl lg:flex">
@@ -105,28 +108,14 @@ export function Sidebar({ adminName }: { adminName: string }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56">
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={() => setConfirmOpen(true)}
-            >
-              <LogOut className="h-4 w-4" /> {t("nav.signOut")}
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+              <SettingsIcon className="h-4 w-4" /> {t("nav.settings")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={t("nav.signOutConfirmTitle")}
-        description={t("nav.signOutConfirmBody")}
-        confirmLabel={t("nav.signOut")}
-        destructive
-        onConfirm={() => {
-          setConfirmOpen(false);
-          signOut({ callbackUrl: "/login" });
-        }}
-      />
+      <AdminSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </aside>
   );
 }
