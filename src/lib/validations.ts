@@ -241,13 +241,11 @@ export const caseUpdateSchema = caseInputBaseSchema.partial().superRefine(
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
 
 // --- Manager-only Staff Management ---------------------------------
-const staffCredentialSchema = z
+const staffPinSchema = z
   .string()
-  .min(8, "Use at least 8 characters")
+  .min(6, "Use at least 6 digits")
   .max(200)
-  .refine((value) => /[A-Za-z]/.test(value) && /\d/.test(value), {
-    message: "Include at least one letter and one number",
-  });
+  .regex(/^\d+$/, "Use digits only");
 
 export const staffManagementUnlockSchema = z.object({
   managerCode: z.string().min(1, "Manager code is required").max(200),
@@ -259,17 +257,17 @@ export type StaffManagementUnlockInput = z.infer<
 export const staffCreateSchema = z
   .object({
     name: z.string().trim().min(2, "Staff name is required").max(120),
-    password: staffCredentialSchema,
+    password: staffPinSchema,
     isActive: z.boolean().default(true),
     isManager: z.boolean().default(false),
-    demotedManagerPassword: staffCredentialSchema.optional(),
+    demotedManagerPassword: staffPinSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.isManager && !data.demotedManagerPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["demotedManagerPassword"],
-        message: "Set a staff password for the outgoing manager",
+        message: "Set a staff PIN for the outgoing manager",
       });
     }
   });
@@ -278,17 +276,17 @@ export type StaffCreateInput = z.infer<typeof staffCreateSchema>;
 export const staffUpdateSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
-    password: staffCredentialSchema.optional(),
+    password: staffPinSchema.optional(),
     isActive: z.boolean().optional(),
     makeManager: z.boolean().optional(),
-    demotedManagerPassword: staffCredentialSchema.optional(),
+    demotedManagerPassword: staffPinSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.makeManager && !data.demotedManagerPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["demotedManagerPassword"],
-        message: "Set a staff password for the outgoing manager",
+        message: "Set a staff PIN for the outgoing manager",
       });
     }
     if (
@@ -305,7 +303,7 @@ export type StaffUpdateInput = z.infer<typeof staffUpdateSchema>;
 export const managerSecretChangeSchema = z
   .object({
     currentManagerCode: z.string().min(1).max(200),
-    newManagerCode: staffCredentialSchema,
+    newManagerCode: staffPinSchema,
     confirmManagerCode: z.string().min(1).max(200),
   })
   .refine((data) => data.newManagerCode === data.confirmManagerCode, {

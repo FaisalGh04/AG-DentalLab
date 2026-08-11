@@ -111,7 +111,7 @@ export async function createManagedStaff(
       });
       if (!currentManager || !currentManager.isActive || !demotedManagerHash) {
         throw new StaffManagementError(
-          "An active manager and replacement staff password are required.",
+          "An active manager and replacement staff PIN are required.",
           409,
         );
       }
@@ -200,7 +200,7 @@ export async function updateManagedStaff(
       });
       if (!currentManager || !currentManager.isActive || !demotedManagerHash) {
         throw new StaffManagementError(
-          "An active manager and replacement staff password are required.",
+          "An active manager and replacement staff PIN are required.",
           409,
         );
       }

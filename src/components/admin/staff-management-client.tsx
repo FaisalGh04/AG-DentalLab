@@ -387,17 +387,12 @@ function CreateStaffDialog({
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [isActive, setIsActive] = React.useState(true);
-  const [isManager, setIsManager] = React.useState(false);
-  const [demotedManagerPassword, setDemotedManagerPassword] =
-    React.useState("");
 
   React.useEffect(() => {
     if (!open) {
       setName("");
       setPassword("");
       setIsActive(true);
-      setIsManager(false);
-      setDemotedManagerPassword("");
     }
   }, [open]);
 
@@ -407,9 +402,8 @@ function CreateStaffDialog({
       await create.mutateAsync({
         name,
         password,
-        isActive: isManager ? true : isActive,
-        isManager,
-        ...(isManager ? { demotedManagerPassword } : {}),
+        isActive,
+        isManager: false,
       });
       toast.success(t("staff.createdToast"));
       onOpenChange(false);
@@ -437,22 +431,7 @@ function CreateStaffDialog({
             checked={isActive}
             onChange={setIsActive}
             label={t("staff.active")}
-            disabled={isManager}
           />
-          <CheckboxField
-            checked={isManager}
-            onChange={setIsManager}
-            label={t("staff.assignManager")}
-            description={t("staff.assignManagerDescription")}
-          />
-          {isManager && (
-            <PasswordField
-              label={t("staff.outgoingManagerPassword")}
-              value={demotedManagerPassword}
-              onChange={setDemotedManagerPassword}
-              hint={t("staff.outgoingManagerPasswordHint")}
-            />
-          )}
           <DialogFooter>
             <Button
               type="button"
@@ -490,9 +469,6 @@ function EditStaffDialog({
   const [name, setName] = React.useState(member.name);
   const [password, setPassword] = React.useState("");
   const [isActive, setIsActive] = React.useState(member.isActive);
-  const [makeManager, setMakeManager] = React.useState(false);
-  const [demotedManagerPassword, setDemotedManagerPassword] =
-    React.useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -500,8 +476,7 @@ function EditStaffDialog({
       await update.mutateAsync({
         name,
         ...(password ? { password } : {}),
-        isActive: member.isManager || makeManager ? true : isActive,
-        ...(makeManager ? { makeManager: true, demotedManagerPassword } : {}),
+        isActive: member.isManager ? true : isActive,
       });
       toast.success(t("staff.updatedToast"));
       onOpenChange(false);
@@ -535,24 +510,8 @@ function EditStaffDialog({
                 ? t("staff.managerMustStayActive")
                 : t("staff.deactivateHint")
             }
-            disabled={member.isManager || makeManager}
+            disabled={member.isManager}
           />
-          {!member.isManager && (
-            <CheckboxField
-              checked={makeManager}
-              onChange={setMakeManager}
-              label={t("staff.assignManager")}
-              description={t("staff.assignManagerDescription")}
-            />
-          )}
-          {makeManager && (
-            <PasswordField
-              label={t("staff.outgoingManagerPassword")}
-              value={demotedManagerPassword}
-              onChange={setDemotedManagerPassword}
-              hint={t("staff.outgoingManagerPasswordHint")}
-            />
-          )}
           <DialogFooter>
             <Button
               type="button"
@@ -603,6 +562,7 @@ function CredentialFields({
         value={password}
         onChange={onPasswordChange}
         hint={passwordHint ?? t("staff.passwordHint")}
+        numeric
       />
     </>
   );
@@ -613,11 +573,13 @@ function PasswordField({
   value,
   onChange,
   hint,
+  numeric = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   hint?: string;
+  numeric?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -625,8 +587,13 @@ function PasswordField({
       <Input
         type="password"
         autoComplete="new-password"
+        inputMode={numeric ? "numeric" : undefined}
+        pattern={numeric ? "[0-9]*" : undefined}
+        minLength={numeric ? 6 : undefined}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) =>
+          onChange(numeric ? e.target.value.replace(/\D/g, "") : e.target.value)
+        }
       />
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
@@ -688,12 +655,14 @@ function ManagerSecretDialog({
             label={t("staff.newManagerCode")}
             value={newManagerCode}
             onChange={setNewManagerCode}
-            hint={t("staff.passwordHint")}
+            hint={t("staff.managerSecretHint")}
+            numeric
           />
           <PasswordField
             label={t("staff.confirmManagerCode")}
             value={confirmManagerCode}
             onChange={setConfirmManagerCode}
+            numeric
           />
           <DialogFooter>
             <Button
