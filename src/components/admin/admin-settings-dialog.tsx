@@ -30,6 +30,7 @@ import {
   useSecuritySettings,
   useUpdateSecuritySettings,
 } from "@/hooks/use-security-settings";
+import { useLockStaffManagement } from "@/hooks/use-staff-management";
 
 interface Props {
   open: boolean;
@@ -40,6 +41,7 @@ export function AdminSettingsDialog({ open, onOpenChange }: Props) {
   const { t } = useAdminI18n();
   const settings = useSecuritySettings();
   const update = useUpdateSecuritySettings();
+  const lockStaffManagement = useLockStaffManagement();
   const [confirming, setConfirming] = React.useState(false);
   const [managerCode, setManagerCode] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -82,6 +84,17 @@ export function AdminSettingsDialog({ open, onOpenChange }: Props) {
           : t("settings.managerIncorrect"),
       );
       setManagerCode("");
+    }
+  }
+  async function handleSignOut() {
+    try {
+      // Revoke the manager unlock before ending the admin session. Otherwise
+      // signing back in within its TTL would silently restore Staff access.
+      await lockStaffManagement.mutateAsync();
+      setSignOutOpen(false);
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      toast.error(t("staff.errorToast"));
     }
   }
 
@@ -223,10 +236,8 @@ export function AdminSettingsDialog({ open, onOpenChange }: Props) {
         description={t("nav.signOutConfirmBody")}
         confirmLabel={t("nav.signOut")}
         destructive
-        onConfirm={() => {
-          setSignOutOpen(false);
-          signOut({ callbackUrl: "/login" });
-        }}
+        loading={lockStaffManagement.isPending}
+        onConfirm={handleSignOut}
       />
     </>
   );

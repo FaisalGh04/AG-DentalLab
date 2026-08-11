@@ -240,6 +240,82 @@ export const caseUpdateSchema = caseInputBaseSchema.partial().superRefine(
 );
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
 
+// --- Manager-only Staff Management ---------------------------------
+const staffCredentialSchema = z
+  .string()
+  .min(8, "Use at least 8 characters")
+  .max(200)
+  .refine((value) => /[A-Za-z]/.test(value) && /\d/.test(value), {
+    message: "Include at least one letter and one number",
+  });
+
+export const staffManagementUnlockSchema = z.object({
+  managerCode: z.string().min(1, "Manager code is required").max(200),
+});
+export type StaffManagementUnlockInput = z.infer<
+  typeof staffManagementUnlockSchema
+>;
+
+export const staffCreateSchema = z
+  .object({
+    name: z.string().trim().min(2, "Staff name is required").max(120),
+    password: staffCredentialSchema,
+    isActive: z.boolean().default(true),
+    isManager: z.boolean().default(false),
+    demotedManagerPassword: staffCredentialSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isManager && !data.demotedManagerPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["demotedManagerPassword"],
+        message: "Set a staff password for the outgoing manager",
+      });
+    }
+  });
+export type StaffCreateInput = z.infer<typeof staffCreateSchema>;
+
+export const staffUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    password: staffCredentialSchema.optional(),
+    isActive: z.boolean().optional(),
+    makeManager: z.boolean().optional(),
+    demotedManagerPassword: staffCredentialSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.makeManager && !data.demotedManagerPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["demotedManagerPassword"],
+        message: "Set a staff password for the outgoing manager",
+      });
+    }
+    if (
+      data.name === undefined &&
+      data.password === undefined &&
+      data.isActive === undefined &&
+      !data.makeManager
+    ) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Nothing to update" });
+    }
+  });
+export type StaffUpdateInput = z.infer<typeof staffUpdateSchema>;
+
+export const managerSecretChangeSchema = z
+  .object({
+    currentManagerCode: z.string().min(1).max(200),
+    newManagerCode: staffCredentialSchema,
+    confirmManagerCode: z.string().min(1).max(200),
+  })
+  .refine((data) => data.newManagerCode === data.confirmManagerCode, {
+    path: ["confirmManagerCode"],
+    message: "Manager codes do not match",
+  });
+export type ManagerSecretChangeInput = z.infer<
+  typeof managerSecretChangeSchema
+>;
+
 // --- Doctors --------------------------------------------------------
 /**
  * `codeLetters` is exactly 3 lowercase Latin letters. It is auto-suggested from

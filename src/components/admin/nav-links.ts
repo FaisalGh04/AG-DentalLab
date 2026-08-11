@@ -5,6 +5,7 @@ import {
   Images,
   Workflow,
   Stethoscope,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,5 +28,6 @@ export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
   { href: "/admin/cases?archived=true", key: "nav.archive", icon: Archive },
   { href: "/admin/case-groups", key: "nav.caseGroups", icon: Workflow },
   { href: "/admin/doctors", key: "nav.doctors", icon: Stethoscope },
+  { href: "/admin/staff", key: "nav.staff", icon: Users },
   { href: "/admin/portfolio", key: "nav.portfolio", icon: Images },
 ];
