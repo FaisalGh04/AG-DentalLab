@@ -2,6 +2,11 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import type { NextRequest, NextFetchEvent } from "next/server";
 import { authConfig } from "@/auth.config";
+import {
+  generateLoginDeviceId,
+  isLoginDeviceId,
+  LOGIN_DEVICE_COOKIE_NAME,
+} from "@/lib/login-device";
 
 // Edge-safe: the Prisma-free base config so the DB client never enters the Edge
 // runtime. Only instantiated to get the session-aware `auth` wrapper.
@@ -12,9 +17,29 @@ const { auth } = NextAuth(authConfig);
 // the statically-generated public routes, so it can't read a per-request value.
 // The nonce-based admin CSP therefore allows it by hash, keeping the Report-Only
 // stream clean. Recompute (sha256, base64) if that inline script ever changes.
-const LANG_SCRIPT_HASH = "'sha256-THbS/dRzpnJcU1ie06awMdA8t47jSmIfY8TZjVSBtVo='";
+const LANG_SCRIPT_HASH =
+  "'sha256-THbS/dRzpnJcU1ie06awMdA8t47jSmIfY8TZjVSBtVo='";
 
 const isDev = process.env.NODE_ENV !== "production";
+
+/**
+ * Give each browser a stable, opaque login identifier. It is only one dimension
+ * of the rate-limit key; IP + normalized email remain the cookie-reset backstop.
+ */
+function ensureLoginDeviceCookie(
+  req: NextRequest,
+  response: NextResponse,
+): void {
+  if (isLoginDeviceId(req.cookies.get(LOGIN_DEVICE_COOKIE_NAME)?.value)) return;
+
+  response.cookies.set(LOGIN_DEVICE_COOKIE_NAME, generateLoginDeviceId(), {
+    httpOnly: true,
+    secure: !isDev,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60,
+  });
+}
 
 /** Per-request base64 nonce (Edge Web Crypto). */
 function generateNonce(): string {
@@ -35,10 +60,14 @@ function generateNonce(): string {
  * `nextUrl.origin` (correct for local dev, where none of the above are set).
  */
 function publicOrigin(req: NextRequest): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(
+    /\/+$/,
+    "",
+  );
   if (configured) return configured;
   const host = req.headers.get("x-forwarded-host");
-  if (host) return `${req.headers.get("x-forwarded-proto") ?? "https"}://${host}`;
+  if (host)
+    return `${req.headers.get("x-forwarded-proto") ?? "https"}://${host}`;
   return req.nextUrl.origin;
 }
 
@@ -162,6 +191,7 @@ const authGated = auth((req) => {
     "Content-Security-Policy-Report-Only",
     buildPublicCsp(nextUrl.origin),
   );
+  ensureLoginDeviceCookie(req, loginRes);
   return withReporting(loginRes, nextUrl.origin);
 }) as unknown as (
   // NextAuth types the 2nd arg as a route-handler context, but in middleware

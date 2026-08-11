@@ -4,7 +4,12 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations";
 import { authConfig } from "@/auth.config";
-import { checkAuthRateLimit, getClientIp } from "@/lib/ratelimit";
+import {
+  checkAuthRateLimit,
+  clearAuthRateLimit,
+  getClientIp,
+} from "@/lib/ratelimit";
+import { getLoginDeviceId } from "@/lib/login-device";
 
 /**
  * Thrown when the login rate limit is exceeded. Deliberately generic — it never
@@ -35,13 +40,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailKey = email.toLowerCase();
 
         // Brute-force gate BEFORE any bcrypt/DB work, so throttled attempts cost
-        // nothing. Keyed on IP + email so one IP can't spray many accounts and
-        // one account can't be hammered across IPs.
-        const ip = getClientIp(request?.headers ?? new Headers());
-        const gate = await checkAuthRateLimit([
-          `login:ip:${ip}`,
-          `login:email:${emailKey}`,
-        ]);
+        // nothing. The device key isolates browsers behind one IP; the broader
+        // source key prevents cookie clearing from creating unlimited buckets.
+        const headers = request?.headers ?? new Headers();
+        const ip = getClientIp(headers);
+        const deviceId = getLoginDeviceId(headers) ?? "no-device-cookie";
+        const rateLimitKeys = {
+          device: `login:device:${deviceId}:ip:${ip}:email:${emailKey}`,
+          source: `login:source:ip:${ip}:email:${emailKey}`,
+        };
+        const gate = await checkAuthRateLimit(rateLimitKeys);
         if (!gate.allowed) {
           throw gate.reason === "unavailable"
             ? new AuthUnavailableSignin()
@@ -53,12 +61,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         if (!admin) {
           // Run a dummy compare to blunt user-enumeration timing attacks.
-          await bcrypt.compare(password, "$2a$12$invalidinvalidinvalidinvalidinv");
+          await bcrypt.compare(
+            password,
+            "$2a$12$invalidinvalidinvalidinvalidinv",
+          );
           return null;
         }
 
         const ok = await bcrypt.compare(password, admin.passwordHash);
         if (!ok) return null;
+
+        // A verified password rehabilitates this legitimate source immediately.
+        await clearAuthRateLimit(rateLimitKeys);
 
         return {
           id: admin.id,

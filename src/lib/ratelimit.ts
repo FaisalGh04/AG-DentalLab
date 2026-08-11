@@ -24,6 +24,17 @@ export const authRatelimit = redis
     })
   : null;
 
+// Coarser backstop for clients that discard the device cookie repeatedly. Its
+// larger budget avoids one mistaken browser locking out peers behind the same IP.
+export const authSourceRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(25, "5 m"),
+      analytics: true,
+      prefix: "rl:auth-source",
+    })
+  : null;
+
 export const adminMutationRatelimit = redis
   ? new Ratelimit({
       redis,
@@ -103,7 +114,8 @@ export const doctorCodeMissRatelimit = redis
 
 // --- Login brute-force protection ----------------------------------
 
-const AUTH_MAX_ATTEMPTS = 5;
+const AUTH_DEVICE_MAX_ATTEMPTS = 5;
+const AUTH_SOURCE_MAX_ATTEMPTS = 25;
 const AUTH_WINDOW_MS = 5 * 60 * 1000;
 
 /**
@@ -120,9 +132,10 @@ const globalForAuth = globalThis as unknown as {
 const memoryHits =
   globalForAuth.__authMemoryHits ??
   new Map<string, { count: number; resetAt: number }>();
-if (!globalForAuth.__authMemoryHits) globalForAuth.__authMemoryHits = memoryHits;
+if (!globalForAuth.__authMemoryHits)
+  globalForAuth.__authMemoryHits = memoryHits;
 
-function memoryAllow(identifier: string): boolean {
+function memoryAllow(identifier: string, maxAttempts: number): boolean {
   const now = Date.now();
   const entry = memoryHits.get(identifier);
   if (!entry || entry.resetAt <= now) {
@@ -130,15 +143,25 @@ function memoryAllow(identifier: string): boolean {
     return true;
   }
   entry.count += 1;
-  return entry.count <= AUTH_MAX_ATTEMPTS;
+  return entry.count <= maxAttempts;
 }
 
-export type AuthGate = { allowed: boolean; reason?: "throttled" | "unavailable" };
+export type AuthGate = {
+  allowed: boolean;
+  reason?: "throttled" | "unavailable";
+};
+export interface AuthRateLimitKeys {
+  device: string;
+  source: string;
+}
 
 /**
- * Brute-force gate for the login flow. Consumes one attempt for EACH identifier
- * (typically IP + email) and blocks if any is exhausted — so one IP can't spray
- * many accounts and one account can't be hammered across IPs.
+ * Brute-force gate for the login flow.
+ *
+ * The device bucket isolates one browser. The broader source bucket uses only
+ * IP + normalized email and prevents clearing the cookie from granting endless
+ * fresh device buckets. Neither key contains a global email-only or IP-only
+ * dimension, so failures from another source do not consume this source's budget.
  *
  * Fail policy when the distributed limiter is unavailable:
  *   - production  -> FAIL CLOSED (deny). An in-memory limiter is meaningless
@@ -148,14 +171,18 @@ export type AuthGate = { allowed: boolean; reason?: "throttled" | "unavailable" 
  * A runtime limiter error fails closed in production and warns+allows in dev.
  */
 export async function checkAuthRateLimit(
-  identifiers: string[],
+  keys: AuthRateLimitKeys,
 ): Promise<AuthGate> {
   const isProd = process.env.NODE_ENV === "production";
 
-  if (authRatelimit) {
+  if (authRatelimit && authSourceRatelimit) {
     try {
-      for (const id of identifiers) {
-        const { success } = await authRatelimit.limit(id);
+      const checks = [
+        [authRatelimit, keys.device],
+        [authSourceRatelimit, keys.source],
+      ] as const;
+      for (const [limiter, identifier] of checks) {
+        const { success } = await limiter.limit(identifier);
         if (!success) return { allowed: false, reason: "throttled" };
       }
       return { allowed: true };
@@ -169,19 +196,43 @@ export async function checkAuthRateLimit(
 
   if (isProd) {
     console.error(
-      "[auth] Upstash not configured — refusing logins (fail-closed). Set " +
+      "[auth] Upstash not configured - refusing logins (fail-closed). Set " +
         "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable login.",
     );
     return { allowed: false, reason: "unavailable" };
   }
 
   console.warn(
-    "[auth] Upstash not configured — using in-memory login throttle (dev only).",
+    "[auth] Upstash not configured - using in-memory login throttle (dev only).",
   );
-  for (const id of identifiers) {
-    if (!memoryAllow(id)) return { allowed: false, reason: "throttled" };
+  if (!memoryAllow(keys.device, AUTH_DEVICE_MAX_ATTEMPTS)) {
+    return { allowed: false, reason: "throttled" };
+  }
+  if (!memoryAllow(keys.source, AUTH_SOURCE_MAX_ATTEMPTS)) {
+    return { allowed: false, reason: "throttled" };
   }
   return { allowed: true };
+}
+
+/** Clear both scoped counters after a verified password succeeds. */
+export async function clearAuthRateLimit(
+  keys: AuthRateLimitKeys,
+): Promise<void> {
+  memoryHits.delete(keys.device);
+  memoryHits.delete(keys.source);
+
+  if (!authRatelimit || !authSourceRatelimit) return;
+  try {
+    await Promise.all([
+      authRatelimit.resetUsedTokens(keys.device),
+      authSourceRatelimit.resetUsedTokens(keys.source),
+    ]);
+  } catch (err) {
+    // Authentication already succeeded; cleanup failure must not reject the
+    // correct password, but it remains an operational security signal.
+    console.error("[auth] failed to reset login rate-limit counters:", err);
+    Sentry.captureException(err, { tags: { area: "auth-ratelimit-reset" } });
+  }
 }
 
 /**
@@ -260,10 +311,14 @@ export async function limit(
     console.error("[ratelimit] limiter error:", err);
     if (isProd) {
       // Alert: same fail-closed outage, but from a live Upstash error mid-flight.
-      Sentry.captureException(err, { tags: { area: "ratelimit", failClosed: "true" } });
+      Sentry.captureException(err, {
+        tags: { area: "ratelimit", failClosed: "true" },
+      });
       return denied;
     }
-    console.warn("[ratelimit] allowing request despite limiter error (dev only)");
+    console.warn(
+      "[ratelimit] allowing request despite limiter error (dev only)",
+    );
     return allowed;
   }
 }
