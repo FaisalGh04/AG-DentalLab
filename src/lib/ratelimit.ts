@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import * as Sentry from "@sentry/nextjs";
+import { isCloudflareOriginVerified } from "@/lib/origin-verification";
 import { redis } from "./redis";
 
 /**
@@ -236,39 +237,32 @@ export async function clearAuthRateLimit(
 }
 
 /**
- * Resolve the client IP from proxy headers.
+ * Resolve the client IP from trusted proxy context.
  *
- * ORDER MATTERS — it is a trust ordering, not a preference.
- *
- * `x-forwarded-for` is APPENDED to, never replaced, by the proxy chain. A
- * client that sends `X-Forwarded-For: 1.2.3.4` reaches the origin as
- * `1.2.3.4, <real client ip>`, so taking `split(",")[0]` returns a value the
- * CLIENT chose. Every caller uses the result as a rate-limit key or as the `ip`
- * recorded on a CaseActionLog, so a spoofable value means both the limiters and
- * the audit trail can be steered by an attacker: rotating one header yields
- * unlimited tracking-ID guesses and unlimited admin login attempts.
- *
- * `cf-connecting-ip` is SET by Cloudflare from the real TCP peer and overwrites
- * anything the client sent, so it cannot be forged through the edge. Production
- * is Railway behind Cloudflare (see docs/deploy.md), so in production this
- * header is always present and always authoritative.
- *
- * The x-forwarded-for / x-real-ip fallbacks remain for local dev and any path
- * that is not proxied by Cloudflare — identical behaviour to before when
- * cf-connecting-ip is absent, so this is strictly additive.
- *
- * CAVEAT: this only holds for traffic that actually passes THROUGH Cloudflare.
- * A request sent straight to the Railway origin host has no cf-connecting-ip
- * and falls back to the spoofable header, so the origin should not be publicly
- * reachable outside the Cloudflare edge.
+ * Cloudflare's visitor header is accepted only after middleware authenticates
+ * the origin request and replaces any client-supplied verification marker.
+ * Without that marker, Railway's X-Real-IP is the safest production fallback.
+ * The rightmost X-Forwarded-For entry is retained only for local/other proxies.
  */
 export function getClientIp(headers: Headers): string {
-  return (
-    headers.get("cf-connecting-ip")?.trim() ||
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    "127.0.0.1"
-  );
+  if (isCloudflareOriginVerified(headers)) {
+    const cloudflareIp = cleanIpValue(headers.get("cf-connecting-ip"));
+    if (cloudflareIp) return cloudflareIp;
+  }
+
+  const realIp = cleanIpValue(headers.get("x-real-ip"));
+  if (realIp) return realIp;
+
+  const forwarded = headers.get("x-forwarded-for")?.split(",");
+  const nearestForwardedIp = forwarded
+    ? cleanIpValue(forwarded[forwarded.length - 1])
+    : null;
+  return nearestForwardedIp ?? "127.0.0.1";
+}
+
+function cleanIpValue(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized && normalized.length <= 128 ? normalized : null;
 }
 
 /**

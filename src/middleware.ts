@@ -1,12 +1,19 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import type { NextRequest, NextFetchEvent } from "next/server";
+import { NextRequest, type NextFetchEvent } from "next/server";
 import { authConfig } from "@/auth.config";
 import {
   generateLoginDeviceId,
   isLoginDeviceId,
   LOGIN_DEVICE_COOKIE_NAME,
 } from "@/lib/login-device";
+import {
+  CLOUDFLARE_ORIGIN_HEADER,
+  isCloudflareOriginVerificationRequired,
+  markCloudflareOriginVerified,
+  VERIFIED_CLOUDFLARE_ORIGIN_HEADER,
+  verifyCloudflareOriginSecret,
+} from "@/lib/origin-verification";
 
 // Edge-safe: the Prisma-free base config so the DB client never enters the Edge
 // runtime. Only instantiated to get the session-aware `auth` wrapper.
@@ -21,6 +28,55 @@ const LANG_SCRIPT_HASH =
   "'sha256-THbS/dRzpnJcU1ie06awMdA8t47jSmIfY8TZjVSBtVo='";
 
 const isDev = process.env.NODE_ENV !== "production";
+
+const HEALTHCHECK_PATH = "/api/health";
+
+type OriginCheck =
+  { ok: true; headers: Headers } | { ok: false; response: NextResponse };
+
+function isRailwayHealthCheck(req: NextRequest): boolean {
+  return (
+    req.nextUrl.pathname === HEALTHCHECK_PATH &&
+    (req.method === "GET" || req.method === "HEAD")
+  );
+}
+
+/**
+ * Authenticate Cloudflare before any route or auth work. Client-supplied
+ * verification markers are always removed; only this middleware may add one.
+ *
+ * Railway's health probe cannot attach a custom header. Its exact read-only
+ * health endpoint is the sole production exception and exposes no application
+ * data. Admin, auth, API, page, and asset requests remain protected.
+ */
+async function verifyRequestOrigin(req: NextRequest): Promise<OriginCheck> {
+  const headers = new Headers(req.headers);
+  const presented = headers.get(CLOUDFLARE_ORIGIN_HEADER);
+
+  // Do not forward either the shared secret or an attacker-provided marker.
+  headers.delete(CLOUDFLARE_ORIGIN_HEADER);
+  headers.delete(VERIFIED_CLOUDFLARE_ORIGIN_HEADER);
+
+  if (!isCloudflareOriginVerificationRequired() || isRailwayHealthCheck(req)) {
+    return { ok: true, headers };
+  }
+
+  if (!(await verifyCloudflareOriginSecret(presented))) {
+    return {
+      ok: false,
+      response: new NextResponse("Forbidden", {
+        status: 403,
+        headers: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      }),
+    };
+  }
+
+  markCloudflareOriginVerified(headers);
+  return { ok: true, headers };
+}
 
 /**
  * Give each browser a stable, opaque login identifier. It is only one dimension
@@ -186,7 +242,7 @@ const authGated = auth((req) => {
   }
 
   // /login (static): same public policy as the rest of the site.
-  const loginRes = NextResponse.next();
+  const loginRes = NextResponse.next({ request: { headers: req.headers } });
   loginRes.headers.set(
     "Content-Security-Policy-Report-Only",
     buildPublicCsp(nextUrl.origin),
@@ -205,17 +261,38 @@ const authGated = auth((req) => {
  * Entry point. Public routes get the static CSP with no session decode (#8);
  * only /admin + /login delegate to the auth-aware handler above.
  */
-export default function middleware(req: NextRequest, event: NextFetchEvent) {
+export default async function middleware(
+  req: NextRequest,
+  event: NextFetchEvent,
+) {
   const { pathname } = req.nextUrl;
+  const originCheck = await verifyRequestOrigin(req);
+  if (!originCheck.ok) return originCheck.response;
+
+  const forwardedReq = new NextRequest(req, {
+    headers: originCheck.headers,
+  });
 
   if (pathname.startsWith("/admin") || pathname === "/login") {
-    return authGated(req, event);
+    return authGated(forwardedReq, event);
+  }
+
+  // Assets still pass through origin verification, but do not need CSP/reporting
+  // response headers or auth work.
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    /\.(?:svg|png|jpg|jpeg|webp|ico)$/.test(pathname)
+  ) {
+    return NextResponse.next({ request: { headers: originCheck.headers } });
   }
 
   // Public routes skip NextAuth, so derive the public origin explicitly rather
   // than trusting req.nextUrl.origin (the internal Railway bind here).
   const origin = publicOrigin(req);
-  const res = NextResponse.next();
+  const res = NextResponse.next({
+    request: { headers: originCheck.headers },
+  });
   res.headers.set(
     "Content-Security-Policy-Report-Only",
     buildPublicCsp(origin),
@@ -224,7 +301,5 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)",
-  ],
+  matcher: ["/:path*"],
 };

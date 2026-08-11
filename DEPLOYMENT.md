@@ -119,6 +119,28 @@ UPSTASH_REDIS_REST_URL=""
 UPSTASH_REDIS_REST_TOKEN=""
 ```
 
+### Cloudflare authenticated origin
+
+Production requests are authenticated between Cloudflare and Railway with a
+shared origin secret. This prevents a client from reaching Railway directly,
+spoofing `CF-Connecting-IP`, and bypassing IP-based rate limits.
+
+```env
+CLOUDFLARE_ORIGIN_SECRET=""
+```
+
+Generate at least 32 random bytes. Configure Cloudflare first: create a Transform
+Rule that **sets/overwrites** the request header `x-ag-origin-secret` for every
+production hostname and path. Then set the exact same value as the server-only
+`CLOUDFLARE_ORIGIN_SECRET` Railway variable. Never use a `NEXT_PUBLIC_`
+variable and never put the value in a client-side rule or repository file.
+
+When the Railway variable is set in production, every request is rejected with a
+generic 403 unless the header matches. The only exception is `GET/HEAD
+/api/health`, because Railway's health probe cannot attach the custom header;
+that endpoint runs only the fixed database connectivity check and exposes no
+application data. Local development does not require this variable.
+
 ### Object Storage (Supabase Storage / Cloudflare R2 / AWS S3)
 
 Required for case image uploads. Production uses **Supabase Storage** (S3‑compatible). If the `S3_*` values are left blank or kept as the `.env.example` placeholders, the upload API returns a clear 503 ("Object storage is not configured") instead of failing obscurely.
@@ -232,6 +254,7 @@ Steps:
    - `ADMIN_EMAIL`, `ADMIN_PASSWORD`
    - `NEXT_PUBLIC_SITE_URL`
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (required in prod)
+   - `CLOUDFLARE_ORIGIN_SECRET` (server-only; required for authenticated origin)
    - Optional: `S3_*` storage, Sentry variables
 3. Seed the admin (first deploy only, run once against the production database):
 
@@ -263,6 +286,13 @@ Steps:
 Cloudflare fronts the Railway origin (DNS proxied) for TLS, security headers,
 and **edge caching of the static public routes**.
 
+- **Authenticated origin** (dashboard -> Rules -> Transform Rules):
+  - Set/overwrite `x-ag-origin-secret` on requests to every production hostname.
+  - Store the identical value in Railway as `CLOUDFLARE_ORIGIN_SECRET`.
+  - Configure the Cloudflare rule before enabling the Railway variable, so there
+    is no interval in which legitimate traffic receives 403.
+  - Verify `https://<railway-origin>/login` returns 403 while
+    `https://ag-dentallab.com/login` continues to load through Cloudflare.
 - **Cache Rules** (dashboard → Caching → Cache Rules):
   - Cache `path eq "/"` and `path eq "/track"` — Edge TTL **Override → 2 hours**.
   - Bypass cache for `/admin`, `/login`, and `/api/*`.
@@ -322,6 +352,8 @@ npm.cmd run db:seed
 - [ ] Railway shows **Deployment successful** (health check passed, cutover done).
 - [ ] **Cloudflare cache purged** ([`docs/deploy.md`](docs/deploy.md)); `curl -sI /` and `/track` show `MISS` then `HIT`; `/api/track` stays `DYNAMIC`/`BYPASS`.
 - [ ] `/` loads with official logo and polished landing sections.
+- [ ] Direct Railway-origin `/login` returns 403; the Cloudflare custom-domain
+  `/login` does not return 403.
 - [ ] `/login` works with seeded admin credentials.
 - [ ] `/admin` is protected from logged-out users.
 - [ ] `/admin` dashboard loads.
