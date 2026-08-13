@@ -59,7 +59,6 @@ export function CaseTypesClient() {
   const [addingTypeTo, setAddingTypeTo] = React.useState<string | null>(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = React.useState(false);
   const [newCategory, setNewCategory] = React.useState({
-    category: "",
     labelEn: "",
     labelAr: "",
   });
@@ -90,7 +89,7 @@ export function CaseTypesClient() {
   async function addCategory() {
     try {
       await createCategory.mutateAsync(newCategory);
-      setNewCategory({ category: "", labelEn: "", labelAr: "" });
+      setNewCategory({ labelEn: "", labelAr: "" });
       setCategoryDialogOpen(false);
       toast.success(t("caseTypes.categoryAdded"));
     } catch (error) {
@@ -370,25 +369,6 @@ export function CaseTypesClient() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="category-key">{t("caseTypes.internalKey")}</Label>
-              <Input
-                id="category-key"
-                dir="ltr"
-                value={newCategory.category}
-                placeholder="ORTHODONTICS"
-                onChange={(event) =>
-                  setNewCategory((current) => ({
-                    ...current,
-                    category: event.target.value
-                      .toUpperCase()
-                      .replace(/[\s-]+/g, "_")
-                      .replace(/[^A-Z0-9_]/g, ""),
-                  }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">{t("caseTypes.internalKeyHelp")}</p>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="category-label-en">{t("caseTypes.labelEn")}</Label>
               <Input
                 id="category-label-en"
@@ -418,7 +398,6 @@ export function CaseTypesClient() {
             <Button
               variant="gradient"
               disabled={
-                !newCategory.category ||
                 !newCategory.labelEn.trim() ||
                 !newCategory.labelAr.trim() ||
                 createCategory.isPending

@@ -9,7 +9,7 @@ import {
 export const caseCategoryKeySchema = z
   .string()
   .trim()
-  .min(2, "Category is required")
+  .min(1, "Category is required")
   .max(64)
   .regex(
     /^[A-Z][A-Z0-9_]*$/,
@@ -228,11 +228,14 @@ export type CaseCategoryConfigUpdateInput = z.infer<
   typeof caseCategoryConfigUpdateSchema
 >;
 
-export const caseCategoryCreateSchema = z.object({
-  category: caseCategoryKeySchema,
-  labelEn: z.string().trim().min(1).max(120),
-  labelAr: z.string().trim().min(1).max(120),
-});
+// Strict on purpose: the server owns category-key generation. A stale or
+// malicious client cannot smuggle its own `category` key into this payload.
+export const caseCategoryCreateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120),
+    labelAr: z.string().trim().min(1).max(120),
+  })
+  .strict();
 export type CaseCategoryCreateInput = z.infer<typeof caseCategoryCreateSchema>;
 
 export const caseTypeCreateSchema = z.object({
