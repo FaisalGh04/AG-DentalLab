@@ -263,6 +263,7 @@ export function CasesClient() {
                 <th className="px-5 py-3 font-semibold">{t("cases.colDoctor")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colCaseType")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colStage")}</th>
+                <th className="px-5 py-3 font-semibold">{t("cases.colReceivedBy")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colEstCompletion")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colUpdated")}</th>
                 <th className="px-5 py-3 font-semibold">{t("cases.colCreated")}</th>
@@ -290,6 +291,9 @@ export function CasesClient() {
                       <Skeleton className="h-7 w-24 rounded-full" />
                     </td>
                     <td className="px-5 py-4">
+                      <Skeleton className="h-5 w-24" />
+                    </td>
+                    <td className="px-5 py-4">
                       <Skeleton className="h-5 w-28" />
                     </td>
                     <td className="px-5 py-4">
@@ -306,7 +310,7 @@ export function CasesClient() {
 
               {!isLoading && data?.items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-6">
+                  <td colSpan={10} className="px-5 py-6">
                     {emptyState}
                   </td>
                 </tr>
@@ -339,6 +343,9 @@ export function CasesClient() {
                       locale={locale}
                       labels={badgeLabels}
                     />
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">
+                    {c.receivedBy || "—"}
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">
                     {formatEstCompletion(c.estimatedCompletionDate)}

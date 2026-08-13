@@ -149,6 +149,7 @@ export interface AdminCaseListItem extends CaseLifecycleFields {
   patientFirstName: string;
   patientLastName: string;
   doctorName: string;
+  receivedBy: string;
   caseType: string;
   category: string;
   estimatedCompletionDate: string | null;

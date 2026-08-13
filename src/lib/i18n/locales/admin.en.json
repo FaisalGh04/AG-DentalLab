@@ -85,6 +85,7 @@
     "colDoctor": "Doctor",
     "colCaseType": "Case Type",
     "colStage": "Stage",
+    "colReceivedBy": "Received By",
     "colEstCompletion": "Est. Completion",
     "colUpdated": "Updated",
     "colCreated": "Created",

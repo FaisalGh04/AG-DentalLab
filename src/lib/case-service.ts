@@ -90,6 +90,7 @@ const ADMIN_LIST_SELECT = {
   patientLastName: true,
   doctorName: true,
   doctorId: true,
+  receivedBy: true,
   caseType: true,
   category: true,
   collectionId: true,

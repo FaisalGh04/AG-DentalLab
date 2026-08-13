@@ -85,6 +85,7 @@
     "colDoctor": "الطبيب",
     "colCaseType": "نوع الحالة",
     "colStage": "المرحلة",
+    "colReceivedBy": "المستلم",
     "colEstCompletion": "الإنجاز المتوقع",
     "colUpdated": "آخر تحديث",
     "colCreated": "تاريخ الإنشاء",
