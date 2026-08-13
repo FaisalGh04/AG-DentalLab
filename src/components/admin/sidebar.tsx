@@ -28,12 +28,12 @@ export function Sidebar({ adminName }: { adminName: string }) {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-e border-border/80 bg-white/[0.72] p-4 shadow-soft backdrop-blur-xl lg:flex">
+    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-e border-border/80 bg-white/[0.72] p-4 shadow-soft backdrop-blur-xl xl:flex">
       <Link href="/admin" className="flex items-center gap-2 px-2 py-3">
         <Logo className="h-9" withWordmark />
       </Link>
 
-      <nav className="mt-6 flex flex-1 flex-col gap-1">
+      <nav className="mt-6 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain">
         {ADMIN_NAV_LINKS.map((l) => {
           const Icon = l.icon;
           const base = l.href.split("?")[0];
@@ -68,7 +68,7 @@ export function Sidebar({ adminName }: { adminName: string }) {
         })}
       </nav>
 
-      <div className="mt-auto space-y-2 border-t border-border pt-4">
+      <div className="mt-auto shrink-0 space-y-2 border-t border-border pt-4">
         <AdminLanguageToggle className="w-full justify-center" />
 
         <Link
@@ -87,13 +87,13 @@ export function Sidebar({ adminName }: { adminName: string }) {
               type="button"
               className="flex w-full items-center gap-3 rounded-xl border border-border/80 bg-white/70 px-3 py-2.5 text-start shadow-inner-glow transition-colors hover:bg-brand-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 data-[state=open]:bg-brand-50/70"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-brand-100 bg-brand-50">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-brand-100 bg-white shadow-inner-glow">
                 <Image
                   src="/ag-logo-without-text.png"
                   alt="AG Dental Lab"
                   width={72}
                   height={72}
-                  className="h-6 w-6 object-contain"
+                  className="h-9 w-9 object-contain"
                 />
               </span>
               <div className="min-w-0 flex-1">

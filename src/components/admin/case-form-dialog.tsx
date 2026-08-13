@@ -260,6 +260,28 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <style jsx>{`
+            form > :global(.grid) {
+              grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            form > :global(.grid) > * {
+              min-width: 0;
+            }
+
+            form :global(input[type=date]),
+            form :global(input[type=time]) {
+              min-width: 0;
+              max-width: 100%;
+            }
+
+            @media (min-width: 800px) {
+              form > :global(.grid) {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+              }
+            }
+          `}</style>
+
           {existing && (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

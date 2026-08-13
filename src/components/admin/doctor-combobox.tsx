@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Check, Link2, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,15 +39,67 @@ export function DoctorCombobox({
   const { t } = useAdminI18n();
   const { data: doctors } = useActiveDoctorOptions();
   const [open, setOpen] = React.useState(false);
+  const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>();
   const wrapRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
-  // Close on outside click.
+  const positionMenu = React.useCallback(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const rect = input.getBoundingClientRect();
+    const padding = 12;
+    const gap = 4;
+    const preferredHeight = 320;
+    const below = window.innerHeight - rect.bottom - padding - gap;
+    const above = rect.top - padding - gap;
+    const placeBelow = below >= Math.min(200, above);
+    const available = Math.max(96, placeBelow ? below : above);
+    const maxHeight = Math.min(preferredHeight, available);
+    const width = Math.min(rect.width, window.innerWidth - padding * 2);
+    const left = Math.min(
+      Math.max(padding, rect.left),
+      window.innerWidth - padding - width,
+    );
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top: placeBelow ? rect.bottom + gap : rect.top - gap - maxHeight,
+      width,
+      maxHeight,
+    });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    positionMenu();
+    const update = () => positionMenu();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, [open, positionMenu]);
+
   React.useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (
+        !wrapRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
     }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
   const linked = doctorId ? doctors?.find((d) => d.id === doctorId) ?? null : null;
@@ -59,18 +112,32 @@ export function DoctorCombobox({
   }, [doctors, value]);
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef}>
       <div className="relative">
         <Input
+          ref={inputRef}
           value={value}
           disabled={disabled}
           placeholder={placeholder}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="doctor-roster-options"
           onChange={(e) => {
             // Any manual edit unlinks: the name is now free text again.
             onChange(e.target.value, null);
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setOpen(false);
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setOpen(true);
+              requestAnimationFrame(() =>
+                menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
+              );
+            }
+          }}
           className={cn(linked && "pe-24")}
           autoComplete="off"
         />
@@ -82,52 +149,65 @@ export function DoctorCombobox({
         )}
       </div>
 
-      {open && (
-        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-lg">
-          <p className="flex items-center gap-1.5 px-2 py-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <Search className="h-3 w-3" />
-            {t("doctorPick.roster")}
-          </p>
-
-          {matches.length === 0 ? (
-            <p className="px-2 py-2 text-xs text-muted-foreground">
-              {t("doctorPick.noMatch")}
+      {open &&
+        menuStyle &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id="doctor-roster-options"
+            role="listbox"
+            style={menuStyle}
+            className="pointer-events-auto z-[80] overflow-y-auto overscroll-contain rounded-xl border border-white/70 bg-popover/95 p-1 text-popover-foreground shadow-glow backdrop-blur-xl"
+          >
+            <p className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <Search className="h-3 w-3" />
+              {t("doctorPick.roster")}
             </p>
-          ) : (
-            matches.map((d) => (
+
+            {matches.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                {t("doctorPick.noMatch")}
+              </p>
+            ) : (
+              matches.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  role="option"
+                  aria-selected={doctorId === d.id}
+                  onClick={() => {
+                    onChange(d.name, d.id);
+                    setOpen(false);
+                    inputRef.current?.focus({ preventScroll: true });
+                  }}
+                  className="flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-sm outline-none transition-colors hover:bg-brand-50 focus:bg-brand-50 focus:text-brand-900 sm:min-h-11 xl:min-h-9"
+                >
+                  <span className="truncate">{d.name}</span>
+                  {doctorId === d.id && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />
+                  )}
+                </button>
+              ))
+            )}
+
+            {/* Free text is an explicit, equal option — not a silent fallback. */}
+            {value.trim() && (
               <button
-                key={d.id}
                 type="button"
                 onClick={() => {
-                  onChange(d.name, d.id);
+                  onChange(value, null);
                   setOpen(false);
+                  inputRef.current?.focus({ preventScroll: true });
                 }}
-                className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-start text-sm hover:bg-muted"
+                className="mt-1 flex min-h-10 w-full items-center gap-2 rounded-lg border-t border-border px-3 py-2 text-start text-xs text-muted-foreground outline-none transition-colors hover:bg-brand-50 focus:bg-brand-50 sm:min-h-11 xl:min-h-9"
               >
-                <span className="truncate">{d.name}</span>
-                {doctorId === d.id && (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />
-                )}
+                <X className="h-3 w-3" />
+                {t("doctorPick.useAsTyped", { name: value.trim() })}
               </button>
-            ))
-          )}
-
-          {/* Free text is an explicit, equal option — not a silent fallback. */}
-          {value.trim() && (
-            <button
-              type="button"
-              onClick={() => {
-                onChange(value, null);
-                setOpen(false);
-              }}
-              className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-border px-2 py-2 text-start text-xs text-muted-foreground hover:bg-muted"
-            >
-              <X className="h-3 w-3" />
-              {t("doctorPick.useAsTyped", { name: value.trim() })}
-            </button>
-          )}
-        </div>
-      )}
+            )}
+          </div>,
+          document.body,
+        )}
 
       <p className="mt-1 text-xs text-muted-foreground">
         {linked ? t("doctorPick.linkedHint") : t("doctorPick.freeHint")}

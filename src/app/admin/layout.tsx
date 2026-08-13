@@ -14,12 +14,14 @@ export default async function AdminLayout({
     redirect("/login?callbackUrl=/admin");
   }
 
+  const adminName = session.user.name ?? session.user.email ?? "Admin";
+
   return (
     <AdminProviders>
       <div className="flex min-h-dvh bg-[linear-gradient(135deg,rgba(243,248,245,0.92),rgba(255,255,255,0.78))]">
-        <Sidebar adminName={session.user.name ?? session.user.email ?? "Admin"} />
+        <Sidebar adminName={adminName} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <MobileTopbar />
+          <MobileTopbar adminName={adminName} />
           <main className="flex-1 p-4 md:p-8">{children}</main>
         </div>
       </div>
