@@ -53,9 +53,9 @@ export function DoctorCombobox({
 
   const matches = React.useMemo(() => {
     const list = doctors ?? [];
-    const q = value.trim().toLowerCase();
-    if (!q) return list.slice(0, 8);
-    return list.filter((d) => d.name.toLowerCase().includes(q)).slice(0, 8);
+    const q = normalizeSearchText(value.trim());
+    if (!q) return list;
+    return list.filter((d) => normalizeSearchText(d.name).includes(q));
   }, [doctors, value]);
 
   return (
@@ -134,4 +134,9 @@ export function DoctorCombobox({
       </p>
     </div>
   );
+}
+
+/** Unicode normalization keeps Arabic and English roster searches predictable. */
+function normalizeSearchText(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase();
 }
