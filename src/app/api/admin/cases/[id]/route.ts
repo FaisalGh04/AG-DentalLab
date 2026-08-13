@@ -16,6 +16,7 @@ import { getStaffConfirmationEnabled } from "@/lib/security-settings";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
 import { isActiveCaseType } from "@/lib/case-taxonomy-service";
+import { isProductionCategory } from "@/lib/case-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const input = caseUpdateSchema.parse(body);
     const targetCategory = input.category ?? existing.category;
     const targetCaseType = input.caseType ?? existing.caseType;
+    const categoryChanged = targetCategory !== existing.category;
     const taxonomyChanged =
       targetCategory !== existing.category ||
       targetCaseType !== existing.caseType;
@@ -72,6 +74,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         422,
       );
     }
+    if (
+      categoryChanged &&
+      isProductionCategory(targetCategory) &&
+      !input.collectionId
+    ) {
+      return apiError("A workflow is required for this category.", 422);
+    }
     const ip = getClientIp(req.headers);
     const session = await auth();
 
@@ -83,11 +92,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     // stage (to the new collection's first) and hidden list unless the client
     // sent explicit values. Everything is validated + isCompleted re-derived.
     const config = await getLifecycleConfig();
-    const collectionId =
-      input.collectionId !== undefined ? input.collectionId : existing.collectionId;
+    const collectionId = categoryChanged && !isProductionCategory(targetCategory)
+      ? null
+      : input.collectionId !== undefined
+        ? input.collectionId
+        : existing.collectionId;
     const collectionChanged =
-      input.collectionId !== undefined &&
-      input.collectionId !== existing.collectionId;
+      collectionId !== existing.collectionId;
     const currentStageId =
       input.currentStageId !== undefined
         ? input.currentStageId

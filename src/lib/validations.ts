@@ -6,18 +6,16 @@ import {
   isAllowedImageType,
 } from "@/lib/upload-constants";
 
-export const CaseCategoryEnum = z.enum([
-  "IMPLANT",
-  "C_AND_B",
-  "PRESSABLE_CERAMIC",
-  "VACUUM_FORMER",
-  "SPECIAL_TRAY",
-  "RESIN_MODEL",
-  "EXTERNAL_LABORATORY_SERVICES",
-  "DENTAL_EQUIPMENT",
-  "GYPSUM_MODEL",
-  "FLEX_DENTURE",
-]);
+export const caseCategoryKeySchema = z
+  .string()
+  .trim()
+  .min(2, "Category is required")
+  .max(64)
+  .regex(
+    /^[A-Z][A-Z0-9_]*$/,
+    "Use uppercase letters, numbers, and underscores; start with a letter",
+  )
+  .refine((value) => value !== "ALL", "ALL is reserved for the admin filter");
 
 // --- Public search --------------------------------------------------
 export const searchSchema = z.object({
@@ -122,7 +120,7 @@ const caseInputBaseSchema = z.object({
     .nullable()
     .transform((v) => v || null),
   caseType: z.string().trim().min(2, "Case type is required").max(160),
-  category: CaseCategoryEnum,
+  category: caseCategoryKeySchema,
   // Production-template selection. The route validates that the stage belongs to
   // the collection and derives isCompleted; empty string is normalized to null.
   collectionId: z
@@ -229,6 +227,13 @@ export const caseCategoryConfigUpdateSchema = z
 export type CaseCategoryConfigUpdateInput = z.infer<
   typeof caseCategoryConfigUpdateSchema
 >;
+
+export const caseCategoryCreateSchema = z.object({
+  category: caseCategoryKeySchema,
+  labelEn: z.string().trim().min(1).max(120),
+  labelAr: z.string().trim().min(1).max(120),
+});
+export type CaseCategoryCreateInput = z.infer<typeof caseCategoryCreateSchema>;
 
 export const caseTypeCreateSchema = z.object({
   name: z.string().trim().min(2, "Case type name is required").max(160),

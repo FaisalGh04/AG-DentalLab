@@ -2,10 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/fetcher";
-import type { CaseCategory } from "@prisma/client";
 import type { CaseTaxonomyDTO } from "@/types/case-taxonomy";
 import type {
   CaseCategoryConfigUpdateInput,
+  CaseCategoryCreateInput,
   CaseTypeCreateInput,
   CaseTypeUpdateInput,
 } from "@/lib/validations";
@@ -31,7 +31,7 @@ export function useUpdateCaseCategoryConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ category, input }: {
-      category: CaseCategory;
+      category: string;
       input: CaseCategoryConfigUpdateInput;
     }) => apiFetch(`/api/admin/case-taxonomy/categories/${category}`, {
       method: "PATCH",
@@ -41,11 +41,34 @@ export function useUpdateCaseCategoryConfig() {
   });
 }
 
+export function useCreateCaseCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CaseCategoryCreateInput) =>
+      apiFetch("/api/admin/case-taxonomy", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidate(qc),
+  });
+}
+
+export function useDeleteCaseCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (category: string) =>
+      apiFetch(`/api/admin/case-taxonomy/categories/${category}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => invalidate(qc),
+  });
+}
+
 export function useCreateCaseType() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ category, input }: {
-      category: CaseCategory;
+      category: string;
       input: CaseTypeCreateInput;
     }) => apiFetch(`/api/admin/case-taxonomy/categories/${category}/case-types`, {
       method: "POST",

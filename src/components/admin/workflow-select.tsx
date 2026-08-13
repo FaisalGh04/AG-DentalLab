@@ -12,7 +12,7 @@ import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { useCaseGroupsTree } from "@/hooks/use-case-groups";
 import { isProductionCategory } from "@/lib/case-types";
 import { cn } from "@/lib/utils";
-import type { CaseCategory, CaseWorkflowType } from "@prisma/client";
+import type { CaseWorkflowType } from "@prisma/client";
 
 /**
  * Two-step workflow picker used by the New Case form + the case detail view.
@@ -32,7 +32,7 @@ export function WorkflowSelect({
   disabled,
   error,
 }: {
-  category: CaseCategory | "" | null | undefined;
+  category: string | null | undefined;
   value: string | null;
   onChange: (collectionId: string | null) => void;
   disabled?: boolean;

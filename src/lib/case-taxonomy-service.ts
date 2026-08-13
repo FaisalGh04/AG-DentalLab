@@ -1,9 +1,8 @@
-import type { CaseCategory } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { CaseTaxonomyDTO } from "@/types/case-taxonomy";
 
 export async function getCaseTaxonomy(): Promise<CaseTaxonomyDTO> {
-  const [categories, usage] = await Promise.all([
+  const [categories, usage, categoryUsage] = await Promise.all([
     prisma.caseCategoryConfig.findMany({
       orderBy: [{ order: "asc" }, { category: "asc" }],
       include: {
@@ -14,6 +13,10 @@ export async function getCaseTaxonomy(): Promise<CaseTaxonomyDTO> {
       by: ["category", "caseType"],
       _count: { _all: true },
     }),
+    prisma.patientCase.groupBy({
+      by: ["category"],
+      _count: { _all: true },
+    }),
   ]);
 
   const counts = new Map(
@@ -22,6 +25,9 @@ export async function getCaseTaxonomy(): Promise<CaseTaxonomyDTO> {
       row._count._all,
     ]),
   );
+  const categoryCounts = new Map(
+    categoryUsage.map((row) => [row.category, row._count._all]),
+  );
 
   return {
     categories: categories.map((category) => ({
@@ -29,6 +35,7 @@ export async function getCaseTaxonomy(): Promise<CaseTaxonomyDTO> {
       labelEn: category.labelEn,
       labelAr: category.labelAr,
       order: category.order,
+      inUseCount: categoryCounts.get(category.category) ?? 0,
       caseTypes: category.caseTypes.map((type) => ({
         id: type.id,
         category: type.category,
@@ -42,7 +49,7 @@ export async function getCaseTaxonomy(): Promise<CaseTaxonomyDTO> {
 }
 
 export async function isActiveCaseType(
-  category: CaseCategory,
+  category: string,
   name: string,
 ): Promise<boolean> {
   const option = await prisma.caseTypeOption.findUnique({
@@ -53,12 +60,12 @@ export async function isActiveCaseType(
 }
 
 export async function caseTypeInUseCount(
-  category: CaseCategory,
+  category: string,
   name: string,
 ): Promise<number> {
   return prisma.patientCase.count({ where: { category, caseType: name } });
 }
 
-function usageKey(category: CaseCategory, name: string): string {
+function usageKey(category: string, name: string): string {
   return `${category}::${name}`;
 }

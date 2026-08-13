@@ -16,12 +16,23 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import {
   useCaseTaxonomy,
+  useCreateCaseCategory,
   useCreateCaseType,
+  useDeleteCaseCategory,
   useDeleteCaseType,
   useUpdateCaseCategoryConfig,
   useUpdateCaseType,
@@ -35,6 +46,8 @@ import type {
 export function CaseTypesClient() {
   const { t, locale } = useAdminI18n();
   const taxonomy = useCaseTaxonomy();
+  const createCategory = useCreateCaseCategory();
+  const deleteCategory = useDeleteCaseCategory();
   const updateCategory = useUpdateCaseCategoryConfig();
   const createType = useCreateCaseType();
   const updateType = useUpdateCaseType();
@@ -43,7 +56,16 @@ export function CaseTypesClient() {
     React.useState<CaseCategoryConfigDTO | null>(null);
   const [typeEdit, setTypeEdit] = React.useState<CaseTypeOptionDTO | null>(null);
   const [newNames, setNewNames] = React.useState<Record<string, string>>({});
+  const [addingTypeTo, setAddingTypeTo] = React.useState<string | null>(null);
+  const [categoryDialogOpen, setCategoryDialogOpen] = React.useState(false);
+  const [newCategory, setNewCategory] = React.useState({
+    category: "",
+    labelEn: "",
+    labelAr: "",
+  });
   const [deleting, setDeleting] = React.useState<CaseTypeOptionDTO | null>(null);
+  const [deletingCategory, setDeletingCategory] =
+    React.useState<CaseCategoryConfigDTO | null>(null);
 
   const fail = (error: unknown) =>
     toast.error(error instanceof Error ? error.message : t("caseTypes.toastError"));
@@ -65,12 +87,35 @@ export function CaseTypesClient() {
     }
   }
 
+  async function addCategory() {
+    try {
+      await createCategory.mutateAsync(newCategory);
+      setNewCategory({ category: "", labelEn: "", labelAr: "" });
+      setCategoryDialogOpen(false);
+      toast.success(t("caseTypes.categoryAdded"));
+    } catch (error) {
+      fail(error);
+    }
+  }
+
+  async function removeCategory() {
+    if (!deletingCategory) return;
+    try {
+      await deleteCategory.mutateAsync(deletingCategory.category);
+      setDeletingCategory(null);
+      toast.success(t("caseTypes.categoryDeleted"));
+    } catch (error) {
+      fail(error);
+    }
+  }
+
   async function addType(category: CaseCategoryConfigDTO) {
     const name = newNames[category.category]?.trim();
     if (!name) return;
     try {
       await createType.mutateAsync({ category: category.category, input: { name } });
       setNewNames((current) => ({ ...current, [category.category]: "" }));
+      setAddingTypeTo(null);
       toast.success(t("caseTypes.typeAdded"));
     } catch (error) {
       fail(error);
@@ -120,12 +165,18 @@ export function CaseTypesClient() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
-          <Tags className="h-6 w-6 text-brand-700" />
-          {t("caseTypes.title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("caseTypes.subtitle")}</p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
+            <Tags className="h-6 w-6 text-brand-700" />
+            {t("caseTypes.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t("caseTypes.subtitle")}</p>
+        </div>
+        <Button variant="gradient" onClick={() => setCategoryDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          {t("caseTypes.addCategory")}
+        </Button>
       </header>
 
       {taxonomy.isError && (
@@ -203,10 +254,27 @@ export function CaseTypesClient() {
                   </Button>
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={() => setCategoryEdit(category)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                  {t("caseTypes.editLabels")}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setCategoryEdit(category)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t("caseTypes.editLabels")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={category.inUseCount > 0 || category.caseTypes.length > 0}
+                    title={
+                      category.inUseCount > 0 || category.caseTypes.length > 0
+                        ? t("caseTypes.categoryDeleteBlocked")
+                        : t("caseTypes.deleteCategory")
+                    }
+                    onClick={() => setDeletingCategory(category)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t("caseTypes.deleteCategory")}
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -230,28 +298,37 @@ export function CaseTypesClient() {
               )}
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={newNames[category.category] ?? ""}
-                onChange={(event) =>
-                  setNewNames((current) => ({
-                    ...current,
-                    [category.category]: event.target.value,
-                  }))
-                }
-                placeholder={t("caseTypes.newPlaceholder")}
-              />
-              <Button
-                variant="gradient"
-                disabled={
-                  !newNames[category.category]?.trim() || createType.isPending
-                }
-                onClick={() => addType(category)}
-              >
+            {addingTypeTo === category.category ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  autoFocus
+                  value={newNames[category.category] ?? ""}
+                  onChange={(event) =>
+                    setNewNames((current) => ({
+                      ...current,
+                      [category.category]: event.target.value,
+                    }))
+                  }
+                  placeholder={t("caseTypes.newPlaceholder")}
+                />
+                <Button
+                  variant="gradient"
+                  disabled={!newNames[category.category]?.trim() || createType.isPending}
+                  onClick={() => addType(category)}
+                >
+                  {createType.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {t("caseTypes.save")}
+                </Button>
+                <Button variant="ghost" onClick={() => setAddingTypeTo(null)}>
+                  {t("caseTypes.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={() => setAddingTypeTo(category.category)}>
                 <Plus className="h-4 w-4" />
-                {t("caseTypes.add")}
+                {t("caseTypes.addCaseType")}
               </Button>
-            </div>
+            )}
           </Card>
         );
       })}
@@ -268,6 +345,92 @@ export function CaseTypesClient() {
         loading={deleteType.isPending}
         onConfirm={remove}
       />
+      <ConfirmDialog
+        open={!!deletingCategory}
+        onOpenChange={(open) => !open && setDeletingCategory(null)}
+        title={t("caseTypes.deleteCategoryTitle")}
+        description={t("caseTypes.deleteCategoryDescription", {
+          name: deletingCategory
+            ? locale === "ar"
+              ? deletingCategory.labelAr
+              : deletingCategory.labelEn
+            : "",
+        })}
+        confirmLabel={t("caseTypes.delete")}
+        destructive
+        loading={deleteCategory.isPending}
+        onConfirm={removeCategory}
+      />
+
+      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("caseTypes.addCategory")}</DialogTitle>
+            <DialogDescription>{t("caseTypes.addCategoryDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="category-key">{t("caseTypes.internalKey")}</Label>
+              <Input
+                id="category-key"
+                dir="ltr"
+                value={newCategory.category}
+                placeholder="ORTHODONTICS"
+                onChange={(event) =>
+                  setNewCategory((current) => ({
+                    ...current,
+                    category: event.target.value
+                      .toUpperCase()
+                      .replace(/[\s-]+/g, "_")
+                      .replace(/[^A-Z0-9_]/g, ""),
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">{t("caseTypes.internalKeyHelp")}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category-label-en">{t("caseTypes.labelEn")}</Label>
+              <Input
+                id="category-label-en"
+                dir="ltr"
+                value={newCategory.labelEn}
+                onChange={(event) =>
+                  setNewCategory((current) => ({ ...current, labelEn: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category-label-ar">{t("caseTypes.labelAr")}</Label>
+              <Input
+                id="category-label-ar"
+                dir="rtl"
+                value={newCategory.labelAr}
+                onChange={(event) =>
+                  setNewCategory((current) => ({ ...current, labelAr: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCategoryDialogOpen(false)}>
+              {t("caseTypes.cancel")}
+            </Button>
+            <Button
+              variant="gradient"
+              disabled={
+                !newCategory.category ||
+                !newCategory.labelEn.trim() ||
+                !newCategory.labelAr.trim() ||
+                createCategory.isPending
+              }
+              onClick={addCategory}
+            >
+              {createCategory.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t("caseTypes.addCategory")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

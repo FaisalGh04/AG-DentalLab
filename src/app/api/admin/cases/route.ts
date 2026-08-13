@@ -17,7 +17,6 @@ import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
 import { getStaffConfirmationEnabled } from "@/lib/security-settings";
-import type { CaseCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +30,7 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const data = await listCases({
       q: sp.get("q") ?? undefined,
-      category: (sp.get("category") as CaseCategory) || undefined,
+      category: sp.get("category") || undefined,
       archived: sp.get("archived") === "true",
       page: sp.get("page") ? Number(sp.get("page")) : 1,
       pageSize: sp.get("pageSize") ? Number(sp.get("pageSize")) : 20,

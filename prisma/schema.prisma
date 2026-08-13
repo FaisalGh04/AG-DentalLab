@@ -32,24 +32,10 @@ model Admin {
 // fixed status enum anymore — progress is a stage id within a collection.
 // ------------------------------------------------------------------
 
-enum CaseCategory {
-  IMPLANT
-  C_AND_B
-  PRESSABLE_CERAMIC
-  VACUUM_FORMER
-  SPECIAL_TRAY
-  RESIN_MODEL
-  EXTERNAL_LABORATORY_SERVICES
-  DENTAL_EQUIPMENT
-  GYPSUM_MODEL
-  FLEX_DENTURE
-}
-
-// Editable display metadata for the stable CaseCategory enum. Category keys stay
-// immutable so existing PatientCase rows never need rewriting; admins manage the
-// bilingual labels and the child case-type options instead.
+// DB-backed category keys. The ten legacy enum values are preserved verbatim as
+// string keys, while admins can add new stable keys without a schema migration.
 model CaseCategoryConfig {
-  category  CaseCategory @id
+  category  String       @id
   labelEn   String       @map("label_en")
   labelAr   String       @map("label_ar")
   order     Int          @default(0)
@@ -57,6 +43,7 @@ model CaseCategoryConfig {
   updatedAt DateTime     @updatedAt @map("updated_at")
 
   caseTypes CaseTypeOption[]
+  cases     PatientCase[]
 
   @@index([order])
   @@map("case_category_configs")
@@ -67,7 +54,7 @@ model CaseCategoryConfig {
 // affects future selection only and never rewrites historical cases.
 model CaseTypeOption {
   id        String       @id @default(cuid())
-  category  CaseCategory
+  category  String
   name      String
   isActive  Boolean      @default(true) @map("is_active")
   order     Int          @default(0)
@@ -107,7 +94,9 @@ model PatientCase {
   // rows were removed rather than backfilled, so no sentinel reached production.
   receivedBy              String       @map("received_by")
   caseType                String       @map("case_type")
-  category                CaseCategory
+  // Stable taxonomy key. This column used to be the CaseCategory enum; the
+  // migration converts it to text without changing any existing values.
+  category                String
   // Selected production template (src/lib/production-templates.ts). Both nullable:
   // a case can exist before a collection/stage is chosen.
   collectionId            String?      @map("collection_id")
@@ -129,6 +118,7 @@ model PatientCase {
   // audit trail after a case is deleted.
   actionLogs CaseActionLog[]
   doctor     Doctor?         @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  categoryConfig CaseCategoryConfig @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
 
   // Indexes tuned for the two hot paths: public tracking lookup + admin list.
   @@index([patientFullNameNorm])

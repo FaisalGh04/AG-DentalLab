@@ -1,8 +1,6 @@
-import type { CaseCategory } from "@prisma/client";
-
 export interface CaseTypeOptionDTO {
   id: string;
-  category: CaseCategory;
+  category: string;
   name: string;
   isActive: boolean;
   order: number;
@@ -10,10 +8,11 @@ export interface CaseTypeOptionDTO {
 }
 
 export interface CaseCategoryConfigDTO {
-  category: CaseCategory;
+  category: string;
   labelEn: string;
   labelAr: string;
   order: number;
+  inUseCount: number;
   caseTypes: CaseTypeOptionDTO[];
 }
 

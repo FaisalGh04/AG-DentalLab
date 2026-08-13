@@ -404,7 +404,11 @@ export function TrackClient({
                 <Detail
                   icon={Tag}
                   label={t("track.category")}
-                  value={t(`category.${result.category}`)}
+                  value={
+                    locale === "ar"
+                      ? result.categoryLabelAr
+                      : result.categoryLabelEn
+                  }
                 />
                 <Detail icon={Package} label={t("track.caseType")} value={result.caseType} />
                 <Detail

@@ -111,9 +111,10 @@ The core product is complete and live. Remaining items are optional product refi
   - `PatientCase` (includes a unique `trackingId`)
   - `CaseProgress`
   - `CaseImage` (includes a nullable `stage` linking the image to a lifecycle stage)
-- Enums:
-  - `CaseStatus`: `RECEIVED`, `IN_PROGRESS`, `PRODUCTION`, `COMPLETED`
-  - `CaseCategory`: `IMPLANT`, `C_AND_B`, `PRESSABLE_CERAMIC`, `VACUUM_FORMER`, `SPECIAL_TRAY`, `RESIN_MODEL`, `EXTERNAL_LABORATORY_SERVICES`, `DENTAL_EQUIPMENT`, `GYPSUM_MODEL`, `FLEX_DENTURE`
+- Case taxonomy is DB-backed through `CaseCategoryConfig` and
+  `CaseTypeOption`. `PatientCase.category` is a stable string key with a
+  restrictive foreign key; `PatientCase.caseType` is a historical string
+  snapshot.
 - Indexes for public tracking‑ID lookup, name search, and admin list performance, plus a `[caseId, stage]` index on images.
 
 ### API Architecture

@@ -130,20 +130,18 @@ Image files live in Supabase Storage (S3‑compatible). The database stores the 
 - `PRODUCTION`
 - `COMPLETED`
 
-### CaseCategory
+### Case taxonomy
 
-- `IMPLANT`
-- `C_AND_B`
-- `PRESSABLE_CERAMIC`
-- `VACUUM_FORMER`
-- `SPECIAL_TRAY`
-- `RESIN_MODEL`
-- `EXTERNAL_LABORATORY_SERVICES`
-- `DENTAL_EQUIPMENT`
-- `GYPSUM_MODEL`
-- `FLEX_DENTURE`
+Categories and selectable case types are stored in `case_category_configs` and
+`case_type_options`. `PatientCase.category` stores the category's immutable
+string key and has a restrictive foreign key to its config; the original ten
+keys are preserved. `PatientCase.caseType` remains a historical display-name
+snapshot so later renames or deactivation never rewrite existing cases.
 
-Allowed case types per category are defined in `src/lib/case-types.ts`; the admin case form constrains case type to the selected category.
+The admin case form reads this taxonomy from the database and constrains case
+type to the selected category. Only the four legacy keys listed in
+`src/lib/case-types.ts` are production categories that require workflows;
+admin-created categories are non-production by default.
 
 ---
 

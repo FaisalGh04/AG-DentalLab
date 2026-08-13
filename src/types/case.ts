@@ -1,5 +1,3 @@
-import type { CaseCategory } from "@prisma/client";
-
 /** Progress step as returned to any client. */
 export interface ProgressDTO {
   id: string;
@@ -66,7 +64,9 @@ export interface PublicCaseDTO extends CaseLifecycleFields {
   patientName: string;
   doctorName: string;
   caseType: string;
-  category: CaseCategory;
+  category: string;
+  categoryLabelEn: string;
+  categoryLabelAr: string;
   estimatedCompletionDate: string | null;
   // Internal lab `notes` are intentionally NOT part of the public DTO (S-M2).
   progress: ProgressDTO[];
@@ -95,7 +95,7 @@ export interface PublicDoctorCaseDTO {
   trackingId: string;
   patientName: string;
   caseType: string;
-  category: CaseCategory;
+  category: string;
   collectionId: string | null;
   currentStageId: string | null;
   isCompleted: boolean;
@@ -127,7 +127,7 @@ export interface AdminCaseDTO extends CaseLifecycleFields {
    */
   receivedBy: string;
   caseType: string;
-  category: CaseCategory;
+  category: string;
   estimatedCompletionDate: string | null;
   notes: string | null;
   createdAt: string;
@@ -150,7 +150,7 @@ export interface AdminCaseListItem extends CaseLifecycleFields {
   patientLastName: string;
   doctorName: string;
   caseType: string;
-  category: CaseCategory;
+  category: string;
   estimatedCompletionDate: string | null;
   createdAt: string;
   updatedAt: string;

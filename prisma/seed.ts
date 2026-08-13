@@ -1,4 +1,4 @@
-import { PrismaClient, CaseCategory } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { generateUniqueTrackingId } from "../src/lib/tracking-id";
 import {
@@ -60,7 +60,7 @@ async function main() {
         // Required since Phase B. Name snapshot taken from the seeded roster.
         receivedBy: anyStaff.name,
         caseType: "Ivoclar Prime ZiR",
-        category: CaseCategory.C_AND_B,
+        category: "C_AND_B",
         collectionId,
         currentStageId,
         hiddenStageIds,

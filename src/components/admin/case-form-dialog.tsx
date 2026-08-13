@@ -47,7 +47,6 @@ import {
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import type { AdminCaseDTO } from "@/types/case";
-import type { CaseCategory } from "@prisma/client";
 
 interface Props {
   open: boolean;
@@ -101,7 +100,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   } = useForm<CaseCreateInput>({
     resolver,
     defaultValues: {
-      category: undefined as unknown as CaseCategory,
+      category: "",
       collectionId: null,
     },
   });
@@ -132,7 +131,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         doctorName: "",
         doctorId: null,
         caseType: "",
-        category: undefined as unknown as CaseCategory,
+        category: "",
         collectionId: null,
         receivedBy: undefined as unknown as CaseCreateInput["receivedBy"],
         estimatedCompletionDate: "",
@@ -147,9 +146,14 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
       toast.error(t("form.taxonomyUnavailable"));
       return;
     }
-    // A workflow is REQUIRED for production categories on NEW cases. On edit we
-    // grandfather existing collection-less cases (no hard block).
-    if (!isEdit && isProductionCategory(values.category) && !values.collectionId) {
+    // A workflow is required for new production cases and when an edit switches
+    // into a production category. Unchanged legacy collection-less cases remain
+    // grandfathered so unrelated edits are never blocked.
+    if (
+      isProductionCategory(values.category) &&
+      !values.collectionId &&
+      (!isEdit || values.category !== existing?.category)
+    ) {
       setError("collectionId", { type: "manual", message: t("form.workflowRequired") });
       return;
     }
@@ -337,11 +341,15 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                 value={category ?? ""}
                 disabled={taxonomy.isLoading || taxonomy.isError}
                 onValueChange={(v) => {
-                  setValue("category", v as CaseCategory, {
+                  setValue("category", v, {
                     shouldDirty: true,
                     shouldValidate: true,
                   });
                   setValue("caseType", "", {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  setValue("collectionId", null, {
                     shouldDirty: true,
                     shouldValidate: true,
                   });

@@ -46,7 +46,6 @@ import { useCase, useCaseList, useDeleteCase } from "@/hooks/use-cases";
 import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import { formatDate, formatDateTime, formatEstCompletion } from "@/lib/utils";
 import type { AdminCaseListItem } from "@/types/case";
-import type { CaseCategory } from "@prisma/client";
 
 export function CasesClient() {
   const { t, locale } = useAdminI18n();
@@ -107,7 +106,7 @@ export function CasesClient() {
   const historyRow = data?.items.find((c) => c.id === historyId) ?? null;
 
   const del = useDeleteCase();
-  const categoryLabel = (value: CaseCategory) => {
+  const categoryLabel = (value: string) => {
     const item = taxonomy?.categories.find((entry) => entry.category === value);
     return item
       ? locale === "ar"
@@ -236,7 +235,7 @@ export function CasesClient() {
           </div>
           <Select
             value={category}
-            onValueChange={(v) => setCategory(v as CaseCategory | "ALL")}
+            onValueChange={setCategory}
           >
             <SelectTrigger className="md:w-52">
               <SelectValue placeholder={t("cases.categoryPlaceholder")} />

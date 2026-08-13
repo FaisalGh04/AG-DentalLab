@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { Prisma, type CaseCategory } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { imageProxyPath } from "@/lib/s3";
@@ -26,6 +26,7 @@ export async function searchByTrackingId(
     include: {
       progress: { orderBy: { order: "asc" } },
       images: { orderBy: { createdAt: "desc" } },
+      categoryConfig: { select: { labelEn: true, labelAr: true } },
     },
   });
   if (!found) return null;
@@ -38,6 +39,8 @@ export async function searchByTrackingId(
     doctorName: found.doctorName,
     caseType: found.caseType,
     category: found.category,
+    categoryLabelEn: found.categoryConfig.labelEn,
+    categoryLabelAr: found.categoryConfig.labelAr,
     collectionId: found.collectionId,
     currentStageId: found.currentStageId,
     hiddenStageIds: found.hiddenStageIds,
@@ -73,7 +76,7 @@ export async function searchByTrackingId(
 
 export interface AdminListParams {
   q?: string;
-  category?: CaseCategory;
+  category?: string;
   page?: number;
   pageSize?: number;
   archived?: boolean; // completed archive
