@@ -45,6 +45,9 @@ export function MobileNavDrawer() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
           className={cn(
             "fixed inset-y-0 start-0 z-50 flex w-[82%] max-w-xs flex-col border-e border-border/80 bg-white/95 p-4 shadow-glow backdrop-blur-xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
             dir === "rtl"
