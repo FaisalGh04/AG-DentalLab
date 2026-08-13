@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { formatTrackingId } from "@/lib/tracking-id-format";
-import { isValidCaseTypeForCategory } from "@/lib/case-types";
 import {
   MAX_IMAGE_BYTES,
   ALLOWED_IMAGE_LABEL,
@@ -212,33 +211,37 @@ export type SecuritySettingUpdateInput = z.infer<
   typeof securitySettingUpdateSchema
 >;
 
-export const caseCreateSchema = caseCreateBaseSchema.superRefine((data, ctx) => {
-  if (!isValidCaseTypeForCategory(data.category, data.caseType)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["caseType"],
-      message: "Select a case type that belongs to the selected category",
-    });
-  }
-});
+// Taxonomy membership is DB-backed and therefore checked in the API after this
+// shape validation. This also lets unchanged historical snapshots remain
+// editable after an option is renamed or deactivated.
+export const caseCreateSchema = caseCreateBaseSchema;
 export type CaseCreateInput = z.infer<typeof caseCreateSchema>;
 
-export const caseUpdateSchema = caseInputBaseSchema.partial().superRefine(
-  (data, ctx) => {
-    if (
-      data.category &&
-      data.caseType &&
-      !isValidCaseTypeForCategory(data.category, data.caseType)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["caseType"],
-        message: "Select a case type that belongs to the selected category",
-      });
-    }
-  },
-);
+export const caseUpdateSchema = caseInputBaseSchema.partial();
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
+
+export const caseCategoryConfigUpdateSchema = z
+  .object({
+    labelEn: z.string().trim().min(1).max(120).optional(),
+    labelAr: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, "Nothing to update");
+export type CaseCategoryConfigUpdateInput = z.infer<
+  typeof caseCategoryConfigUpdateSchema
+>;
+
+export const caseTypeCreateSchema = z.object({
+  name: z.string().trim().min(2, "Case type name is required").max(160),
+});
+export type CaseTypeCreateInput = z.infer<typeof caseTypeCreateSchema>;
+
+export const caseTypeUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(160).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, "Nothing to update");
+export type CaseTypeUpdateInput = z.infer<typeof caseTypeUpdateSchema>;
 
 // --- Manager-only Staff Management ---------------------------------
 const staffPinSchema = z

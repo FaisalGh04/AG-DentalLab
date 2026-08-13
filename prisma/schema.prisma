@@ -45,6 +45,42 @@ enum CaseCategory {
   FLEX_DENTURE
 }
 
+// Editable display metadata for the stable CaseCategory enum. Category keys stay
+// immutable so existing PatientCase rows never need rewriting; admins manage the
+// bilingual labels and the child case-type options instead.
+model CaseCategoryConfig {
+  category  CaseCategory @id
+  labelEn   String       @map("label_en")
+  labelAr   String       @map("label_ar")
+  order     Int          @default(0)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  caseTypes CaseTypeOption[]
+
+  @@index([order])
+  @@map("case_category_configs")
+}
+
+// Managed choices for PatientCase.caseType. PatientCase intentionally keeps a
+// string snapshot rather than a foreign key: renaming/deactivating an option
+// affects future selection only and never rewrites historical cases.
+model CaseTypeOption {
+  id        String       @id @default(cuid())
+  category  CaseCategory
+  name      String
+  isActive  Boolean      @default(true) @map("is_active")
+  order     Int          @default(0)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  categoryConfig CaseCategoryConfig @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([category, name])
+  @@index([category, isActive, order])
+  @@map("case_type_options")
+}
+
 // ------------------------------------------------------------------
 // A dental case. Doctors track these by public tracking ID only.
 // ------------------------------------------------------------------

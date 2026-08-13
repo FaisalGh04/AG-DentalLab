@@ -15,6 +15,7 @@ import { deleteObject } from "@/lib/s3";
 import { getStaffConfirmationEnabled } from "@/lib/security-settings";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
+import { isActiveCaseType } from "@/lib/case-taxonomy-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!existing) return apiError("Case not found", 404);
 
     const input = caseUpdateSchema.parse(body);
+    const targetCategory = input.category ?? existing.category;
+    const targetCaseType = input.caseType ?? existing.caseType;
+    const taxonomyChanged =
+      targetCategory !== existing.category ||
+      targetCaseType !== existing.caseType;
+    if (
+      taxonomyChanged &&
+      !(await isActiveCaseType(targetCategory, targetCaseType))
+    ) {
+      return apiError(
+        "Select an active case type that belongs to the selected category.",
+        422,
+      );
+    }
     const ip = getClientIp(req.headers);
     const session = await auth();
 

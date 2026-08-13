@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -29,10 +29,10 @@ import {
   caseUpdateSchema,
   type CaseCreateInput,
 } from "@/lib/validations";
-import { CASE_CATEGORY_ORDER } from "@/lib/constants";
 import { useStaff } from "@/hooks/use-staff";
 import { staffDisplayName } from "@/lib/staff-display";
-import { getCaseTypesForCategory, isProductionCategory } from "@/lib/case-types";
+import { isProductionCategory } from "@/lib/case-types";
+import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { DoctorCombobox } from "@/components/admin/doctor-combobox";
@@ -64,6 +64,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const staff = useStaff();
   const confirmGate = useConfirmAction();
   const doctorOptions = useActiveDoctorOptions();
+  const taxonomy = useCaseTaxonomy();
   const { data: config = [] } = useLifecycleConfig();
   const create = useCreateCase();
   const update = useUpdateCase(existing?.id ?? "");
@@ -142,6 +143,10 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   }, [open, existing, reset]);
 
   async function onSubmit(values: CaseCreateInput) {
+    if (!taxonomy.data || taxonomy.isError) {
+      toast.error(t("form.taxonomyUnavailable"));
+      return;
+    }
     // A workflow is REQUIRED for production categories on NEW cases. On edit we
     // grandfather existing collection-less cases (no hard block).
     if (!isEdit && isProductionCategory(values.category) && !values.collectionId) {
@@ -224,7 +229,18 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const receivedBy = watch("receivedBy");
   const doctorName = watch("doctorName");
   const doctorId = watch("doctorId");
-  const availableCaseTypes = getCaseTypesForCategory(category);
+  const categories = taxonomy.data?.categories ?? [];
+  const selectedCategory = categories.find((item) => item.category === category);
+  const availableCaseTypes = selectedCategory?.caseTypes.filter(
+    (type) => type.isActive,
+  ) ?? [];
+  const currentInactiveType =
+    isEdit &&
+    existing?.category === category &&
+    existing.caseType === caseType &&
+    !availableCaseTypes.some((type) => type.name === existing.caseType)
+      ? existing.caseType
+      : null;
 
   return (
     <>
@@ -319,6 +335,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             <Field label={t("form.category")} error={errors.category?.message}>
               <Select
                 value={category ?? ""}
+                disabled={taxonomy.isLoading || taxonomy.isError}
                 onValueChange={(v) => {
                   setValue("category", v as CaseCategory, {
                     shouldDirty: true,
@@ -331,12 +348,20 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t("form.selectCategory")} />
+                  <SelectValue
+                    placeholder={
+                      taxonomy.isLoading
+                        ? t("form.loadingTaxonomy")
+                        : taxonomy.isError
+                          ? t("form.taxonomyUnavailable")
+                          : t("form.selectCategory")
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {CASE_CATEGORY_ORDER.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {t(`category.${c}`)}
+                  {categories.map((item) => (
+                    <SelectItem key={item.category} value={item.category}>
+                      {locale === "ar" ? item.labelAr : item.labelEn}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -346,7 +371,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             <Field label={t("form.caseType")} error={errors.caseType?.message}>
               <Select
                 value={caseType || ""}
-                disabled={!category}
+                disabled={!category || taxonomy.isLoading || taxonomy.isError}
                 onValueChange={(v) =>
                   setValue("caseType", v, {
                     shouldDirty: true,
@@ -364,15 +389,59 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
                   />
                 </SelectTrigger>
                 <SelectContent>
+                  {currentInactiveType && (
+                    <SelectItem value={currentInactiveType}>
+                      {currentInactiveType} ({t("caseTypes.inactive")})
+                    </SelectItem>
+                  )}
                   {availableCaseTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                    <SelectItem key={type.id} value={type.name}>
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
           </div>
+
+          {taxonomy.isLoading && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("form.loadingTaxonomy")}
+            </p>
+          )}
+          {taxonomy.isError && (
+            <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div>
+                  <p className="font-medium text-destructive">
+                    {t("form.taxonomyUnavailable")}
+                  </p>
+                  <p className="break-words text-xs text-muted-foreground">
+                    {taxonomy.error instanceof Error
+                      ? taxonomy.error.message
+                      : t("form.toastError")}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => taxonomy.refetch()}
+                disabled={taxonomy.isFetching}
+                className="shrink-0"
+              >
+                {taxonomy.isFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {t("form.retryTaxonomy")}
+              </Button>
+            </div>
+          )}
 
           <WorkflowSelect
             category={category}
@@ -458,7 +527,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             >
               {t("form.cancel")}
             </Button>
-            <Button type="submit" variant="gradient" disabled={pending}>
+            <Button
+              type="submit"
+              variant="gradient"
+              disabled={pending || taxonomy.isLoading || taxonomy.isError}
+            >
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEdit ? t("form.saveChanges") : t("form.createCase")}
             </Button>

@@ -43,7 +43,7 @@ import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAdminUI } from "@/store/admin-ui";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { useCase, useCaseList, useDeleteCase } from "@/hooks/use-cases";
-import { CASE_CATEGORY_ORDER } from "@/lib/constants";
+import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import { formatDate, formatDateTime, formatEstCompletion } from "@/lib/utils";
 import type { AdminCaseListItem } from "@/types/case";
 import type { CaseCategory } from "@prisma/client";
@@ -51,6 +51,7 @@ import type { CaseCategory } from "@prisma/client";
 export function CasesClient() {
   const { t, locale } = useAdminI18n();
   const { data: lifecycleConfig = [] } = useLifecycleConfig();
+  const { data: taxonomy } = useCaseTaxonomy();
   const params = useSearchParams();
   const archivedParam = params.get("archived") === "true";
   const openNew = params.get("new") === "true";
@@ -106,6 +107,14 @@ export function CasesClient() {
   const historyRow = data?.items.find((c) => c.id === historyId) ?? null;
 
   const del = useDeleteCase();
+  const categoryLabel = (value: CaseCategory) => {
+    const item = taxonomy?.categories.find((entry) => entry.category === value);
+    return item
+      ? locale === "ar"
+        ? item.labelAr
+        : item.labelEn
+      : t(`category.${value}`);
+  };
 
   const badgeLabels = {
     completed: t("state.completed"),
@@ -234,9 +243,9 @@ export function CasesClient() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">{t("cases.allCategories")}</SelectItem>
-              {CASE_CATEGORY_ORDER.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {t(`category.${c}`)}
+              {(taxonomy?.categories ?? []).map((item) => (
+                <SelectItem key={item.category} value={item.category}>
+                  {locale === "ar" ? item.labelAr : item.labelEn}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -314,7 +323,7 @@ export function CasesClient() {
                       {c.patientFirstName} {c.patientLastName}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {t(`category.${c.category}`)}
+                      {categoryLabel(c.category)}
                     </p>
                   </td>
                   <td className="px-5 py-4">
@@ -372,7 +381,7 @@ export function CasesClient() {
                 >
                   {c.patientFirstName} {c.patientLastName}
                   <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                    {t(`category.${c.category}`)}
+                    {categoryLabel(c.category)}
                   </span>
                 </Link>
                 <RowActions id={c.id} />

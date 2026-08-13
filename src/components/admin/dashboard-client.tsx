@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { useLifecycleConfig } from "@/hooks/use-lifecycle";
+import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { formatDate, formatEstCompletion } from "@/lib/utils";
@@ -33,8 +34,17 @@ export function DashboardClient({
   stats: DashboardStats;
   recent: AdminCaseListItem[];
 }) {
-  const { t } = useAdminI18n();
+  const { t, locale } = useAdminI18n();
   const { data: lifecycleConfig = [] } = useLifecycleConfig();
+  const { data: taxonomy } = useCaseTaxonomy();
+  const categoryLabel = (category: AdminCaseListItem["category"]) => {
+    const item = taxonomy?.categories.find((entry) => entry.category === category);
+    return item
+      ? locale === "ar"
+        ? item.labelAr
+        : item.labelEn
+      : t(`category.${category}`);
+  };
 
   const cards = [
     { key: "dashboard.totalCases", value: stats.total, icon: FolderKanban, tint: "bg-brand-50 text-brand-600 ring-brand-100" },
@@ -119,7 +129,7 @@ export function DashboardClient({
                   <TrackingIdCopy trackingId={c.trackingId} />
                 </div>
                 <p className="truncate text-sm text-muted-foreground">
-                  {c.caseType} / {t(`category.${c.category}`)} / {c.doctorName}
+                  {c.caseType} / {categoryLabel(c.category)} / {c.doctorName}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground/80">
                   {t("dashboard.estCompletion")}:{" "}

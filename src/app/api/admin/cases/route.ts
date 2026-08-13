@@ -11,6 +11,7 @@ import { verifyConfirmation } from "@/lib/staff-auth";
 import { buildActionLog } from "@/lib/case-audit";
 import { caseCreateSchema, confirmationSchema } from "@/lib/validations";
 import { isProductionCategory } from "@/lib/case-types";
+import { isActiveCaseType } from "@/lib/case-taxonomy-service";
 import { normalizeName } from "@/lib/utils";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
@@ -53,6 +54,13 @@ export async function POST(req: NextRequest) {
     const confirmation = protectionEnabled
       ? confirmationSchema.parse(body?.confirmation)
       : null;
+
+    if (!(await isActiveCaseType(input.category, input.caseType))) {
+      return apiError(
+        "Select an active case type that belongs to the selected category.",
+        422,
+      );
+    }
 
     // Production categories require a workflow on create (backstop for the form).
     if (isProductionCategory(input.category) && !input.collectionId) {

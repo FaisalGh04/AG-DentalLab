@@ -1,5 +1,3 @@
-export { CATEGORY_META, CASE_CATEGORY_ORDER } from "@/lib/case-types";
-
 // The "Received By" roster used to live here as RECEIVED_BY_OPTIONS. It is now
 // sourced from the StaffMember table (src/lib/staff.ts) so the confirmation
 // gate and the dropdown can never drift apart. Names are data, not UI chrome —

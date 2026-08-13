@@ -43,6 +43,7 @@ import { ImageManager } from "@/components/admin/image-manager";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { useCase, useDeleteCase, useUpdateCase } from "@/hooks/use-cases";
 import { useLifecycleConfig } from "@/hooks/use-lifecycle";
+import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import {
   getProductionCollection,
   getVisibleStages,
@@ -60,6 +61,7 @@ import {
 export function CaseDetailClient({ id }: { id: string }) {
   const { t, locale } = useAdminI18n();
   const { data: config = [] } = useLifecycleConfig();
+  const { data: taxonomy } = useCaseTaxonomy();
   const router = useRouter();
   const params = useSearchParams();
   const { data: kase, isLoading } = useCase(id);
@@ -430,7 +432,18 @@ export function CaseDetailClient({ id }: { id: string }) {
           <Detail
             icon={Tag}
             label={t("detail.category")}
-            value={t(`category.${kase.category}`)}
+            value={
+              (() => {
+                const item = taxonomy?.categories.find(
+                  (entry) => entry.category === kase.category,
+                );
+                return item
+                  ? locale === "ar"
+                    ? item.labelAr
+                    : item.labelEn
+                  : t(`category.${kase.category}`);
+              })()
+            }
           />
           <Detail
             icon={UserCheck}
