@@ -9,6 +9,7 @@ import {
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminI18nProvider } from "@/components/i18n/admin-i18n";
+import { AdminThemeProvider } from "@/components/admin/admin-theme";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -51,11 +52,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
  */
 export function AdminProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
-      <AdminI18nProvider>
-        <QueryProvider>{children}</QueryProvider>
-        <Toaster />
-      </AdminI18nProvider>
-    </SessionProvider>
+    <AdminThemeProvider>
+      <SessionProvider>
+        <AdminI18nProvider>
+          <QueryProvider>{children}</QueryProvider>
+          <Toaster />
+        </AdminI18nProvider>
+      </SessionProvider>
+    </AdminThemeProvider>
   );
 }

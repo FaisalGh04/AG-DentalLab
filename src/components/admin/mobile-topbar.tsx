@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { MobileNavDrawer } from "@/components/admin/mobile-nav-drawer";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
+import { AdminThemeToggle } from "@/components/admin/admin-theme";
 
 export function MobileTopbar({ adminName }: { adminName: string }) {
   return (
@@ -14,7 +15,10 @@ export function MobileTopbar({ adminName }: { adminName: string }) {
           <Logo className="h-8" withWordmark />
         </Link>
       </div>
-      <AdminLanguageToggle />
+      <div className="flex items-center gap-2">
+        <AdminThemeToggle className="px-2.5 [&_span]:hidden sm:[&_span]:inline" />
+        <AdminLanguageToggle />
+      </div>
     </div>
   );
 }

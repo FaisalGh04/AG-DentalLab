@@ -57,17 +57,17 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="space-y-1.5">
-        <Label htmlFor="email" className="text-brand-50/80">
+        <Label htmlFor="email" className="text-foreground/80 dark:text-brand-50/80">
           {t("login.email")}
         </Label>
         <div className="relative">
-          <Mail className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
+          <Mail className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-brand-200/70" />
           <Input
             id="email"
             type="email"
             autoComplete="username"
             placeholder={t("login.emailPlaceholder")}
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-brand-50 caret-brand-50 shadow-inner-glow placeholder:text-brand-200/50 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            className="login-input h-12 border-border bg-white/75 ps-10 text-foreground caret-foreground shadow-inner-glow placeholder:text-muted-foreground focus-visible:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-400/25 dark:border-brand-400/25 dark:bg-brand-950/45 dark:text-brand-50 dark:caret-brand-50 dark:placeholder:text-brand-200/50 dark:focus-visible:border-brand-300/70 dark:focus-visible:ring-brand-400/35"
             {...register("email")}
           />
         </div>
@@ -77,17 +77,17 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password" className="text-brand-50/80">
+        <Label htmlFor="password" className="text-foreground/80 dark:text-brand-50/80">
           {t("login.password")}
         </Label>
         <div className="relative">
-          <Lock className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200/70" />
+          <Lock className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-brand-200/70" />
           <Input
             id="password"
             type="password"
             autoComplete="current-password"
             placeholder={t("login.passwordPlaceholder")}
-            className="login-input h-12 border-brand-400/25 bg-brand-950/45 ps-10 text-brand-50 caret-brand-50 shadow-inner-glow placeholder:text-brand-200/50 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-400/35"
+            className="login-input h-12 border-border bg-white/75 ps-10 text-foreground caret-foreground shadow-inner-glow placeholder:text-muted-foreground focus-visible:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-400/25 dark:border-brand-400/25 dark:bg-brand-950/45 dark:text-brand-50 dark:caret-brand-50 dark:placeholder:text-brand-200/50 dark:focus-visible:border-brand-300/70 dark:focus-visible:ring-brand-400/35"
             {...register("password")}
           />
         </div>

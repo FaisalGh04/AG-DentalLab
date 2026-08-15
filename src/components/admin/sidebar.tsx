@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdminSettingsDialog } from "@/components/admin/admin-settings-dialog";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
+import { AdminThemeToggle } from "@/components/admin/admin-theme";
 import { ADMIN_NAV_LINKS } from "@/components/admin/nav-links";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ export function Sidebar({ adminName }: { adminName: string }) {
       </nav>
 
       <div className="mt-auto shrink-0 space-y-2 border-t border-border pt-4">
+        <AdminThemeToggle className="w-full" />
         <AdminLanguageToggle className="w-full justify-center" />
 
         <Link

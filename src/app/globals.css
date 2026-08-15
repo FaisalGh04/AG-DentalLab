@@ -415,3 +415,110 @@
     backdrop-filter: blur(8px);
   }
 }
+
+/* Admin-only light/dark theme surfaces. The provider adds the body marker only
+   on /admin and /login, including while Radix content is portalled to body. */
+.admin-login-shell {
+  color: hsl(var(--foreground));
+  background-color: hsl(111 22% 94%);
+  background-image:
+    radial-gradient(circle at 18% 0%, rgba(123, 183, 157, 0.3), transparent 32rem),
+    radial-gradient(circle at 84% 12%, rgba(39, 95, 77, 0.14), transparent 34rem),
+    linear-gradient(145deg, rgba(247, 250, 247, 0.96), rgba(230, 240, 232, 0.94));
+  isolation: isolate;
+}
+.dark .admin-login-shell {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(circle at 14% -6%, rgba(47, 109, 88, 0.35), transparent 34rem),
+    radial-gradient(circle at 86% 4%, rgba(39, 95, 77, 0.22), transparent 36rem),
+    radial-gradient(circle at 70% 112%, rgba(83, 136, 111, 0.16), transparent 38rem);
+}
+.admin-login-shell .login-glass {
+  background-color: rgba(255, 255, 255, 0.76);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.9), rgba(238, 246, 240, 0.72));
+  border-color: rgba(109, 166, 142, 0.25);
+  box-shadow:
+    0 44px 90px -48px rgba(39, 95, 77, 0.4),
+    0 18px 40px -24px rgba(18, 24, 22, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.dark .admin-login-shell .login-glass {
+  background-color: hsl(158 32% 10% / 0.42);
+  background-image: linear-gradient(155deg, hsl(158 36% 14% / 0.55), hsl(164 44% 6% / 0.42));
+  border-color: rgba(109, 166, 142, 0.16);
+  box-shadow:
+    0 44px 90px -48px rgba(0, 0, 0, 0.9),
+    0 18px 40px -24px rgba(0, 0, 0, 0.6),
+    0 0 70px -26px rgba(39, 95, 77, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.admin-login-shell .login-input:-webkit-autofill,
+.admin-login-shell .login-input:-webkit-autofill:hover,
+.admin-login-shell .login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: hsl(150 14% 8%);
+  caret-color: hsl(150 14% 8%);
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.94) inset;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.94) inset;
+}
+.dark .admin-login-shell .login-input:-webkit-autofill,
+.dark .admin-login-shell .login-input:-webkit-autofill:hover,
+.dark .admin-login-shell .login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: hsl(60 14% 95%);
+  caret-color: hsl(60 14% 95%);
+  -webkit-box-shadow: 0 0 0 1000px hsl(158 32% 10% / 0.92) inset;
+  box-shadow: 0 0 0 1000px hsl(158 32% 10% / 0.92) inset;
+}
+
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) .text-ink {
+  color: hsl(var(--foreground));
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/95"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/80"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/75"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/70"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/[0.82]"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/[0.72]"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/[0.62]"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/50"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-white/[0.4]"] {
+  background-color: hsl(var(--card) / 0.9);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50/70"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50/60"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50/50"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50/40"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-brand-50/35"] {
+  background-color: hsl(157 32% 16% / 0.72);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="border-white/70"] {
+  border-color: hsl(var(--border));
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="text-brand-800"],
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="text-brand-900"] {
+  color: hsl(150 30% 88%);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-sky-50"] {
+  background-color: rgb(14 116 144 / 0.18);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-emerald-50"] {
+  background-color: rgb(5 150 105 / 0.18);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="bg-amber-50"] {
+  background-color: rgb(217 119 6 / 0.16);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="text-amber-900"] {
+  color: rgb(254 243 199);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="hover:bg-brand-50/70"]:hover,
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="hover:bg-brand-50/60"]:hover,
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="hover:bg-brand-50"]:hover,
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="focus:bg-brand-50"]:focus {
+  background-color: hsl(157 32% 20% / 0.82);
+}
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="hover:text-brand-800"]:hover,
+:is(.dark .admin-theme-scope, .dark body[data-admin-theme-active="true"]) [class~="focus:text-brand-900"]:focus {
+  color: hsl(150 35% 90%);
+}

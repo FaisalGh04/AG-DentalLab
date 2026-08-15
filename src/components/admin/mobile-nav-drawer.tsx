@@ -8,6 +8,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Menu, X, ExternalLink, Settings } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
+import { AdminThemeToggle } from "@/components/admin/admin-theme";
 import { ADMIN_NAV_LINKS } from "@/components/admin/nav-links";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { cn } from "@/lib/utils";
@@ -113,6 +114,7 @@ export function MobileNavDrawer({ adminName }: { adminName: string }) {
               {t("nav.viewWebsite")}
             </Link>
 
+            <AdminThemeToggle className="w-full" />
             <AdminLanguageToggle className="w-full justify-center" />
             <button
               type="button"

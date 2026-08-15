@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AdminI18nProvider } from "@/components/i18n/admin-i18n";
 import { LoginPanel } from "@/components/admin/login-panel";
 import { Toaster } from "@/components/ui/sonner";
+import { AdminThemeProvider } from "@/components/admin/admin-theme";
 
 export const metadata: Metadata = {
   title: "Admin Login",
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="dark landing-dark-shell relative flex min-h-[100svh] items-center justify-center p-6">
+    <AdminThemeProvider>
+      <main className="admin-theme-scope admin-login-shell relative flex min-h-[100svh] items-center justify-center p-6">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-grid-brand [background-size:34px_34px] opacity-[0.07]" />
         {/* Bright brand orbs sat directly behind the card so the frosted blur
@@ -27,7 +29,8 @@ export default function LoginPage() {
 
       {/* Toast surface for sign-in errors (previously provided by the root
           layout; now scoped here since the landing page doesn't need it). */}
-      <Toaster />
-    </main>
+        <Toaster />
+      </main>
+    </AdminThemeProvider>
   );
 }

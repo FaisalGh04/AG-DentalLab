@@ -18,7 +18,7 @@ export default async function AdminLayout({
 
   return (
     <AdminProviders>
-      <div className="flex min-h-dvh bg-[linear-gradient(135deg,rgba(243,248,245,0.92),rgba(255,255,255,0.78))]">
+      <div className="admin-theme-scope flex min-h-dvh bg-[linear-gradient(135deg,rgba(243,248,245,0.92),rgba(255,255,255,0.78))] dark:bg-[radial-gradient(circle_at_12%_-8%,rgba(71,133,109,0.16),transparent_30rem),linear-gradient(135deg,hsl(164_35%_6%),hsl(158_30%_9%))]">
         <Sidebar adminName={adminName} />
         <div className="flex min-w-0 flex-1 flex-col">
           <MobileTopbar adminName={adminName} />

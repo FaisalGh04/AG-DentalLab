@@ -19,6 +19,13 @@
     "staff": "Staff",
     "settings": "Settings"
   },
+  "theme": {
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
+  },
   "settings": {
     "title": "Settings",
     "description": "Manage admin security and your current session.",
