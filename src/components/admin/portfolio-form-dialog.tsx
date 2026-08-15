@@ -346,11 +346,8 @@ function Thumb({
         src={src}
         alt=""
         fill
-        sizes="120px"
         className="object-cover"
-        // Admin previews: static /public paths, the same-origin serve route, or
-        // blob: URLs — all rendered directly without the Next optimizer.
-        unoptimized
+        // Static, proxy, and blob URLs render directly.
       />
       {pendingLabel && (
         <span className="absolute bottom-1 start-1 rounded bg-brand-600/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">

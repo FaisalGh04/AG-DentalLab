@@ -116,8 +116,6 @@ export function WorkCategoryLightbox({
                           src={cover.url}
                           alt={label(item)}
                           fill
-                          sizes="(min-width: 640px) 30vw, 45vw"
-                          unoptimized={cover.url.startsWith("/api/")}
                           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-brand-950/85 via-brand-950/10 to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-90" />
@@ -171,8 +169,6 @@ export function WorkCategoryLightbox({
                       src={img.url}
                       alt={label(selectedItem)}
                       fill
-                      sizes="(min-width: 640px) 30vw, 45vw"
-                      unoptimized={img.url.startsWith("/api/")}
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-brand-950/70 via-transparent to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-80" />

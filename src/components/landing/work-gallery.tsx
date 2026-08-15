@@ -92,12 +92,7 @@ export function WorkGallery({ folders }: { folders: PortfolioFolderView[] }) {
                     src={cover.url}
                     alt=""
                     fill
-                    sizes="(min-width: 768px) 30vw, 50vw"
-                    // Uploaded images serve via the /api proxy route, which
-                    // 302s to a signed URL — the Next optimizer can't follow
-                    // that, so the browser must fetch it directly. Direct
-                    // /public seed paths stay optimized.
-                    unoptimized={cover.url.startsWith("/api/")}
+                    // Native renderer keeps this exact same-origin URL in the DOM.
                     className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                   />
                   {/* Legibility wash — kept strong so the folder name + count

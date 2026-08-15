@@ -179,9 +179,7 @@ export function PortfolioClient() {
                               src={cover.url}
                               alt=""
                               fill
-                              sizes="80px"
                               className="object-cover"
-                              unoptimized
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-muted-foreground">

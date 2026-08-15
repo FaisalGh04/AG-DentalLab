@@ -32,11 +32,7 @@ export function WorkZoomView({
         alt={title}
         width={width}
         height={height}
-        sizes="(min-width: 1024px) 720px, 92vw"
-        // Uploaded images serve via the /api proxy (302 → signed URL); the
-        // optimizer can't follow the redirect, so let the browser fetch
-        // directly. Seed /public paths stay optimized.
-        unoptimized={src.startsWith("/api/")}
+        // Render the exact portfolio URL without Next's image optimizer.
         className="h-auto max-h-[65vh] w-full rounded-[1rem] object-contain"
       />
       <div className="text-start">
