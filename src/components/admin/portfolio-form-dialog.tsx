@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
+import { PortfolioImage } from "@/components/portfolio-image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Trash2, ImagePlus, Upload } from "lucide-react";
@@ -342,7 +342,7 @@ function Thumb({
 }) {
   return (
     <div className="group relative aspect-square overflow-hidden rounded-xl border border-border shadow-inner-glow">
-      <Image
+      <PortfolioImage
         src={src}
         alt=""
         fill

@@ -1,8 +1,10 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { apiError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { createDownloadUrl } from "@/lib/s3";
+import { sniffImageType } from "@/lib/portfolio-storage";
+import { s3 } from "@/lib/s3";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,18 +12,34 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 // Portfolio images are PUBLIC marketing assets, so — unlike /api/images/[id] —
-// this route has no auth and no tracking-id check, and its responses are
-// cacheable. Sign for a bit longer than we cache so the redirect target never
-// expires before the cache entry does.
-const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
-const CACHE_SECONDS = 60 * 55; // 55 minutes
+// this route has no auth and no tracking-id check. The DB lookup remains the
+// allowlist: callers can fetch only objects attached to PortfolioImage rows.
+const CACHE_SECONDS = 60 * 60;
+const PUBLIC_DIR = path.resolve(process.cwd(), "public");
+
+function imageResponse(
+  body: Uint8Array,
+  contentType: string,
+  metadata?: { etag?: string; lastModified?: Date },
+): Response {
+  const headers = new Headers({
+    "Cache-Control": `public, max-age=${CACHE_SECONDS}, stale-while-revalidate=86400`,
+    "Content-Type": contentType,
+    "Content-Length": String(body.byteLength),
+  });
+  if (metadata?.etag) headers.set("ETag", metadata.etag);
+  if (metadata?.lastModified) {
+    headers.set("Last-Modified", metadata.lastModified.toUTCString());
+  }
+  return new Response(Uint8Array.from(body).buffer, { status: 200, headers });
+}
 
 /**
- * GET /api/portfolio/images/[id] — resolve a portfolio image to a servable URL
- * and 302-redirect. Static assets (seed /images or dev /uploads paths) redirect
- * to themselves; R2 objects redirect to a short-lived signed GET URL.
+ * GET /api/portfolio/images/[id] — return portfolio image bytes with their
+ * actual media type. Both committed/dev files and R2/S3 objects stay behind
+ * this stable, DB-allowlisted URL when it is requested directly.
  */
-export async function GET(req: NextRequest, { params }: Ctx) {
+export async function GET(_req: Request, { params }: Ctx) {
   try {
     const { id } = await params;
     const image = await prisma.portfolioImage.findUnique({
@@ -30,21 +48,51 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     });
     if (!image) return apiError("Image not found", 404);
 
-    // Static /public asset — redirect to the same-origin path.
     if (image.key.startsWith("/")) {
-      const res = NextResponse.redirect(
-        new URL(image.key, req.nextUrl.origin),
-        302,
-      );
-      res.headers.set("Cache-Control", `public, max-age=${CACHE_SECONDS}`);
-      return res;
+      const filePath = path.resolve(PUBLIC_DIR, image.key.slice(1));
+      if (!filePath.startsWith(`${PUBLIC_DIR}${path.sep}`)) {
+        return apiError("Image not found", 404);
+      }
+      try {
+        const body = await fs.readFile(filePath);
+        return imageResponse(
+          body,
+          sniffImageType(body) ?? "application/octet-stream",
+        );
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          return apiError("Image not found", 404);
+        }
+        throw err;
+      }
     }
 
-    // R2/S3 object — sign a short-lived GET.
-    const url = await createDownloadUrl(image.key, SIGNED_URL_TTL_SECONDS);
-    const res = NextResponse.redirect(url, 302);
-    res.headers.set("Cache-Control", `public, max-age=${CACHE_SECONDS}`);
-    return res;
+    if (!s3) return apiError("Portfolio storage is not configured", 503);
+
+    try {
+      const object = await s3.send(
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET,
+          Key: image.key,
+        }),
+      );
+      if (!object.Body) return apiError("Image not found", 404);
+
+      const body = await object.Body.transformToByteArray();
+      return imageResponse(
+        body,
+        object.ContentType ?? "application/octet-stream",
+        { etag: object.ETag, lastModified: object.LastModified },
+      );
+    } catch (err) {
+      const status =
+        typeof err === "object" && err !== null && "$metadata" in err
+          ? (err as { $metadata?: { httpStatusCode?: number } }).$metadata
+              ?.httpStatusCode
+          : undefined;
+      if (status === 404) return apiError("Image not found", 404);
+      throw err;
+    }
   } catch (err) {
     return handleApiError(err);
   }

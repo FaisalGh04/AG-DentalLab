@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
+import { PortfolioImage } from "@/components/portfolio-image";
 import { motion } from "framer-motion";
 import { Images } from "lucide-react";
-import { Reveal, staggerContainer, staggerItem } from "@/components/motion/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { useI18n } from "@/components/i18n/language-provider";
 import type { PortfolioFolderView } from "@/types/portfolio";
@@ -61,10 +61,6 @@ export function WorkGallery({ folders }: { folders: PortfolioFolderView[] }) {
             special-casing. Only folders with a photographed item render (see
             visibleFolders) — empty ones are hidden, not placeholdered. */}
         <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
           className="mt-16 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5"
         >
           {visibleFolders.map((folder, i) => {
@@ -79,7 +75,6 @@ export function WorkGallery({ folders }: { folders: PortfolioFolderView[] }) {
               <motion.button
                 key={folder.id}
                 type="button"
-                variants={staggerItem}
                 whileHover={{ y: -4 }}
                 onClick={() => setOpenFolder(folder.id)}
                 aria-label={t("work.openFolder", { name })}
@@ -93,7 +88,7 @@ export function WorkGallery({ folders }: { folders: PortfolioFolderView[] }) {
                 )}
               >
                 <div className="relative aspect-[4/3] w-full">
-                  <Image
+                  <PortfolioImage
                     src={cover.url}
                     alt=""
                     fill

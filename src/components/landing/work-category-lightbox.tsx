@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { PortfolioImage } from "@/components/portfolio-image";
 import { ImageOff, ArrowLeft, Images } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { WorkZoomView } from "@/components/landing/work-gallery-lightbox";
@@ -112,7 +112,7 @@ export function WorkCategoryLightbox({
                         aria-label={t("work.openCase")}
                         className="block aspect-[4/3] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
-                        <Image
+                        <PortfolioImage
                           src={cover.url}
                           alt={label(item)}
                           fill
@@ -167,7 +167,7 @@ export function WorkCategoryLightbox({
                     aria-label={t("work.openImage")}
                     className="block aspect-[4/3] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
-                    <Image
+                    <PortfolioImage
                       src={img.url}
                       alt={label(selectedItem)}
                       fill

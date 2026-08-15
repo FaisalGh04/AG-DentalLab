@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
+import { PortfolioImage } from "@/components/portfolio-image";
 import {
   Plus,
   Pencil,
@@ -175,7 +175,7 @@ export function PortfolioClient() {
                       <Card key={item.id} className="flex gap-3 p-3">
                         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
                           {cover ? (
-                            <Image
+                            <PortfolioImage
                               src={cover.url}
                               alt=""
                               fill

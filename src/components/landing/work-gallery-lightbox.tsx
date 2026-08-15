@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { PortfolioImage } from "@/components/portfolio-image";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 /**
@@ -27,7 +27,7 @@ export function WorkZoomView({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <Image
+      <PortfolioImage
         src={src}
         alt={title}
         width={width}
