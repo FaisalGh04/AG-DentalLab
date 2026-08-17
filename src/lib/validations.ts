@@ -210,18 +210,49 @@ export type SecuritySettingUpdateInput = z.infer<
 export const ADMIN_PASSWORD_MIN_LENGTH = 12;
 
 /**
- * Reset a NON-OWNER admin's password. The new password is GENERATED server-side
- * and never travels in this direction, so there is no password field here — only
- * the target and the manager code.
+ * THE shared strength rule for any new admin login password. Both the non-owner
+ * reset and the owner change use this exact field, so the two can never drift
+ * apart — a password acceptable in one place is acceptable in the other.
+ */
+const adminNewPasswordField = z
+  .string()
+  .min(
+    ADMIN_PASSWORD_MIN_LENGTH,
+    `Password must be at least ${ADMIN_PASSWORD_MIN_LENGTH} characters`,
+  )
+  .max(200);
+
+/** Shared confirmation check, so the message and path are identical everywhere. */
+function requireMatchingConfirmation(
+  data: { newPassword: string; confirmPassword: string },
+  ctx: z.RefinementCtx,
+) {
+  if (data.newPassword !== data.confirmPassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["confirmPassword"],
+      message: "Passwords do not match",
+    });
+  }
+}
+
+/**
+ * Reset a NON-OWNER admin's password. The manager CHOOSES the new password and
+ * submits it here; nothing is generated server-side and no password is ever
+ * returned in the response.
  *
  * `adminId` is an opaque id, never an email: the server resolves the row and
  * re-checks that it is not the owner. A client cannot nominate a target by
  * address and cannot assert anything about the target's role.
  */
-export const adminPasswordResetSchema = z.object({
-  adminId: z.string().trim().min(1, "Select an admin account").max(40),
-  managerCode: z.string().min(1, "Manager code is required").max(200),
-});
+export const adminPasswordResetSchema = z
+  .object({
+    adminId: z.string().trim().min(1, "Select an admin account").max(40),
+    managerCode: z.string().min(1, "Manager code is required").max(200),
+    newPassword: adminNewPasswordField,
+    confirmPassword: z.string().min(1, "Confirm the new password").max(200),
+  })
+  .superRefine(requireMatchingConfirmation);
 export type AdminPasswordResetInput = z.infer<typeof adminPasswordResetSchema>;
 
 /**
@@ -233,24 +264,12 @@ export type AdminPasswordResetInput = z.infer<typeof adminPasswordResetSchema>;
 export const ownerPasswordChangeSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required").max(200),
-    newPassword: z
-      .string()
-      .min(
-        ADMIN_PASSWORD_MIN_LENGTH,
-        `Password must be at least ${ADMIN_PASSWORD_MIN_LENGTH} characters`,
-      )
-      .max(200),
+    newPassword: adminNewPasswordField,
     confirmPassword: z.string().min(1, "Confirm the new password").max(200),
     managerCode: z.string().min(1, "Manager code is required").max(200),
   })
   .superRefine((data, ctx) => {
-    if (data.newPassword !== data.confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["confirmPassword"],
-        message: "Passwords do not match",
-      });
-    }
+    requireMatchingConfirmation(data, ctx);
     // Cheap guard against a no-op change that would still rotate updatedAt and
     // write a misleading "password changed" audit line.
     if (data.newPassword === data.currentPassword) {

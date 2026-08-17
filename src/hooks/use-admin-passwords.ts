@@ -23,11 +23,11 @@ export interface AdminAccountsDTO {
   ownerEmail: string;
 }
 
-/** The generated temporary password, returned exactly once. Never cached. */
+/** Confirmation only — the API never returns password material. */
 export interface AdminPasswordResetResultDTO {
   email: string;
   name: string | null;
-  temporaryPassword: string;
+  changed: boolean;
 }
 
 export function useAdminAccounts(enabled = true) {
@@ -48,9 +48,7 @@ export function useResetAdminPassword() {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    // Refresh updatedAt. The result itself is deliberately NOT written into the
-    // query cache — the temporary password must live only in the component
-    // state that displays it once, never in a store that outlives the dialog.
+    // Refresh updatedAt on the account list.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-accounts"] });
     },

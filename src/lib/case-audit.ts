@@ -83,7 +83,12 @@ export interface ActionLogInput {
   caseId: string | null;
   trackingId: string | null;
   action: CaseActionType;
-  outcome: "SUCCESS" | "CONFIRMATION_FAILED" | "LOCKED_OUT";
+  /**
+   * BLOCKED = correctly authenticated AND correctly confirmed, but refused on
+   * policy grounds. Kept distinct from CONFIRMATION_FAILED so the trail never
+   * claims a confirmation failed when it actually succeeded.
+   */
+  outcome: "SUCCESS" | "CONFIRMATION_FAILED" | "LOCKED_OUT" | "BLOCKED";
   change?: LifecycleChange | null;
   staffId?: string | null;
   staffName?: string | null;

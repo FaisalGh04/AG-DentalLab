@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, KeyRound, Loader2, ShieldAlert, Users } from "lucide-react";
+import { KeyRound, Loader2, ShieldAlert, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
+import { ADMIN_PASSWORD_MIN_LENGTH } from "@/lib/validations";
 import {
   useAdminAccounts,
   useChangeOwnerPassword,
@@ -33,8 +34,8 @@ import {
  * showing the section changes no permission.
  *
  * Dialogs cannot be dismissed by outside click or Escape: DialogContent already
- * blocks both for any /admin route (src/components/ui/dialog.tsx), which matters
- * most on the one-time temporary password panel.
+ * blocks both for any /admin route (src/components/ui/dialog.tsx), so a
+ * half-typed password is never lost to a stray click.
  */
 export function AdminPasswordsSection({ open }: { open: boolean }) {
   const { t } = useAdminI18n();
@@ -142,7 +143,7 @@ export function AdminPasswordsSection({ open }: { open: boolean }) {
   );
 }
 
-/** Manager-PIN prompt, then the one-time temporary password. */
+/** Manager PIN + the new password, chosen by the manager. */
 function ResetPasswordDialog({
   target,
   onClose,
@@ -153,14 +154,15 @@ function ResetPasswordDialog({
   const { t } = useAdminI18n();
   const reset = useResetAdminPassword();
   const [managerCode, setManagerCode] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
-  // Held in component state ONLY, and cleared when the dialog closes.
-  const [issued, setIssued] = React.useState<string | null>(null);
 
   const close = React.useCallback(() => {
     setManagerCode("");
+    setNewPassword("");
+    setConfirmPassword("");
     setError(null);
-    setIssued(null);
     reset.reset();
     onClose();
   }, [onClose, reset]);
@@ -168,18 +170,30 @@ function ResetPasswordDialog({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!target) return;
+    // Mirrored client-side for a fast, specific message only; the server
+    // re-validates all of it (adminPasswordResetSchema).
     if (!managerCode) {
       setError(t("settings.managerRequired"));
       return;
     }
+    if (newPassword !== confirmPassword) {
+      setError(t("settings.passwordsDoNotMatch"));
+      return;
+    }
+    if (newPassword.length < ADMIN_PASSWORD_MIN_LENGTH) {
+      setError(t("settings.passwordTooShort"));
+      return;
+    }
     setError(null);
     try {
-      const result = await reset.mutateAsync({
+      await reset.mutateAsync({
         adminId: target.id,
         managerCode,
+        newPassword,
+        confirmPassword,
       });
-      setIssued(result.temporaryPassword);
-      setManagerCode("");
+      toast.success(t("settings.passwordSetToast"));
+      close();
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       setError(
@@ -187,6 +201,7 @@ function ResetPasswordDialog({
           ? message
           : t("settings.managerIncorrect"),
       );
+      // Clear the secrets, keep the dialog open so the manager can retry.
       setManagerCode("");
     }
   }
@@ -201,11 +216,7 @@ function ResetPasswordDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("settings.resetPasswordTitle")}</DialogTitle>
-          <DialogDescription>
-            {issued
-              ? t("settings.tempPasswordDescription")
-              : t("settings.resetPasswordBody")}
-          </DialogDescription>
+          <DialogDescription>{t("settings.resetPasswordBody")}</DialogDescription>
         </DialogHeader>
 
         {target && (
@@ -217,52 +228,47 @@ function ResetPasswordDialog({
           </div>
         )}
 
-        {issued ? (
-          <>
-            <OneTimeSecret value={issued} />
-            <DialogFooter>
-              <Button type="button" variant="gradient" onClick={close}>
-                {t("settings.doneStored")}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="reset-manager-code">
-                {t("settings.managerPin")}
-              </Label>
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="reset-manager-code"
-                  type="password"
-                  autoComplete="off"
-                  value={managerCode}
-                  onChange={(e) => setManagerCode(e.target.value)}
-                  className="ps-9"
-                  disabled={reset.isPending}
-                  autoFocus
-                />
-              </div>
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={reset.isPending}
-                onClick={close}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button type="submit" variant="destructive" disabled={reset.isPending}>
-                {reset.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {t("settings.resetPassword")}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+        <form onSubmit={submit} className="space-y-4">
+          <PasswordField
+            id="reset-manager-code"
+            label={t("settings.managerPin")}
+            value={managerCode}
+            onChange={setManagerCode}
+            disabled={reset.isPending}
+            autoFocus
+          />
+          <PasswordField
+            id="reset-new-password"
+            label={t("settings.newPassword")}
+            value={newPassword}
+            onChange={setNewPassword}
+            disabled={reset.isPending}
+          />
+          <PasswordField
+            id="reset-confirm-password"
+            label={t("settings.confirmPassword")}
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            disabled={reset.isPending}
+          />
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={reset.isPending}
+              onClick={close}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" variant="gradient" disabled={reset.isPending}>
+              {reset.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t("settings.setNewPassword")}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -302,7 +308,7 @@ function OwnerPasswordDialog({
       setError(t("settings.passwordsDoNotMatch"));
       return;
     }
-    if (newPassword.length < 12) {
+    if (newPassword.length < ADMIN_PASSWORD_MIN_LENGTH) {
       setError(t("settings.passwordTooShort"));
       return;
     }
@@ -431,54 +437,6 @@ function PasswordField({
         disabled={disabled}
         autoFocus={autoFocus}
       />
-    </div>
-  );
-}
-
-/** Shows a secret once, with a copy button and an unmissable warning. */
-function OneTimeSecret({ value }: { value: string }) {
-  const { t } = useAdminI18n();
-  const [copied, setCopied] = React.useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error(t("settings.copyFailed"));
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900">
-        {t("settings.tempPasswordWarning")}
-      </div>
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 p-3">
-        {/* dir=ltr + monospace: the password is ASCII and must never be
-            bidi-reordered or ligated in the Arabic layout. */}
-        <code
-          dir="ltr"
-          className="min-w-0 flex-1 break-all font-mono text-sm text-ink"
-        >
-          {value}
-        </code>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={copy}
-        >
-          {copied ? (
-            <Check className="h-4 w-4" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
-          {copied ? t("settings.copied") : t("settings.copy")}
-        </Button>
-      </div>
     </div>
   );
 }

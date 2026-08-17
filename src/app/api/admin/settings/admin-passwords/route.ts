@@ -11,7 +11,6 @@ import { adminPasswordResetSchema } from "@/lib/validations";
 import {
   ADMIN_BCRYPT_COST,
   OWNER_EMAIL,
-  generateTemporaryPassword,
   isOwnerEmail,
 } from "@/lib/admin-accounts";
 
@@ -28,8 +27,9 @@ export const dynamic = "force-dynamic";
  * that could disable the protection guarding password changes would be worthless.
  *
  * SECRET HANDLING: a password hash is never selected, never returned and never
- * logged; a generated temporary password is returned exactly once in the reset
- * response and is written nowhere else, including the audit row.
+ * logged. The new password is CHOSEN by the manager and travels inbound only —
+ * nothing here generates one, and no response, audit row or log line carries
+ * password material in either direction.
  */
 
 /** GET — list the NON-OWNER admin accounts. Never returns a hash. */
@@ -148,10 +148,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generated and hashed BEFORE the transaction: bcrypt cost 12 is ~250 ms and
-    // has no business inside an interactive transaction budget.
-    const temporaryPassword = generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, ADMIN_BCRYPT_COST);
+    // Hashed BEFORE the transaction: bcrypt cost 12 is ~250 ms and has no
+    // business inside an interactive transaction budget. The plaintext exists
+    // only as this local — it is never logged, never audited, never returned.
+    const passwordHash = await bcrypt.hash(input.newPassword, ADMIN_BCRYPT_COST);
 
     await prisma.$transaction(async (tx) => {
       await tx.admin.update({
@@ -178,12 +178,8 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    // The ONLY time this value leaves the server. Not logged, not stored.
-    return apiOk({
-      email: target.email,
-      name: target.name,
-      temporaryPassword,
-    });
+    // Confirmation only — deliberately carries NO password material.
+    return apiOk({ email: target.email, name: target.name, changed: true });
   } catch (err) {
     return handleApiError(err);
   }
