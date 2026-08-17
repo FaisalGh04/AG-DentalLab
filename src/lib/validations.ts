@@ -201,6 +201,68 @@ export type SecuritySettingUpdateInput = z.infer<
   typeof securitySettingUpdateSchema
 >;
 
+// --- Admin account password management -----------------------------
+//
+// Minimum length for a NEW admin login password. Deliberately stricter than
+// loginSchema's 8: that value only has to keep accepting credentials that
+// already exist, whereas this one governs what may be created from now on.
+// Generated temporary passwords are far longer still (src/lib/admin-accounts.ts).
+export const ADMIN_PASSWORD_MIN_LENGTH = 12;
+
+/**
+ * Reset a NON-OWNER admin's password. The new password is GENERATED server-side
+ * and never travels in this direction, so there is no password field here — only
+ * the target and the manager code.
+ *
+ * `adminId` is an opaque id, never an email: the server resolves the row and
+ * re-checks that it is not the owner. A client cannot nominate a target by
+ * address and cannot assert anything about the target's role.
+ */
+export const adminPasswordResetSchema = z.object({
+  adminId: z.string().trim().min(1, "Select an admin account").max(40),
+  managerCode: z.string().min(1, "Manager code is required").max(200),
+});
+export type AdminPasswordResetInput = z.infer<typeof adminPasswordResetSchema>;
+
+/**
+ * Change the OWNER's own password. Requires three things, all verified
+ * server-side: the signed-in session IS the owner, the current owner password,
+ * and the PRIMARY manager code. The confirmation field is checked here so a
+ * mistyped password is caught before any hashing or DB work.
+ */
+export const ownerPasswordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required").max(200),
+    newPassword: z
+      .string()
+      .min(
+        ADMIN_PASSWORD_MIN_LENGTH,
+        `Password must be at least ${ADMIN_PASSWORD_MIN_LENGTH} characters`,
+      )
+      .max(200),
+    confirmPassword: z.string().min(1, "Confirm the new password").max(200),
+    managerCode: z.string().min(1, "Manager code is required").max(200),
+  })
+  .superRefine((data, ctx) => {
+    if (data.newPassword !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Passwords do not match",
+      });
+    }
+    // Cheap guard against a no-op change that would still rotate updatedAt and
+    // write a misleading "password changed" audit line.
+    if (data.newPassword === data.currentPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["newPassword"],
+        message: "New password must be different from the current one",
+      });
+    }
+  });
+export type OwnerPasswordChangeInput = z.infer<typeof ownerPasswordChangeSchema>;
+
 // Taxonomy membership is DB-backed and therefore checked in the API after this
 // shape validation. This also lets unchanged historical snapshots remain
 // editable after an option is renamed or deactivated.

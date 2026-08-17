@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { AdminPasswordsSection } from "@/components/admin/admin-passwords-section";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import {
   useSecuritySettings,
@@ -212,6 +213,11 @@ export function AdminSettingsDialog({ open, onOpenChange }: Props) {
             )}
           </section>
 
+          {/* Admin account passwords + owner password. Manager-gated
+              server-side and unaffected by the toggle above. */}
+          <AdminPasswordsSection open={open} />
+
+          {/* Sign Out stays the LAST action in Settings. */}
           <div className="mt-2 border-t border-border pt-5">
             <Button
               type="button"

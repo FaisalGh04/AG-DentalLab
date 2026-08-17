@@ -386,12 +386,26 @@ enum CaseActionType {
   STAFF_REACTIVATED
   STAFF_MANAGER_ASSIGNED
   MANAGER_SECRET_UPDATED
+  // Admin ACCOUNT password management (src/app/api/admin/settings/admin-passwords).
+  // Distinct from MANAGER_SECRET_UPDATED, which is the staff-layer manager code:
+  // these concern the NextAuth login credentials in the Admin table.
+  ADMIN_PASSWORD_RESET
+  ADMIN_PASSWORD_RESET_FAILED
+  ADMIN_PASSWORD_RESET_BLOCKED
+  OWNER_PASSWORD_CHANGED
+  OWNER_PASSWORD_CHANGE_FAILED
 }
 
 enum CaseActionOutcome {
   SUCCESS
   CONFIRMATION_FAILED
   LOCKED_OUT
+  // The caller authenticated and confirmed CORRECTLY, but the action was
+  // refused on policy grounds — e.g. resetting the owner through the non-owner
+  // endpoint, or a non-owner attempting the owner password change. Recorded
+  // separately because reusing CONFIRMATION_FAILED would state something false:
+  // the confirmation succeeded, the request was simply not allowed.
+  BLOCKED
 }
 
 // A lab staff member who can perform gated actions. `name` doubles as the
