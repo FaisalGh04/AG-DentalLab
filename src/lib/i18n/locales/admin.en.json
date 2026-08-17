@@ -60,7 +60,7 @@
     "newPassword": "New password",
     "confirmPassword": "Confirm password",
     "passwordsDoNotMatch": "Passwords do not match.",
-    "passwordTooShort": "Password must be at least 12 characters.",
+    "passwordTooShort": "Password must be at least 8 characters.",
     "allFieldsRequired": "Fill in every field.",
     "ownerPasswordChangedToast": "Owner password changed",
     "ownerChangeFailed": "Password change failed. Check the current password and the manager PIN.",

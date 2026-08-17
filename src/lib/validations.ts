@@ -203,11 +203,13 @@ export type SecuritySettingUpdateInput = z.infer<
 
 // --- Admin account password management -----------------------------
 //
-// Minimum length for a NEW admin login password. Deliberately stricter than
-// loginSchema's 8: that value only has to keep accepting credentials that
-// already exist, whereas this one governs what may be created from now on.
-// Generated temporary passwords are far longer still (src/lib/admin-accounts.ts).
-export const ADMIN_PASSWORD_MIN_LENGTH = 12;
+// Minimum length for a NEW admin login password, set to match loginSchema's 8
+// so the rule for creating a credential is the same as the rule for using one.
+//
+// This governs ADMIN ACCOUNT passwords only (the `admins` rows behind NextAuth).
+// The staff confirmation layer is unrelated and unaffected: staffPinSchema below
+// keeps its own 6-digit rule, and the manager code keeps its own.
+export const ADMIN_PASSWORD_MIN_LENGTH = 8;
 
 /**
  * THE shared strength rule for any new admin login password. Both the non-owner

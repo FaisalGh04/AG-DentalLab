@@ -60,7 +60,7 @@
     "newPassword": "كلمة المرور الجديدة",
     "confirmPassword": "تأكيد كلمة المرور",
     "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين.",
-    "passwordTooShort": "يجب ألا تقل كلمة المرور عن 12 حرفاً.",
+    "passwordTooShort": "يجب ألا تقل كلمة المرور عن 8 أحرف.",
     "allFieldsRequired": "يرجى تعبئة جميع الحقول.",
     "ownerPasswordChangedToast": "تم تغيير كلمة مرور المالك",
     "ownerChangeFailed": "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية ومن رمز المدير.",
