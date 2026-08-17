@@ -56,6 +56,12 @@ yarn-error.log*
 # prisma
 /prisma/*.db
 
+# one-time, operator-run admin account creation — deliberately LOCAL ONLY.
+# Holds no secrets (passwords are generated at runtime and only printed), but it
+# writes directly to whatever database DIRECT_URL resolves to, so it is kept out
+# of the repo rather than sitting on main waiting to be run by mistake.
+/prisma/create-admins.ts
+
 # database backups (pg_dump) — never commit, contains full DB incl. auth data
 *.dump
 
