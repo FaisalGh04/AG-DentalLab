@@ -143,30 +143,22 @@ const caseInputBaseSchema = z.object({
 });
 
 /**
- * receivedBy is WRITE-ONCE: it lives on the create schema only, never on the
- * base, so `caseInputBaseSchema.partial()` below cannot pick it up. That is
- * enforcement layers 1 + 2 — `CaseUpdateInput` has no such property (TS won't
- * compile a client that sends it), and because zod objects are non-strict,
- * caseUpdateSchema.parse() silently strips an injected receivedBy off a crafted
- * body. Layers 3 + 4 are the 422 guard and the omitted Prisma field in
+ * receivedBy is SERVER-DERIVED and appears on NO schema in this file — not
+ * create, not update.
+ *
+ * It used to be a required field on the create schema, chosen by the operator
+ * from the StaffMember roster. It is now taken from the authenticated admin
+ * session in src/app/api/admin/cases/route.ts and is never accepted from a
+ * client on any route. Its absence here IS the enforcement: zod objects are
+ * non-strict, so `caseCreateSchema.parse()` and `caseUpdateSchema.parse()` both
+ * silently strip an injected `receivedBy` off a crafted body, and neither
+ * `CaseCreateInput` nor `CaseUpdateInput` has the property, so TypeScript will
+ * not compile a client that tries to send one.
+ *
+ * The remaining layers are unchanged and still guard the write-once rule after
+ * creation: the loud 422 guard and the omitted Prisma field in
  * src/app/api/admin/cases/[id]/route.ts.
- *
- * The value is only shape-checked here. It used to be a compile-time
- * z.enum(RECEIVED_BY_OPTIONS), but StaffMember is now the single source of
- * truth and a DB-driven list cannot be a zod enum — so membership is validated
- * at runtime in the POST route via isActiveStaffName(). That runtime check is a
- * REAL backstop, not just UI convenience: without it any string would pass.
- *
- * `.extend()` has to happen before `.superRefine()` — the latter returns a
- * ZodEffects, which has no .extend().
  */
-const caseCreateBaseSchema = caseInputBaseSchema.extend({
-  receivedBy: z
-    .string({ required_error: "Received by is required" })
-    .trim()
-    .min(1, "Received by is required")
-    .max(120),
-});
 
 /**
  * The two-factor confirmation payload accompanying a gated mutation.
@@ -212,7 +204,10 @@ export type SecuritySettingUpdateInput = z.infer<
 // Taxonomy membership is DB-backed and therefore checked in the API after this
 // shape validation. This also lets unchanged historical snapshots remain
 // editable after an option is renamed or deactivated.
-export const caseCreateSchema = caseCreateBaseSchema;
+// Create and update now validate the SAME field set; they differ only in that
+// update makes every field optional. receivedBy is on neither — see the note
+// above caseInputBaseSchema's create/update split.
+export const caseCreateSchema = caseInputBaseSchema;
 export type CaseCreateInput = z.infer<typeof caseCreateSchema>;
 
 export const caseUpdateSchema = caseInputBaseSchema.partial();

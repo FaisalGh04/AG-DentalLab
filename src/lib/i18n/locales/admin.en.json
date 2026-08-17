@@ -166,7 +166,7 @@
     "estDate": "Estimated Completion Date",
     "estTime": "Estimated Completion Time",
     "receivedBy": "Received By",
-    "selectReceivedBy": "Select who received the case",
+    "receivedByAuto": "Automatically set from the signed-in admin.",
     "receivedByLocked": "Set when the case was created and cannot be changed.",
     "notes": "Notes",
     "firstNamePlaceholder": "Sara",

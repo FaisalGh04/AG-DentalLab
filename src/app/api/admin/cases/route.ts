@@ -6,7 +6,6 @@ import { auth } from "@/auth";
 import { listCases } from "@/lib/case-service";
 import { prisma } from "@/lib/prisma";
 import { getClientIp } from "@/lib/ratelimit";
-import { isActiveStaffName } from "@/lib/staff";
 import { verifyConfirmation } from "@/lib/staff-auth";
 import { buildActionLog } from "@/lib/case-audit";
 import { caseCreateSchema, confirmationSchema } from "@/lib/validations";
@@ -66,17 +65,39 @@ export async function POST(req: NextRequest) {
       return apiError("A workflow is required for this category.", 422);
     }
 
-    // receivedBy membership is checked at RUNTIME against the staff roster —
-    // the schema only shape-checks it, since StaffMember is now the source of
-    // truth and a DB-driven list cannot be a compile-time zod enum.
-    if (!(await isActiveStaffName(input.receivedBy))) {
-      return apiError("Select a valid staff member for Received By.", 422);
-    }
-
     // Creation normally requires staff confirmation. An explicit global setting
     // can bypass it, but changing that setting always remains manager-gated.
     const ip = getClientIp(req.headers);
     const session = await auth();
+
+    // receivedBy is DERIVED FROM THE SIGNED-IN ADMIN, never from the request
+    // body. It used to be picked by the operator from the StaffMember roster and
+    // validated with isActiveStaffName(); both are gone. `caseCreateSchema` does
+    // not contain receivedBy, so a client-supplied one is already stripped by
+    // .parse() above and can never reach this variable — a forged value in
+    // DevTools or a direct API call changes nothing.
+    //
+    // Read from the Admin ROW rather than the JWT claims deliberately:
+    //   - the session is valid for 8 hours, so a renamed admin would otherwise
+    //     keep stamping the stale name onto new cases
+    //   - src/auth.ts substitutes a placeholder when Admin.name is null, which
+    //     would silently defeat the email fallback below
+    // This is a permanent, non-editable attribution on a historical record, so
+    // it is worth one indexed lookup to get it right.
+    const adminId = session?.user?.id;
+    const adminRow = adminId
+      ? await prisma.admin.findUnique({
+          where: { id: adminId },
+          select: { name: true, email: true },
+        })
+      : null;
+    const receivedBy = adminRow?.name?.trim() || adminRow?.email?.trim() || "";
+    if (!receivedBy) {
+      // requireAdmin() already proved a session exists, so this means the Admin
+      // row was deleted mid-session. Refuse rather than write an empty
+      // attribution into a record that can never be corrected.
+      return apiError("Could not determine the signed-in admin.", 401);
+    }
     const check = confirmation
       ? await verifyConfirmation(confirmation, ip)
       : null;
@@ -131,9 +152,10 @@ export async function POST(req: NextRequest) {
         doctorName: input.doctorName,
         // Roster link, or null for a free-text one-off doctor.
         doctorId: input.doctorId ?? null,
-        // Write-once — the only place received_by is ever set. See the PATCH
-        // route, which rejects any later attempt to change it.
-        receivedBy: input.receivedBy,
+        // Write-once — the only place received_by is ever set, and it comes
+        // from the session above, never from `input`. See the PATCH route,
+        // which rejects any later attempt to change it.
+        receivedBy,
         caseType: input.caseType,
         category: input.category,
         collectionId: life.collectionId,

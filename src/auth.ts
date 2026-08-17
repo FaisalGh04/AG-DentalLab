@@ -77,7 +77,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return {
           id: admin.id,
           email: admin.email,
-          name: admin.name ?? "Admin",
+          // Passed through as-is (may be null). It used to fall back to the
+          // literal "Admin", which made a name-less account indistinguishable
+          // from one actually called "Admin" and defeated every downstream
+          // `name ?? email` fallback — including the Received By attribution in
+          // /api/admin/cases. Both consumers (src/app/admin/layout.tsx and the
+          // case form) already handle null.
+          name: admin.name,
           role: "admin" as const,
         };
       },

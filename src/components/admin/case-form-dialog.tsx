@@ -29,8 +29,7 @@ import {
   caseUpdateSchema,
   type CaseCreateInput,
 } from "@/lib/validations";
-import { useStaff } from "@/hooks/use-staff";
-import { staffDisplayName } from "@/lib/staff-display";
+import { useSession } from "next-auth/react";
 import { isProductionCategory } from "@/lib/case-types";
 import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
@@ -58,9 +57,14 @@ interface Props {
 export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props) {
   const { t, locale } = useAdminI18n();
   const isEdit = !!existing;
-  // Roster comes from StaffMember (src/lib/staff.ts), not a static const, so the
-  // dropdown and the confirmation gate can never drift apart.
-  const staff = useStaff();
+  // Received By is the SIGNED-IN ADMIN, shown read-only. This is display only —
+  // the server derives the stored value from the session itself and ignores
+  // anything the client sends (src/app/api/admin/cases/route.ts), so editing
+  // this in DevTools changes nothing. Mirrors the admin layout's fallback:
+  // name, then email.
+  const { data: session } = useSession();
+  const adminDisplayName =
+    session?.user?.name?.trim() || session?.user?.email?.trim() || "";
   const confirmGate = useConfirmAction();
   const doctorOptions = useActiveDoctorOptions();
   const taxonomy = useCaseTaxonomy();
@@ -133,7 +137,6 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         caseType: "",
         category: "",
         collectionId: null,
-        receivedBy: undefined as unknown as CaseCreateInput["receivedBy"],
         estimatedCompletionDate: "",
         notes: "",
       });
@@ -167,11 +170,10 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
       : null;
 
     if (isEdit) {
-      // receivedBy is write-once: strip it client-side so a PATCH body can
-      // never carry it. The route 422s if it does; `rest` is CaseUpdateInput.
-      const { receivedBy, ...rest } = values;
-      void receivedBy;
-      const patch = { ...rest, estimatedCompletionDate };
+      // No receivedBy to strip any more — it is on neither schema, so `values`
+      // cannot carry it. The PATCH route still 422s on one, as a backstop
+      // against a hand-crafted body.
+      const patch = { ...values, estimatedCompletionDate };
 
       // ENTRY POINT 6: changing the workflow from the EDIT dialog is a real
       // lifecycle transition (the server resets the stage), so it is gated —
@@ -230,7 +232,6 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   const category = watch("category");
   const collectionId = watch("collectionId");
   const caseType = watch("caseType");
-  const receivedBy = watch("receivedBy");
   const doctorName = watch("doctorName");
   const doctorId = watch("doctorId");
   const categories = taxonomy.data?.categories ?? [];
@@ -498,9 +499,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           </div>
 
-          {/* Received By — who logged the case in. Set ONCE at creation: in edit
-              mode it is plain read-only text, never an input, and contributes
-              nothing to the submitted payload. */}
+          {/* Received By — who logged the case in. Never editable in either
+              mode: on CREATE it is the signed-in admin (derived server-side, so
+              this control is purely informational and is not registered with
+              the form), and on EDIT it is the stored snapshot. Neither
+              contributes anything to the submitted payload. */}
           {isEdit ? (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -514,30 +517,18 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
               </p>
             </div>
           ) : (
-            <Field label={t("form.receivedBy")} error={errors.receivedBy?.message}>
-              <Select
-                value={receivedBy ?? ""}
-                onValueChange={(v) =>
-                  setValue("receivedBy", v as CaseCreateInput["receivedBy"], {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("form.selectReceivedBy")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* VALUE is the raw s.name, never the localized label: this
-                      selection is stored as PatientCase.receivedBy, a historical
-                      snapshot that must not depend on the operator's language. */}
-                  {(staff.data ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.name}>
-                      {staffDisplayName(s, t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field label={t("form.receivedBy")}>
+              <Input
+                value={adminDisplayName}
+                readOnly
+                disabled
+                aria-readonly="true"
+                // No name/register: this input is display-only and must never
+                // appear in the form payload.
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("form.receivedByAuto")}
+              </p>
             </Field>
           )}
 
