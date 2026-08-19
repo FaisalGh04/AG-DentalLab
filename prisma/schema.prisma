@@ -525,6 +525,13 @@ model CaseActionLog {
   // Who was signed in to /admin at the time (NextAuth session), so both layers
   // are recorded: the logged-in admin AND the staff member who confirmed.
   adminEmail         String?  @map("admin_email")
+  // Display NAME of that admin, snapshotted — the same reasoning as
+  // staffNameSnapshot and PatientCase.receivedBy: renaming an Admin row must
+  // never rewrite who moved a case into a stage last year. Nullable because
+  // every row written before this column existed has no value, and because
+  // Admin.name itself is nullable (the email is used as the display fallback
+  // at write time, so a null here means "pre-dates this column", not "unnamed").
+  adminNameSnapshot  String?  @map("admin_name_snapshot")
   ip                 String?
   createdAt          DateTime @default(now()) @map("created_at")
 

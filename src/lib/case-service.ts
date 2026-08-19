@@ -182,9 +182,38 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       createdAt: true,
       action: true,
       staffNameSnapshot: true,
+      adminNameSnapshot: true,
+      adminEmail: true,
     },
     take: 500,
   });
+
+  // WHO moved the case into the stage it is in now. The visits list is ordered
+  // oldest-first, so the last entry matching the current stage is its most
+  // recent entry — a case can re-enter a stage after a revert, and the latest
+  // entry is the one that describes the present.
+  //
+  // Falls back to receivedBy when there is no such row: cases created before
+  // the audit log existed have no transitions at all, and a case can sit in a
+  // stage that was set before this feature shipped. The flag lets the UI label
+  // that honestly rather than implying a recorded stage entry.
+  const currentStageVisit = c.currentStageId
+    ? [...visits].reverse().find((v) => v.toStageId === c.currentStageId)
+    : undefined;
+  const actorName = currentStageVisit?.adminNameSnapshot?.trim();
+  const currentStageActor = actorName
+    ? {
+        name: actorName,
+        email: currentStageVisit?.adminEmail ?? null,
+        enteredAt: currentStageVisit?.createdAt.toISOString() ?? null,
+        isFallback: false,
+      }
+    : {
+        name: c.receivedBy,
+        email: null,
+        enteredAt: null,
+        isFallback: true,
+      };
 
   return {
     id: c.id,
@@ -227,7 +256,10 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       enteredAt: v.createdAt.toISOString(),
       action: v.action as StageVisitDTO["action"],
       staffName: v.staffNameSnapshot,
+      adminName: v.adminNameSnapshot,
+      adminEmail: v.adminEmail,
     })),
+    currentStageActor,
   };
 }
 

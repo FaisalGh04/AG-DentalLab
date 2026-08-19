@@ -102,6 +102,13 @@ export interface ActionLogInput {
   /** The global confirmation protection was explicitly disabled. */
   protectionBypassed?: boolean;
   adminEmail?: string | null;
+  /**
+   * Display name of the signed-in admin, snapshotted. Together with adminEmail
+   * this is what attributes a stage entry to a person — see resolveActingAdmin
+   * in src/lib/admin-accounts.ts, which is the ONLY place it should come from.
+   * Never accepted from a client.
+   */
+  adminName?: string | null;
   ip?: string | null;
 }
 
@@ -134,6 +141,7 @@ export function buildActionLog(
     singleFactor: input.singleFactor ?? false,
     protectionBypassed: input.protectionBypassed ?? false,
     adminEmail: input.adminEmail ?? null,
+    adminNameSnapshot: input.adminName ?? null,
     ip: input.ip ?? null,
     ...(input.caseId ? { case: { connect: { id: input.caseId } } } : {}),
     ...(input.staffId ? { staff: { connect: { id: input.staffId } } } : {}),

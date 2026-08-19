@@ -16,6 +16,7 @@ import {
   EyeOff,
   Layers,
   UserCheck,
+  ChevronRight,
   History,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { StageViewerDialog } from "@/components/admin/stage-viewer-dialog";
+import { StageActorHistoryDialog } from "@/components/admin/stage-actor-history-dialog";
 import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -76,6 +78,7 @@ export function CaseDetailClient({ id }: { id: string }) {
   // Read-only stage viewer. Plain local state — deliberately NOT routed through
   // confirmGate, because looking at a stage is not a transition.
   const [viewerStageId, setViewerStageId] = React.useState<string | null>(null);
+  const [stageActorOpen, setStageActorOpen] = React.useState(false);
   /**
    * Remount key for WorkflowSelect. Dismissing the gate saves nothing, so
    * `kase.collectionId` is unchanged and the picker would keep showing the
@@ -445,10 +448,20 @@ export function CaseDetailClient({ id }: { id: string }) {
               })()
             }
           />
-          <Detail
+          {/* Current-stage actor: who moved the case into the stage it is in
+              now, NOT the original receiver (that stays on the case as
+              receivedBy and is shown inside the dialog for legacy cases).
+              Clickable — opens the full chronological history. */}
+          <DetailButton
             icon={UserCheck}
-            label={t("detail.receivedBy")}
-            value={kase.receivedBy || "—"}
+            label={
+              kase.currentStageActor.isFallback
+                ? t("detail.receivedBy")
+                : t("detail.stageUpdatedBy")
+            }
+            value={kase.currentStageActor.name || "—"}
+            hint={t("detail.stageHistoryHint")}
+            onClick={() => setStageActorOpen(true)}
           />
           <Detail
             icon={CalendarClock}
@@ -488,6 +501,15 @@ export function CaseDetailClient({ id }: { id: string }) {
         onOpenChange={setEditOpen}
         existing={kase}
       />
+      {/* READ-ONLY. Chronological "who moved this into which stage, when". */}
+      <StageActorHistoryDialog
+        open={stageActorOpen}
+        onOpenChange={setStageActorOpen}
+        history={kase.stageHistory}
+        currentStageId={kase.currentStageId}
+        stageLabel={(stageId) => stageLabel(stageId)}
+        receivedBy={kase.receivedBy}
+      />
       {/* READ-ONLY viewer. Receives plain data; has no mutation in scope. */}
       <StageViewerDialog
         open={!!viewerStageId}
@@ -525,6 +547,49 @@ export function CaseDetailClient({ id }: { id: string }) {
         onConfirm={confirmDelete}
       />
     </div>
+  );
+}
+
+/**
+ * Clickable sibling of <Detail>. Same visual rhythm so the grid stays even,
+ * plus affordances a plain tile has no business carrying: hover/focus states, a
+ * chevron, and real keyboard semantics (it is a <button>, so Enter/Space and
+ * focus-visible come for free).
+ */
+function DetailButton({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={hint}
+      className="group bg-card/88 p-5 text-start transition-colors hover:bg-brand-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 dark:hover:bg-brand-900/20"
+    >
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <span className="text-xs font-semibold uppercase tracking-wider">
+          {label}
+        </span>
+      </div>
+      <p className="mt-1.5 flex items-center gap-1.5 font-medium text-ink">
+        <span className="min-w-0 truncate">{value}</span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:-scale-x-100" />
+      </p>
+      <span className="mt-1 block text-xs text-muted-foreground/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        {hint}
+      </span>
+    </button>
   );
 }
 

@@ -45,6 +45,31 @@ export interface StageVisitDTO {
   action: "CASE_CREATED" | "STAGE_CHANGED" | "COLLECTION_CHANGED";
   /** Who confirmed it, snapshotted at the time. Null on pre-audit rows. */
   staffName: string | null;
+  /**
+   * The signed-in ADMIN who performed the transition, snapshotted. Distinct
+   * from staffName: that is the StaffMember who supplied a confirmation PIN,
+   * which is null whenever the confirmation gate is disabled. This is the
+   * account that actually made the change and is always recorded.
+   * Null on rows written before the admin_name_snapshot column existed.
+   */
+  adminName: string | null;
+  /** Stable identifier for that admin. Null on pre-audit rows. */
+  adminEmail: string | null;
+}
+
+/**
+ * Who moved the case into the stage it is in NOW, and when.
+ *
+ * `isFallback` marks a case with no usable transition row — the value is then
+ * PatientCase.receivedBy (the original receiver) and `enteredAt` is null,
+ * so the UI can say "original receiver" instead of implying a stage entry that
+ * was never recorded.
+ */
+export interface CurrentStageActorDTO {
+  name: string;
+  email: string | null;
+  enteredAt: string | null;
+  isFallback: boolean;
 }
 
 /** The production-template fields shared by public + admin case DTOs. */
@@ -140,6 +165,12 @@ export interface AdminCaseDTO extends CaseLifecycleFields {
    * then, so the UI must say "not recorded" rather than imply a blank.
    */
   stageHistory: StageVisitDTO[];
+  /**
+   * Who moved the case into its CURRENT stage. Derived from stageHistory, with
+   * a documented fallback to receivedBy for cases that predate the audit log.
+   * receivedBy itself is preserved unchanged as the original receiver.
+   */
+  currentStageActor: CurrentStageActorDTO;
   _count?: { progress: number; images: number };
 }
 

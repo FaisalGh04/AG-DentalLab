@@ -12,6 +12,7 @@ import { caseCreateSchema, confirmationSchema } from "@/lib/validations";
 import { isProductionCategory } from "@/lib/case-types";
 import { isActiveCaseType } from "@/lib/case-taxonomy-service";
 import { normalizeName } from "@/lib/utils";
+import { resolveActingAdmin } from "@/lib/admin-accounts";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
@@ -77,22 +78,14 @@ export async function POST(req: NextRequest) {
     // .parse() above and can never reach this variable — a forged value in
     // DevTools or a direct API call changes nothing.
     //
-    // Read from the Admin ROW rather than the JWT claims deliberately:
-    //   - the session is valid for 8 hours, so a renamed admin would otherwise
-    //     keep stamping the stale name onto new cases
-    //   - src/auth.ts substitutes a placeholder when Admin.name is null, which
-    //     would silently defeat the email fallback below
-    // This is a permanent, non-editable attribution on a historical record, so
-    // it is worth one indexed lookup to get it right.
-    const adminId = session?.user?.id;
-    const adminRow = adminId
-      ? await prisma.admin.findUnique({
-          where: { id: adminId },
-          select: { name: true, email: true },
-        })
-      : null;
-    const receivedBy = adminRow?.name?.trim() || adminRow?.email?.trim() || "";
-    if (!receivedBy) {
+    // resolveActingAdmin reads the Admin ROW (not the JWT claims) and applies
+    // the name-then-email fallback in one place; see its doc comment for why.
+    // The SAME resolved identity also attributes the initial stage entry in the
+    // audit row below, so receivedBy and the first stage actor can never
+    // disagree about who logged the case in.
+    const actingAdmin = await resolveActingAdmin(session?.user?.id);
+    const receivedBy = actingAdmin?.displayName ?? "";
+    if (!actingAdmin) {
       // requireAdmin() already proved a session exists, so this means the Admin
       // row was deleted mid-session. Refuse rather than write an empty
       // attribution into a record that can never be corrected.
@@ -116,7 +109,8 @@ export async function POST(req: NextRequest) {
           // the brute-force signal that matters most, that path having only one
           // secret behind it.
           singleFactor: check.singleFactor,
-          adminEmail: session?.user?.email ?? null,
+          adminEmail: actingAdmin?.email ?? session?.user?.email ?? null,
+          adminName: actingAdmin?.displayName ?? null,
           ip,
         }),
       });
@@ -195,7 +189,8 @@ export async function POST(req: NextRequest) {
           usedBreakGlass: check?.ok ? check.usedBreakGlass : false,
           singleFactor: check?.ok ? check.singleFactor : false,
           protectionBypassed: !protectionEnabled,
-          adminEmail: session?.user?.email ?? null,
+          adminEmail: actingAdmin?.email ?? session?.user?.email ?? null,
+          adminName: actingAdmin?.displayName ?? null,
           ip,
         }),
       });

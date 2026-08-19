@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getClientIp } from "@/lib/ratelimit";
 import { verifyConfirmation } from "@/lib/staff-auth";
 import { detectLifecycleChange, buildActionLog } from "@/lib/case-audit";
+import { resolveActingAdmin } from "@/lib/admin-accounts";
 import { confirmationSchema } from "@/lib/validations";
 import { revalidateTag } from "next/cache";
 import { getCaseById } from "@/lib/case-service";
@@ -83,6 +84,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
     const ip = getClientIp(req.headers);
     const session = await auth();
+    // Server-authoritative actor for the stage entry recorded below. Read from
+    // the Admin row, never from the request body, and resolved even for plain
+    // edits (cheap, indexed) so the two audit paths cannot diverge.
+    const actingAdmin = await resolveActingAdmin(session?.user?.id);
 
     const firstName = input.patientFirstName ?? existing.patientFirstName;
     const lastName = input.patientLastName ?? existing.patientLastName;
@@ -144,7 +149,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             // is the brute-force signal that matters most, that path having
             // only one secret behind it.
             singleFactor: confirmed.singleFactor,
-            adminEmail: session?.user?.email ?? null,
+            adminEmail: actingAdmin?.email ?? session?.user?.email ?? null,
+            adminName: actingAdmin?.displayName ?? null,
             ip,
           }),
         });
@@ -197,7 +203,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             usedBreakGlass: confirmed?.ok ? confirmed.usedBreakGlass : false,
             singleFactor: confirmed?.ok ? confirmed.singleFactor : false,
             protectionBypassed: !protectionEnabled,
-            adminEmail: session?.user?.email ?? null,
+            adminEmail: actingAdmin?.email ?? session?.user?.email ?? null,
+            adminName: actingAdmin?.displayName ?? null,
             ip,
           }),
         });
