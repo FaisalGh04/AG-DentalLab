@@ -36,7 +36,11 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          {/* Reserve the close button's corner. It is absolutely positioned
+              (end-3/w-11 on mobile, end-4/w-8 from sm up), so a title long
+              enough to wrap — "Change stage from X to Y?" with real stage
+              names — otherwise runs underneath the X. */}
+          <DialogTitle className="pe-10 sm:pe-8">{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>

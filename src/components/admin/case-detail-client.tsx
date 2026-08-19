@@ -80,6 +80,15 @@ export function CaseDetailClient({ id }: { id: string }) {
   const [viewerStageId, setViewerStageId] = React.useState<string | null>(null);
   const [stageActorOpen, setStageActorOpen] = React.useState(false);
   /**
+   * Stage change awaiting the plain are-you-sure dialog. An ACCIDENT GUARD
+   * only — it holds no secret and grants nothing. Whatever the staff
+   * confirmation setting dictates still happens afterwards, unchanged, when
+   * commitStageChange hands off to confirmGate.
+   */
+  const [pendingStageId, setPendingStageId] = React.useState<string | null>(
+    null,
+  );
+  /**
    * Remount key for WorkflowSelect. Dismissing the gate saves nothing, so
    * `kase.collectionId` is unchanged and the picker would keep showing the
    * abandoned selection. Bumping this on every close discards its pending
@@ -127,16 +136,34 @@ export function CaseDetailClient({ id }: { id: string }) {
   }
 
   // ---- ENTRY POINTS 2 + 3: Stage <Select> and StageStepper click -------
-  function changeStage(currentStageId: string) {
+  /**
+   * THE single entry point for BOTH stage controls — neither calls the mutation
+   * or the gate directly, so neither can skip the accident guard.
+   *
+   * Only opens the dialog; nothing is sent until the human confirms.
+   */
+  function requestStageChange(targetStageId: string) {
     // No-op guard: re-selecting the current stage is not a transition, so it
     // must not prompt. The server treats it as ungated too.
-    if (currentStageId === kase?.currentStageId) return;
+    if (!targetStageId || targetStageId === kase?.currentStageId) return;
+    // A second pick while the previous change is still in flight would queue a
+    // duplicate mutation computed against a stage that is already stale.
+    if (update.isPending) return;
+    setPendingStageId(targetStageId);
+  }
+
+  /**
+   * Accident guard cleared → run the pre-existing gated flow verbatim.
+   * confirmGate still decides between the staff/manager confirmation dialog and
+   * a direct save, exactly as before; the guard above changed none of that.
+   */
+  function commitStageChange(stageId: string) {
     confirmGate.request(
       {
-        summary: `${stageLabel(kase?.currentStageId)} → ${stageLabel(currentStageId)}`,
+        summary: `${stageLabel(kase?.currentStageId)} → ${stageLabel(stageId)}`,
       },
       async (confirmation) => {
-        await update.mutateAsync({ currentStageId, confirmation });
+        await update.mutateAsync({ currentStageId: stageId, confirmation });
       },
     );
   }
@@ -282,16 +309,31 @@ export function CaseDetailClient({ id }: { id: string }) {
                 if (id) changeCollection(id);
               }}
             />
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {/* Levelled with WorkflowSelect beside it, which is one row taller
+                (label + Regular/Digital toggle + group select). flex-col with
+                an mt-auto spacer rather than a hard-coded offset: the toggle's
+                height moves with the locale's font metrics. The grid row
+                stretches both columns, so the label stays level with the
+                Workflow label at the top while the select drops to sit level
+                with the group select at the bottom. On mobile the grid is one
+                column, each control is its own row, and mt-auto is inert — so
+                the stacked layout is unchanged. */}
+            <div className="flex flex-col">
+              {/* pt-4 puts this label on the Workflow label's baseline. That one
+                  shares its line with the Regular/Digital toggle, whose own top
+                  inset (8px gap + 1px border + 2px padding + 4px button padding)
+                  pushes the shared baseline down by ~15px; the label alone has
+                  nothing to push it. Measured, not guessed: both labels and both
+                  selects land within 0px at desktop, tablet, and in Arabic. */}
+              <label className="pt-4 text-sm font-medium">
                 {t("detail.stage")}
               </label>
               <Select
                 value={kase.currentStageId ?? ""}
                 disabled={!collection}
-                onValueChange={changeStage}
+                onValueChange={requestStageChange}
               >
-                <SelectTrigger className="w-full sm:w-52">
+                <SelectTrigger className="mt-auto w-full sm:w-52">
                   <SelectValue
                     placeholder={
                       collection
@@ -321,7 +363,7 @@ export function CaseDetailClient({ id }: { id: string }) {
                 currentStageId={kase.currentStageId}
                 interactive
                 clickable="all"
-                onSelectStage={changeStage}
+                onSelectStage={requestStageChange}
               />
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -535,6 +577,31 @@ export function CaseDetailClient({ id }: { id: string }) {
         }}
         intent={confirmGate.intent}
         perform={confirmGate.perform}
+      />
+      {/* Accident guard for stage changes. A PLAIN confirmation: no secret
+          field, no bypass, and no part of the security model — the staff /
+          manager confirmation still runs after this whenever it is enabled. */}
+      <ConfirmDialog
+        open={pendingStageId !== null}
+        onOpenChange={(o) => {
+          // Cancel (button, X, or a programmatic close) discards the target and
+          // sends nothing. The <Select> is controlled by the SAVED stage, so it
+          // is already showing the real value — there is no UI to roll back.
+          if (!o) setPendingStageId(null);
+        }}
+        title={t("detail.confirmStageTitle", {
+          from: stageLabel(kase.currentStageId),
+          to: stageLabel(pendingStageId),
+        })}
+        description={t("detail.confirmStageBody")}
+        confirmLabel={t("detail.confirmStageAction")}
+        loading={update.isPending}
+        onConfirm={() => {
+          const target = pendingStageId;
+          if (!target) return;
+          setPendingStageId(null);
+          commitStageChange(target);
+        }}
       />
       <ConfirmDialog
         open={deleteOpen}
