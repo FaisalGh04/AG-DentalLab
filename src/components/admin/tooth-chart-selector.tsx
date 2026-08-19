@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ToothChart } from "@/components/admin/tooth-chart";
+import { ToothChart } from "@/components/case/tooth-chart";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { compareTeeth } from "@/lib/teeth";
 

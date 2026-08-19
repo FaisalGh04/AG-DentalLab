@@ -28,9 +28,31 @@ export async function searchByTrackingId(
       progress: { orderBy: { order: "asc" } },
       images: { orderBy: { createdAt: "desc" } },
       categoryConfig: { select: { labelEn: true, labelAr: true } },
+      // Empty for legacy cases; the tracker shows a short note, not a chart.
+      toothItems: TOOTH_ITEM_INCLUDE,
     },
   });
   if (!found) return null;
+
+  // Resolve the taxonomy KEYS on the tooth entries to display labels. One
+  // extra query, and only for cases that actually have a plan — the entries
+  // store keys (they are historical snapshots, not FKs), and the public payload
+  // must carry the human label rather than the internal key.
+  const categoryKeys = [
+    ...new Set(
+      found.toothItems.flatMap((item) => item.entries.map((e) => e.category)),
+    ),
+  ];
+  const categoryLabels = categoryKeys.length
+    ? new Map(
+        (
+          await prisma.caseCategoryConfig.findMany({
+            where: { category: { in: categoryKeys } },
+            select: { category: true, labelEn: true, labelAr: true },
+          })
+        ).map((c) => [c.category, c]),
+      )
+    : new Map();
 
   const dto: PublicCaseDTO = {
     trackingId: found.trackingId,
@@ -48,6 +70,20 @@ export async function searchByTrackingId(
     isCompleted: found.isCompleted,
     estimatedCompletionDate:
       found.estimatedCompletionDate?.toISOString() ?? null,
+    toothItems: found.toothItems.map((item) => ({
+      toothNumber: item.toothNumber,
+      entries: item.entries.map((entry) => {
+        // Fall back to the raw key if a category row is missing. These entries
+        // are snapshots with no FK, so a deleted category must degrade to
+        // something readable rather than throwing on a public page.
+        const label = categoryLabels.get(entry.category);
+        return {
+          categoryLabelEn: label?.labelEn ?? entry.category,
+          categoryLabelAr: label?.labelAr ?? entry.category,
+          caseType: entry.caseType,
+        };
+      }),
+    })),
     // Internal lab `notes` (shade/special instructions) are intentionally NOT
     // exposed on the public tracker (S-M2).
     progress: found.progress.map((p) => ({

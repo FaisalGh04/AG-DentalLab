@@ -22,7 +22,51 @@ import { cn } from "@/lib/utils";
  * width, and every tooth stays a real focusable element for keyboard and
  * screen-reader users. A Three.js jaw would be heavier and strictly worse on
  * all five counts.
+ *
+ * Lives in components/case, not components/admin, because the PUBLIC tracker
+ * renders it too. `variant` is the only difference between the two: the admin
+ * panel follows the light/dark theme, while the public site is permanently on a
+ * dark green surface and needs its own fixed palette. The geometry — the one
+ * thing that must never diverge between them — is shared.
  */
+
+export type ToothChartVariant = "admin" | "public";
+
+/**
+ * Palette per surface. Kept as whole class strings rather than assembled from
+ * fragments so Tailwind's scanner can see every one of them.
+ */
+const PALETTE: Record<
+  ToothChartVariant,
+  { panel: string; midline: string; label: string; range: string; selected: string; idle: string; selectedText: string; idleText: string }
+> = {
+  admin: {
+    panel: "fill-brand-50/60 dark:fill-brand-400/[0.06]",
+    midline: "stroke-brand-300/70 dark:stroke-brand-400/25",
+    label: "fill-brand-800 dark:fill-brand-50",
+    range: "fill-brand-700/70 dark:fill-brand-100/60",
+    selected: "fill-brand-600 stroke-brand-800 dark:fill-brand-500 dark:stroke-brand-200",
+    idle: "fill-white stroke-brand-300 dark:fill-brand-950 dark:stroke-brand-400/40",
+    selectedText: "fill-white dark:fill-brand-950",
+    idleText: "fill-brand-700 dark:fill-brand-100/70",
+  },
+  // The public tracker is dark green in BOTH themes, so these are fixed. Idle
+  // teeth are deliberately low-contrast: on this surface the green selected
+  // teeth are the message, and 26 muted ones must not compete with them.
+  public: {
+    panel: "fill-brand-400/[0.07]",
+    midline: "stroke-brand-400/30",
+    // brand-50, not cream: `cream` is only a CSS variable in globals.css and
+    // not a Tailwind theme colour, so `fill-cream` never compiles and the text
+    // silently falls back to black on this dark panel.
+    label: "fill-brand-50",
+    range: "fill-brand-100/60",
+    selected: "fill-brand-400 stroke-brand-200",
+    idle: "fill-brand-900/70 stroke-brand-400/25",
+    selectedText: "fill-brand-950",
+    idleText: "fill-brand-100/45",
+  },
+};
 
 const VIEW_W = 660;
 // Taller than the arches strictly need: the extra top and bottom bands are what
@@ -45,10 +89,13 @@ interface Placed {
   x: number;
   y: number;
   rotation: number;
-  w: number;
-  h: number;
   kind: ToothKind;
   upper: boolean;
+  /** Hit-area box; widened so a narrow incisor stays tappable on a tablet. */
+  hitW: number;
+  hitH: number;
+  /** Crown outline, built ONCE with the layout rather than on every render. */
+  d: string;
 }
 
 /**
@@ -70,6 +117,8 @@ function placeArch(teeth: readonly number[], upper: boolean): Placed[] {
     const offset = 2 * t - 1; // -1 at the left end, 0 at centre, +1 at the right
     const depth = ARCH_DEPTH * offset * offset;
     const kind = toothKind(tooth);
+    const w = BASE_W * TOOTH_WIDTH[kind];
+    const h = BASE_H * TOOTH_HEIGHT[kind];
     return {
       tooth,
       x: PAD_X + t * span,
@@ -77,10 +126,11 @@ function placeArch(teeth: readonly number[], upper: boolean): Placed[] {
       // Mirrored between arches so both fan outward from the midline rather
       // than both leaning the same way.
       rotation: (upper ? 1 : -1) * MAX_TILT * offset,
-      w: BASE_W * TOOTH_WIDTH[kind],
-      h: BASE_H * TOOTH_HEIGHT[kind],
       kind,
       upper,
+      hitW: Math.max(w, 26),
+      hitH: h + 8,
+      d: toothPath(kind, w, h),
     };
   });
 }
@@ -134,19 +184,33 @@ export function ToothChart({
   toothLabel,
   upperLabel,
   lowerLabel,
+  variant = "admin",
+  idleInteractive = true,
   className,
 }: {
   selected: readonly number[];
   onToggle: (tooth: number) => void;
   disabled?: boolean;
-  /** Localized accessible name, e.g. "Tooth 6". */
+  /** Localized accessible name, e.g. "Tooth 6, 3 treatments". */
   toothLabel: (tooth: number) => string;
   /** Localized "Upper Jaw" / "Lower Jaw", drawn beside their own arch. */
   upperLabel: string;
   lowerLabel: string;
+  /** Which surface this is drawn on. See PALETTE. */
+  variant?: ToothChartVariant;
+  /**
+   * Whether UNSELECTED teeth respond to input. The admin picker needs them to
+   * (that is how a tooth gets selected); the public tracker does not — there is
+   * nothing behind a tooth the lab did not plan, so it must not invite a tap
+   * that does nothing.
+   */
+  idleInteractive?: boolean;
   className?: string;
 }) {
   const selectedSet = React.useMemo(() => new Set(selected), [selected]);
+  const palette = PALETTE[variant];
+  // Geometry and crown paths are viewport-independent, so they are built once
+  // per mount and survive every selection change.
   const placed = React.useMemo(
     () => [...placeArch(UPPER_TEETH, true), ...placeArch(LOWER_TEETH, false)],
     [],
@@ -187,7 +251,7 @@ export function ToothChart({
         width={VIEW_W - 4}
         height={MID_Y - 10}
         rx="18"
-        className="fill-brand-50/60 dark:fill-brand-400/[0.06]"
+        className={palette.panel}
       />
       <rect
         x="2"
@@ -195,7 +259,7 @@ export function ToothChart({
         width={VIEW_W - 4}
         height={VIEW_H - MID_Y - 10}
         rx="18"
-        className="fill-brand-50/60 dark:fill-brand-400/[0.06]"
+        className={palette.panel}
       />
 
       {/* Occlusal midline, sitting in the gap between the two panels. */}
@@ -204,7 +268,7 @@ export function ToothChart({
         y1={MID_Y}
         x2={VIEW_W - PAD_X + 12}
         y2={MID_Y}
-        className="stroke-brand-300/70 dark:stroke-brand-400/25"
+        className={palette.midline}
         strokeWidth="1.5"
         strokeDasharray="5 7"
       />
@@ -226,7 +290,7 @@ export function ToothChart({
             fontSize="17"
             fontWeight="700"
             letterSpacing="1.4"
-            className="fill-brand-800 dark:fill-brand-50"
+            className={palette.label}
           >
             {band.text.toUpperCase()}
           </text>
@@ -241,7 +305,7 @@ export function ToothChart({
             // direction, not dir: SVG <text> has no dir attribute in React's
             // types. Without it "1-16" bidi-reorders to "16-1" in Arabic.
             style={{ direction: "ltr" }}
-            className="fill-brand-700/70 dark:fill-brand-100/60"
+            className={palette.range}
           >
             {band.range}
           </text>
@@ -250,7 +314,9 @@ export function ToothChart({
 
       {placed.map((p) => {
         const isSelected = selectedSet.has(p.tooth);
-        const d = toothPath(p.kind, p.w, p.h);
+        // Inert when the whole chart is disabled, or — on the public tracker —
+        // when this tooth carries no treatment to show.
+        const inert = disabled || (!idleInteractive && !isSelected);
         // Flip the shared shape for the lower arch so its cusps point up.
         const flip = p.upper ? "" : " scale(1,-1)";
         return (
@@ -259,15 +325,19 @@ export function ToothChart({
             role="button"
             aria-pressed={isSelected}
             aria-label={toothLabel(p.tooth)}
-            aria-disabled={disabled || undefined}
-            tabIndex={disabled ? -1 : 0}
+            aria-disabled={inert || undefined}
+            tabIndex={inert ? -1 : 0}
             className={cn(
               "group outline-none",
-              disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+              inert
+                ? disabled
+                  ? "cursor-not-allowed opacity-60"
+                  : "cursor-default"
+                : "cursor-pointer",
             )}
-            onClick={() => !disabled && onToggle(p.tooth)}
+            onClick={() => !inert && onToggle(p.tooth)}
             onKeyDown={(e) => {
-              if (disabled) return;
+              if (inert) return;
               // Enter and Space are what a real <button> would answer to; an
               // SVG <g> gets neither for free.
               if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
@@ -281,28 +351,28 @@ export function ToothChart({
                   leaves dead gaps between cusps, and this guarantees a finger
                   target on a tablet regardless of how narrow an incisor is. */}
               <rect
-                x={-Math.max(p.w, 26) / 2}
-                y={-p.h / 2 - 4}
-                width={Math.max(p.w, 26)}
-                height={p.h + 8}
+                x={-p.hitW / 2}
+                y={-p.hitH / 2}
+                width={p.hitW}
+                height={p.hitH}
                 fill="transparent"
               />
               <path
-                d={d}
+                d={p.d}
                 filter="url(#tooth-shadow)"
                 strokeWidth="1.4"
                 className={cn(
                   "transition-[fill,stroke] duration-150",
-                  isSelected
-                    ? "fill-brand-600 stroke-brand-800 dark:fill-brand-500 dark:stroke-brand-200"
-                    : "fill-white stroke-brand-300 group-hover:fill-brand-100 dark:fill-brand-950 dark:stroke-brand-400/40 dark:group-hover:fill-brand-900",
+                  isSelected ? palette.selected : palette.idle,
+                  // Hover feedback only where a click does something.
+                  !inert && !isSelected && "group-hover:brightness-110",
                 )}
               />
-              <path d={d} fill="url(#tooth-shine)" pointerEvents="none" />
+              <path d={p.d} fill="url(#tooth-shine)" pointerEvents="none" />
               {/* Focus ring. Drawn as geometry rather than a CSS outline, which
                   Safari refuses to render on SVG children. */}
               <path
-                d={d}
+                d={p.d}
                 fill="none"
                 strokeWidth="2.5"
                 pointerEvents="none"
@@ -321,9 +391,7 @@ export function ToothChart({
               pointerEvents="none"
               className={cn(
                 "transition-colors",
-                isSelected
-                  ? "fill-white dark:fill-brand-950"
-                  : "fill-brand-700 dark:fill-brand-100/70",
+                isSelected ? palette.selectedText : palette.idleText,
               )}
             >
               {p.tooth}

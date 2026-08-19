@@ -103,6 +103,27 @@ export interface CaseLifecycleFields {
 }
 
 /**
+ * ONE treatment on a tooth, as the PUBLIC tracker sees it.
+ *
+ * Strictly NARROWER than ToothCaseTypeEntryDTO. Deliberately excluded:
+ *   id       — no internal identifier leaves the server
+ *   order    — a rendering detail; the array is already in order
+ *   category — the taxonomy KEY is internal; the labels below say the same
+ *              thing to a human without exposing the enum the admin filters on
+ */
+export interface PublicToothEntryDTO {
+  categoryLabelEn: string;
+  categoryLabelAr: string;
+  caseType: string;
+}
+
+/** One treated tooth on the public tracker: its number and its treatments. */
+export interface PublicToothItemDTO {
+  toothNumber: number;
+  entries: PublicToothEntryDTO[];
+}
+
+/**
  * PUBLIC tracking result. Deliberately omits the internal DB id and any
  * data doctors shouldn't see beyond what they need to track a case.
  */
@@ -115,6 +136,12 @@ export interface PublicCaseDTO extends CaseLifecycleFields {
   categoryLabelEn: string;
   categoryLabelAr: string;
   estimatedCompletionDate: string | null;
+  /**
+   * Which teeth the lab is treating, and what on each. EMPTY for cases with no
+   * per-tooth plan (every case created before that feature) — the tracker shows
+   * a short note instead of a chart, never a broken or empty one.
+   */
+  toothItems: PublicToothItemDTO[];
   // Internal lab `notes` are intentionally NOT part of the public DTO (S-M2).
   progress: ProgressDTO[];
   images: ImageDTO[];

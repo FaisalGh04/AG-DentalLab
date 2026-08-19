@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { StageStepper } from "@/components/case/stage-stepper";
 import { CaseStateBadge } from "@/components/case/case-state-badge";
 import { ProgressTimeline } from "@/components/case/progress-timeline";
+import { TrackToothChart } from "@/components/track/track-tooth-chart";
 import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { useI18n } from "@/components/i18n/language-provider";
 import {
@@ -418,6 +419,15 @@ export function TrackClient({
                 />
               </div>
             </Card>
+
+            {/* Which teeth the lab is treating. Sits between the case details
+                and the timeline: it answers "what work" right after "which
+                case" and before "how far along". */}
+            <TrackToothChart
+              toothItems={result.toothItems}
+              locale={locale}
+              t={t}
+            />
 
             <Card className="border-brand-400/20 bg-brand-950/55 p-6 text-cream">
               <h3 className="mb-6 font-display text-lg font-semibold text-cream">
