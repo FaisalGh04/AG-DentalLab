@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  FIRST_TOOTH,
+  LAST_TOOTH,
+  MAX_ENTRIES_PER_TOOTH,
+  MIN_ENTRIES_PER_TOOTH,
+} from "@/lib/teeth";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import {
   MAX_IMAGE_BYTES,
@@ -105,6 +111,54 @@ const dateInputSchema = z
     "Enter a valid date",
   );
 
+/**
+ * ONE category + case type pair on a tooth. Shape only — membership of the
+ * ACTIVE taxonomy is DB-backed and checked in the API layer, exactly like the
+ * legacy category/caseType pair below.
+ */
+export const toothCaseTypeEntrySchema = z.object({
+  category: caseCategoryKeySchema,
+  caseType: z.string().trim().min(2, "Case type is required").max(160),
+});
+export type ToothCaseTypeEntryInput = z.infer<typeof toothCaseTypeEntrySchema>;
+
+export const toothItemSchema = z.object({
+  toothNumber: z
+    .number()
+    .int()
+    .min(FIRST_TOOTH, "Tooth number must be between 1 and 32")
+    .max(LAST_TOOTH, "Tooth number must be between 1 and 32"),
+  entries: z
+    .array(toothCaseTypeEntrySchema)
+    .min(MIN_ENTRIES_PER_TOOTH, "Each selected tooth needs at least one case type")
+    .max(MAX_ENTRIES_PER_TOOTH, "A tooth can have at most 4 case types"),
+});
+export type ToothItemInput = z.infer<typeof toothItemSchema>;
+
+/**
+ * The whole per-tooth plan. Every rule the feature promises lives HERE and
+ * therefore runs on the server for free — the client reuses this same schema,
+ * so the two can never disagree about what is valid.
+ */
+export const toothItemsSchema = z
+  .array(toothItemSchema)
+  .min(1, "Select at least one tooth")
+  // 32 teeth exist; more than 32 items means duplicates, caught below anyway.
+  .max(LAST_TOOTH)
+  .superRefine((items, ctx) => {
+    const seen = new Set<number>();
+    for (const [index, item] of items.entries()) {
+      if (seen.has(item.toothNumber)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "toothNumber"],
+          message: `Tooth ${item.toothNumber} is listed more than once`,
+        });
+      }
+      seen.add(item.toothNumber);
+    }
+  });
+
 const caseInputBaseSchema = z.object({
   patientFirstName: z.string().trim().min(1, "First name is required").max(80),
   patientLastName: z.string().trim().min(1, "Last name is required").max(80),
@@ -119,8 +173,20 @@ const caseInputBaseSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => v || null),
-  caseType: z.string().trim().min(2, "Case type is required").max(160),
-  category: caseCategoryKeySchema,
+  /**
+   * LEGACY single-value taxonomy snapshot. Optional as of the per-tooth model:
+   * a client sending `toothItems` omits both, and the SERVER derives them (see
+   * deriveLegacyTaxonomy in src/lib/case-tooth-items.ts) rather than trusting a
+   * client-computed value. Still accepted on its own so any caller that has not
+   * moved to tooth items keeps working unchanged.
+   */
+  caseType: z.string().trim().min(2, "Case type is required").max(160).optional(),
+  category: caseCategoryKeySchema.optional(),
+  /**
+   * The per-tooth plan. When present it is the SOURCE OF TRUTH and the two
+   * fields above are derived from it, ignoring whatever the client sent.
+   */
+  toothItems: toothItemsSchema.optional(),
   // Production-template selection. The route validates that the stage belongs to
   // the collection and derives isCompleted; empty string is normalized to null.
   collectionId: z
@@ -290,9 +356,30 @@ export type OwnerPasswordChangeInput = z.infer<typeof ownerPasswordChangeSchema>
 // Create and update now validate the SAME field set; they differ only in that
 // update makes every field optional. receivedBy is on neither — see the note
 // above caseInputBaseSchema's create/update split.
-export const caseCreateSchema = caseInputBaseSchema;
+/**
+ * Creation needs a treatment plan one way or the other. Making category and
+ * caseType individually optional above would otherwise let a case be created
+ * with NO taxonomy at all, which the old required fields prevented.
+ */
+export const caseCreateSchema = caseInputBaseSchema.superRefine((data, ctx) => {
+  // toothItems was SENT: toothItemsSchema has already reported anything wrong
+  // with it (including an empty array). Adding more here would stack three
+  // overlapping messages on the same field.
+  if (data.toothItems !== undefined) return;
+  // Neither shape was sent at all.
+  if (!data.category || !data.caseType) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["toothItems"],
+      message: "Select at least one tooth",
+    });
+  }
+});
 export type CaseCreateInput = z.infer<typeof caseCreateSchema>;
 
+// Partial of the BASE, not of caseCreateSchema: an edit that only touches
+// `notes` must not be forced to resend the treatment plan. Omitting toothItems
+// on a PATCH means "leave the existing teeth alone" (see the [id] route).
 export const caseUpdateSchema = caseInputBaseSchema.partial();
 export type CaseUpdateInput = z.infer<typeof caseUpdateSchema>;
 

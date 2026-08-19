@@ -72,6 +72,28 @@ export interface CurrentStageActorDTO {
   isFallback: boolean;
 }
 
+/**
+ * ONE category + case type pair recorded on a tooth.
+ *
+ * Both are SNAPSHOTS of the taxonomy keys at write time, the same rule
+ * PatientCase.caseType follows: deactivating or renaming an option must never
+ * rewrite what a past case says it was.
+ */
+export interface ToothCaseTypeEntryDTO {
+  id: string;
+  category: string;
+  caseType: string;
+  order: number;
+}
+
+/** One selected tooth (Universal Numbering, 1-32) and its 1-4 entries. */
+export interface ToothItemDTO {
+  id: string;
+  toothNumber: number;
+  order: number;
+  entries: ToothCaseTypeEntryDTO[];
+}
+
 /** The production-template fields shared by public + admin case DTOs. */
 export interface CaseLifecycleFields {
   collectionId: string | null;
@@ -165,6 +187,12 @@ export interface AdminCaseDTO extends CaseLifecycleFields {
    * then, so the UI must say "not recorded" rather than imply a blank.
    */
   stageHistory: StageVisitDTO[];
+  /**
+   * Per-tooth treatment plan. EMPTY for legacy cases created before this
+   * feature — that is not an error state, and the UI must fall back to the
+   * `category` / `caseType` pair above rather than showing nothing.
+   */
+  toothItems: ToothItemDTO[];
   /**
    * Who moved the case into its CURRENT stage. Derived from stageHistory, with
    * a documented fallback to receivedBy for cases that predate the audit log.

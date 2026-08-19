@@ -11,6 +11,11 @@ import { buildActionLog } from "@/lib/case-audit";
 import { caseCreateSchema, confirmationSchema } from "@/lib/validations";
 import { isProductionCategory } from "@/lib/case-types";
 import { isActiveCaseType } from "@/lib/case-taxonomy-service";
+import {
+  deriveLegacyTaxonomy,
+  findInvalidToothEntry,
+  toothItemsCreateInput,
+} from "@/lib/case-tooth-items";
 import { normalizeName } from "@/lib/utils";
 import { resolveActingAdmin } from "@/lib/admin-accounts";
 import { generateUniqueTrackingId } from "@/lib/tracking-id";
@@ -54,15 +59,52 @@ export async function POST(req: NextRequest) {
       ? confirmationSchema.parse(body?.confirmation)
       : null;
 
-    if (!(await isActiveCaseType(input.category, input.caseType))) {
-      return apiError(
-        "Select an active case type that belongs to the selected category.",
-        422,
-      );
+    // ---- Resolve the treatment plan -> the taxonomy this case is filed under
+    //
+    // Two shapes are accepted. `toothItems` is what the current form sends and
+    // is the SOURCE OF TRUTH when present; the legacy single pair is still
+    // accepted on its own so nothing that has not moved over breaks.
+    //
+    // caseCreateSchema has already proved the shape (1-32, no duplicate teeth,
+    // 1-4 entries each, and that at least one of the two shapes is present), so
+    // what is left is the part that needs the database: taxonomy membership.
+    const toothItems = input.toothItems;
+    let category: string;
+    let caseType: string;
+
+    if (toothItems && toothItems.length > 0) {
+      const invalid = await findInvalidToothEntry(toothItems);
+      if (invalid) {
+        return apiError(
+          `Select an active case type that belongs to the selected category (${invalid.category} / ${invalid.caseType}).`,
+          422,
+        );
+      }
+      // DERIVED SERVER-SIDE, never read off the body: a crafted request cannot
+      // make the tooth list say one thing and the case row another.
+      const legacy = deriveLegacyTaxonomy(toothItems);
+      if (!legacy) {
+        return apiError("Each selected tooth needs at least one case type.", 422);
+      }
+      category = legacy.category;
+      caseType = legacy.caseType;
+    } else {
+      // Non-null by caseCreateSchema's superRefine, which requires this pair
+      // whenever toothItems is absent.
+      category = input.category as string;
+      caseType = input.caseType as string;
+      if (!(await isActiveCaseType(category, caseType))) {
+        return apiError(
+          "Select an active case type that belongs to the selected category.",
+          422,
+        );
+      }
     }
 
     // Production categories require a workflow on create (backstop for the form).
-    if (isProductionCategory(input.category) && !input.collectionId) {
+    // Keyed on the RESOLVED category, so a tooth-based case is judged by the
+    // same rule as a legacy one.
+    if (isProductionCategory(category) && !input.collectionId) {
       return apiError("A workflow is required for this category.", 422);
     }
 
@@ -150,8 +192,12 @@ export async function POST(req: NextRequest) {
         // from the session above, never from `input`. See the PATCH route,
         // which rejects any later attempt to change it.
         receivedBy,
-        caseType: input.caseType,
-        category: input.category,
+        // LEGACY SNAPSHOT. Derived above from the tooth plan when there is
+        // one; see deriveLegacyTaxonomy for why it is the lowest-numbered
+        // tooth's first entry. Kept so the All Cases table, public tracking and
+        // the taxonomy usage counts keep reading one pair, as they always have.
+        caseType,
+        category,
         collectionId: life.collectionId,
         currentStageId: life.currentStageId,
         hiddenStageIds: life.hiddenStageIds,
@@ -160,6 +206,11 @@ export async function POST(req: NextRequest) {
             ? new Date(input.estimatedCompletionDate)
             : null,
           notes: input.notes ?? null,
+          // Nested create: the teeth land in the same statement as the case, so
+          // a case can never exist for an instant without its plan.
+          ...(toothItems && toothItems.length > 0
+            ? { toothItems: { create: toothItemsCreateInput(toothItems) } }
+            : {}),
         },
       });
 

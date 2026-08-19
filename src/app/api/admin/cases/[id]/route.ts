@@ -17,6 +17,11 @@ import { getStaffConfirmationEnabled } from "@/lib/security-settings";
 import { firstStageId, normalizeLifecycle } from "@/lib/production-templates";
 import { getLifecycleConfig } from "@/lib/lifecycle";
 import { isActiveCaseType } from "@/lib/case-taxonomy-service";
+import {
+  deriveLegacyTaxonomy,
+  findInvalidToothEntry,
+  replaceToothItems,
+} from "@/lib/case-tooth-items";
 import { isProductionCategory } from "@/lib/case-types";
 
 export const runtime = "nodejs";
@@ -60,28 +65,53 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!existing) return apiError("Case not found", 404);
 
     const input = caseUpdateSchema.parse(body);
-    const targetCategory = input.category ?? existing.category;
-    const targetCaseType = input.caseType ?? existing.caseType;
+
+    // ---- Resolve the treatment plan -------------------------------------
+    //
+    // ABSENT toothItems means "leave the teeth alone", NOT "delete them". That
+    // distinction is what keeps every partial edit safe: the stage stepper, the
+    // workflow picker and the visibility toggles all PATCH this route with a
+    // few fields, and none of them should touch the plan.
+    //
+    // PRESENT toothItems REPLACES the plan wholesale and re-derives the legacy
+    // snapshot from it, so the row and the teeth can never disagree.
+    const toothItems = input.toothItems;
+    let targetCategory: string;
+    let targetCaseType: string;
+
+    if (toothItems && toothItems.length > 0) {
+      const invalid = await findInvalidToothEntry(toothItems);
+      if (invalid) {
+        return apiError(
+          `Select an active case type that belongs to the selected category (${invalid.category} / ${invalid.caseType}).`,
+          422,
+        );
+      }
+      const legacy = deriveLegacyTaxonomy(toothItems);
+      if (!legacy) {
+        return apiError("Each selected tooth needs at least one case type.", 422);
+      }
+      // Server-derived, exactly as on create — the body's category/caseType are
+      // ignored entirely when a plan is present.
+      targetCategory = legacy.category;
+      targetCaseType = legacy.caseType;
+    } else {
+      targetCategory = input.category ?? existing.category;
+      targetCaseType = input.caseType ?? existing.caseType;
+      const taxonomyChanged =
+        targetCategory !== existing.category ||
+        targetCaseType !== existing.caseType;
+      if (
+        taxonomyChanged &&
+        !(await isActiveCaseType(targetCategory, targetCaseType))
+      ) {
+        return apiError(
+          "Select an active case type that belongs to the selected category.",
+          422,
+        );
+      }
+    }
     const categoryChanged = targetCategory !== existing.category;
-    const taxonomyChanged =
-      targetCategory !== existing.category ||
-      targetCaseType !== existing.caseType;
-    if (
-      taxonomyChanged &&
-      !(await isActiveCaseType(targetCategory, targetCaseType))
-    ) {
-      return apiError(
-        "Select an active case type that belongs to the selected category.",
-        422,
-      );
-    }
-    if (
-      categoryChanged &&
-      isProductionCategory(targetCategory) &&
-      !input.collectionId
-    ) {
-      return apiError("A workflow is required for this category.", 422);
-    }
     const ip = getClientIp(req.headers);
     const session = await auth();
     // Server-authoritative actor for the stage entry recorded below. Read from
@@ -104,6 +134,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         : existing.collectionId;
     const collectionChanged =
       collectionId !== existing.collectionId;
+
+    // Production categories need a workflow. Checked against the EFFECTIVE
+    // collection, not the request body: a body that omits collectionId means
+    // "keep the one it has", and a case that already has a workflow satisfies
+    // this rule. Reachable now in a way it was not before — the category is
+    // derived from the tooth plan, so a PATCH carrying only `toothItems` can
+    // change it without ever mentioning a collection.
+    if (categoryChanged && isProductionCategory(targetCategory) && !collectionId) {
+      return apiError("A workflow is required for this category.", 422);
+    }
     const currentStageId =
       input.currentStageId !== undefined
         ? input.currentStageId
@@ -172,8 +212,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         // Plain field: retroactively linking a case to a roster doctor is NOT a
         // lifecycle change, so it deliberately does not trigger the gate.
         doctorId: input.doctorId !== undefined ? input.doctorId : existing.doctorId,
-        caseType: input.caseType ?? existing.caseType,
-        category: input.category ?? existing.category,
+        // Resolved above: derived from the tooth plan when one was sent,
+        // otherwise the existing legacy behaviour.
+        caseType: targetCaseType,
+        category: targetCategory,
         collectionId: life.collectionId,
         currentStageId: life.currentStageId,
         hiddenStageIds: life.hiddenStageIds,
@@ -187,6 +229,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           notes: input.notes !== undefined ? input.notes : existing.notes,
         },
       });
+
+      // Same transaction as the case row: a half-applied plan (teeth deleted,
+      // replacements not written) must never be observable.
+      if (toothItems && toothItems.length > 0) {
+        await replaceToothItems(tx, row.id, toothItems);
+      }
 
       // Same transaction as the mutation. Lifecycle changes are logged whether
       // confirmed or explicitly bypassed; ordinary field edits remain unlogged.

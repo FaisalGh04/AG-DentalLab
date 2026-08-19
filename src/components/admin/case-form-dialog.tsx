@@ -25,13 +25,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  caseCreateSchema,
   caseUpdateSchema,
+  toothItemsSchema,
   type CaseCreateInput,
 } from "@/lib/validations";
 import { useSession } from "next-auth/react";
 import { isProductionCategory } from "@/lib/case-types";
 import { useCaseTaxonomy } from "@/hooks/use-case-taxonomy";
+import { ToothChartSelector } from "@/components/admin/tooth-chart-selector";
+import {
+  ToothTreatmentEditor,
+  mergeToothSelection,
+  type ToothItemDraft,
+} from "@/components/admin/tooth-treatment-editor";
+import { deriveLegacyTaxonomy } from "@/lib/teeth";
 import { useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { WorkflowSelect } from "@/components/admin/workflow-select";
 import { DoctorCombobox } from "@/components/admin/doctor-combobox";
@@ -78,18 +85,29 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
   // Est. completion time (HH:mm) is kept in local state and combined with the
   // date on submit. Empty string = no specific time (stored as 00:00 UTC).
   const [estTime, setEstTime] = React.useState("");
+  /**
+   * The per-tooth plan being edited. Local state rather than an RHF field —
+   * see the resolver note above. Submitted as `toothItems`; the SERVER derives
+   * the stored category/caseType from it and ignores anything else we send.
+   */
+  const [toothItems, setToothItems] = React.useState<ToothItemDraft[]>([]);
+  const [toothSelectorOpen, setToothSelectorOpen] = React.useState(false);
+  const [toothError, setToothError] = React.useState<string | null>(null);
 
-  // Edit validates against the UPDATE schema, which has no receivedBy. Using the
-  // create schema here would make the required receivedBy block saving any other
-  // field on a legacy case whose value is null. The cast is safe: CaseUpdateInput
-  // is a partial of the same base, so it validates a strict subset of the fields
-  // this form holds.
+  /**
+   * Patient/doctor/date fields only. The TAXONOMY is deliberately not RHF's job
+   * any more: it now lives in the tooth plan, whose failures are per-tooth and
+   * need their own message rather than a nested `toothItems.0.entries.1.category`
+   * error nobody can act on. validateToothPlan() below owns that, and the server
+   * re-checks the same toothItemsSchema regardless.
+   *
+   * caseUpdateSchema (a partial of the shared base) is used for both modes: the
+   * required patient fields still validate because the form always supplies
+   * them, and receivedBy is on neither schema.
+   */
   const resolver = React.useMemo(
-    () =>
-      zodResolver(
-        isEdit ? caseUpdateSchema : caseCreateSchema,
-      ) as Resolver<CaseCreateInput>,
-    [isEdit],
+    () => zodResolver(caseUpdateSchema) as Resolver<CaseCreateInput>,
+    [],
   );
 
   const {
@@ -103,8 +121,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     formState: { errors },
   } = useForm<CaseCreateInput>({
     resolver,
+    // NO category/caseType. They are no longer form fields — the server derives
+    // them from the tooth plan — and seeding them as "" made the schema reject
+    // the empty strings with an error that had no field left to render it,
+    // silently blocking submit.
     defaultValues: {
-      category: "",
       collectionId: null,
     },
   });
@@ -117,8 +138,6 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         patientLastName: existing.patientLastName,
         doctorName: existing.doctorName,
         doctorId: existing.doctorId,
-        caseType: existing.caseType,
-        category: existing.category,
         collectionId: existing.collectionId,
         // receivedBy is deliberately NOT hydrated as a form value — it is
         // write-once and rendered as read-only text below, never registered.
@@ -128,34 +147,92 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         notes: existing.notes ?? "",
       });
       setEstTime(extractUtcTime(existing.estimatedCompletionDate));
+      // Legacy cases hydrate to an EMPTY plan, not a fabricated one. Their
+      // category/caseType is shown as a read-only notice instead, and stays
+      // untouched unless the admin actually builds a plan.
+      setToothItems(
+        existing.toothItems.map((item) => ({
+          toothNumber: item.toothNumber,
+          entries: item.entries.map((entry) => ({
+            category: entry.category,
+            caseType: entry.caseType,
+          })),
+        })),
+      );
+      setToothError(null);
     } else if (open && !existing) {
       reset({
         patientFirstName: "",
         patientLastName: "",
         doctorName: "",
         doctorId: null,
-        caseType: "",
-        category: "",
         collectionId: null,
         estimatedCompletionDate: "",
         notes: "",
       });
       setEstTime("");
+      setToothItems([]);
+      setToothError(null);
     }
   }, [open, existing, reset]);
+
+  /**
+   * Every rule the tooth plan promises, with a message an admin can act on.
+   * Returns the validated plan, or null when it should block the save.
+   *
+   * `null` is ALSO the legitimate answer for a legacy case the admin did not
+   * convert — see the isLegacyUntouched branch.
+   */
+  function validateToothPlan(): { ok: boolean; items: ToothItemDraft[] | null } {
+    const hadPlan = (existing?.toothItems.length ?? 0) > 0;
+    // A legacy case being edited without touching the teeth: send no plan at
+    // all, which the PATCH route reads as "leave it alone". Blocking here would
+    // make every pre-existing case uneditable.
+    if (toothItems.length === 0 && isEdit && !hadPlan) {
+      return { ok: true, items: null };
+    }
+    if (toothItems.length === 0) {
+      setToothError(t("tooth.selectAtLeastOneTooth"));
+      return { ok: false, items: null };
+    }
+    const incomplete = toothItems.some(
+      (item) =>
+        item.entries.length === 0 ||
+        item.entries.some((e) => !e.category || !e.caseType),
+    );
+    if (incomplete) {
+      setToothError(t("tooth.eachToothNeedsCaseType"));
+      return { ok: false, items: null };
+    }
+    // Backstop against anything the per-field checks above missed; the server
+    // runs this exact schema again.
+    if (!toothItemsSchema.safeParse(toothItems).success) {
+      setToothError(t("tooth.eachToothNeedsCaseType"));
+      return { ok: false, items: null };
+    }
+    setToothError(null);
+    return { ok: true, items: toothItems };
+  }
 
   async function onSubmit(values: CaseCreateInput) {
     if (!taxonomy.data || taxonomy.isError) {
       toast.error(t("form.taxonomyUnavailable"));
       return;
     }
+
+    const plan = validateToothPlan();
+    if (!plan.ok) return;
+    // Same rule the server applies, so the workflow check below and the stored
+    // row agree about which category this case is filed under.
+    const derived = plan.items ? deriveLegacyTaxonomy(plan.items) : null;
+    const effectiveCategory = derived?.category ?? existing?.category ?? "";
     // A workflow is required for new production cases and when an edit switches
     // into a production category. Unchanged legacy collection-less cases remain
     // grandfathered so unrelated edits are never blocked.
     if (
-      isProductionCategory(values.category) &&
+      isProductionCategory(effectiveCategory) &&
       !values.collectionId &&
-      (!isEdit || values.category !== existing?.category)
+      (!isEdit || effectiveCategory !== existing?.category)
     ) {
       setError("collectionId", { type: "manual", message: t("form.workflowRequired") });
       return;
@@ -173,7 +250,14 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
       // No receivedBy to strip any more — it is on neither schema, so `values`
       // cannot carry it. The PATCH route still 422s on one, as a backstop
       // against a hand-crafted body.
-      const patch = { ...values, estimatedCompletionDate };
+      // category/caseType are stripped: when a plan is present the server
+      // derives them, and sending our own would be a second source of truth.
+      const { category: _c, caseType: _ct, ...rest } = values;
+      const patch = {
+        ...rest,
+        estimatedCompletionDate,
+        ...(plan.items ? { toothItems: plan.items } : {}),
+      };
 
       // ENTRY POINT 6: changing the workflow from the EDIT dialog is a real
       // lifecycle transition (the server resets the stage), so it is gated —
@@ -216,9 +300,11 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         summary: `${t("confirm.createCase")}: ${values.patientFirstName} ${values.patientLastName}`,
       },
       async (confirmation) => {
+        const { category: _c, caseType: _ct, ...rest } = values;
         const res = await create.mutateAsync({
-          ...values,
+          ...rest,
           estimatedCompletionDate,
+          ...(plan.items ? { toothItems: plan.items } : {}),
           confirmation,
         });
         toast.success(t("form.toastCreated"));
@@ -229,23 +315,20 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
     );
   }
 
-  const category = watch("category");
   const collectionId = watch("collectionId");
-  const caseType = watch("caseType");
   const doctorName = watch("doctorName");
   const doctorId = watch("doctorId");
+  /**
+   * Category the case is filed under, by the SAME rule the server uses. Drives
+   * the workflow picker, which only applies to production categories.
+   * Falls back to the stored value while a legacy case has no plan yet.
+   */
+  const derivedCategory =
+    deriveLegacyTaxonomy(toothItems)?.category ?? existing?.category ?? "";
+  // A pre-existing case that has no per-tooth plan. Its recorded category and
+  // case type are shown read-only so an edit can never look like it erased them.
+  const isLegacyCase = isEdit && (existing?.toothItems.length ?? 0) === 0;
   const categories = taxonomy.data?.categories ?? [];
-  const selectedCategory = categories.find((item) => item.category === category);
-  const availableCaseTypes = selectedCategory?.caseTypes.filter(
-    (type) => type.isActive,
-  ) ?? [];
-  const currentInactiveType =
-    isEdit &&
-    existing?.category === category &&
-    existing.caseType === caseType &&
-    !availableCaseTypes.some((type) => type.name === existing.caseType)
-      ? existing.caseType
-      : null;
 
   return (
     <>
@@ -358,81 +441,79 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
             </Field>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("form.category")} error={errors.category?.message}>
-              <Select
-                value={category ?? ""}
+          {/* TEETH + TREATMENTS — replaces the single Category/Case Type pair.
+              The chart commits only on Confirm, so the cards below always
+              reflect a deliberate selection. */}
+          <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink">
+                  {t("tooth.sectionTitle")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("tooth.sectionHint")}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ms-auto shrink-0"
                 disabled={taxonomy.isLoading || taxonomy.isError}
-                onValueChange={(v) => {
-                  setValue("category", v, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  setValue("caseType", "", {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  setValue("collectionId", null, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                }}
+                onClick={() => setToothSelectorOpen(true)}
               >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      taxonomy.isLoading
-                        ? t("form.loadingTaxonomy")
-                        : taxonomy.isError
-                          ? t("form.taxonomyUnavailable")
-                          : t("form.selectCategory")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((item) => (
-                    <SelectItem key={item.category} value={item.category}>
-                      {locale === "ar" ? item.labelAr : item.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+                {toothItems.length > 0
+                  ? t("tooth.editTeeth")
+                  : t("tooth.selectTeeth")}
+              </Button>
+            </div>
 
-            <Field label={t("form.caseType")} error={errors.caseType?.message}>
-              <Select
-                value={caseType || ""}
-                disabled={!category || taxonomy.isLoading || taxonomy.isError}
-                onValueChange={(v) =>
-                  setValue("caseType", v, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      category
-                        ? t("form.selectCaseType")
-                        : t("form.selectCategoryFirst")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {currentInactiveType && (
-                    <SelectItem value={currentInactiveType}>
-                      {currentInactiveType} ({t("caseTypes.inactive")})
-                    </SelectItem>
-                  )}
-                  {availableCaseTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            {isLegacyCase && (
+              <div className="rounded-xl border border-dashed border-border bg-card p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("tooth.legacyTitle")}
+                </p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {t("tooth.legacyPair", {
+                    category:
+                      categories.find((c) => c.category === existing?.category)
+                        ?.[locale === "ar" ? "labelAr" : "labelEn"] ??
+                      existing?.category ??
+                      "",
+                    caseType: existing?.caseType ?? "",
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("tooth.legacyBody")}
+                </p>
+              </div>
+            )}
+
+            {toothItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("tooth.noneSelected")}
+              </p>
+            ) : (
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("tooth.selectedCount", { count: toothItems.length })}
+              </p>
+            )}
+
+            <ToothTreatmentEditor
+              items={toothItems}
+              onChange={(next) => {
+                setToothItems(next);
+                setToothError(null);
+              }}
+              taxonomy={taxonomy.data}
+              disabled={pending}
+              error={toothError ?? undefined}
+            />
+            {toothItems.length === 0 && toothError && (
+              <p className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {toothError}
+              </p>
+            )}
           </div>
 
           {taxonomy.isLoading && (
@@ -475,7 +556,7 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
           )}
 
           <WorkflowSelect
-            category={category}
+            category={derivedCategory}
             value={collectionId ?? null}
             onChange={(id) =>
               setValue("collectionId", id, { shouldDirty: true, shouldValidate: true })
@@ -560,6 +641,18 @@ export function CaseFormDialog({ open, onOpenChange, existing, onSaved }: Props)
         </form>
       </DialogContent>
     </Dialog>
+    {/* Commits only on Confirm; Cancel and X discard. Teeth already on the
+        form keep their entries on re-open — mergeToothSelection only adds and
+        removes, it never rebuilds. */}
+    <ToothChartSelector
+      open={toothSelectorOpen}
+      onOpenChange={setToothSelectorOpen}
+      value={toothItems.map((item) => item.toothNumber)}
+      onConfirm={(teeth) => {
+        setToothItems((prev) => mergeToothSelection(prev, teeth));
+        setToothError(null);
+      }}
+    />
     {/* Gate for entry points 1 (create) and 6 (edit's workflow change). */}
     <ConfirmActionDialog
       open={confirmGate.open}

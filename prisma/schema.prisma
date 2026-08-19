@@ -35,12 +35,12 @@ model Admin {
 // DB-backed category keys. The ten legacy enum values are preserved verbatim as
 // string keys, while admins can add new stable keys without a schema migration.
 model CaseCategoryConfig {
-  category  String       @id
-  labelEn   String       @map("label_en")
-  labelAr   String       @map("label_ar")
-  order     Int          @default(0)
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  category  String   @id
+  labelEn   String   @map("label_en")
+  labelAr   String   @map("label_ar")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   caseTypes CaseTypeOption[]
   cases     PatientCase[]
@@ -53,13 +53,13 @@ model CaseCategoryConfig {
 // string snapshot rather than a foreign key: renaming/deactivating an option
 // affects future selection only and never rewrites historical cases.
 model CaseTypeOption {
-  id        String       @id @default(cuid())
+  id        String   @id @default(cuid())
   category  String
   name      String
-  isActive  Boolean      @default(true) @map("is_active")
-  order     Int          @default(0)
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   categoryConfig CaseCategoryConfig @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
 
@@ -68,56 +68,113 @@ model CaseTypeOption {
   @@map("case_type_options")
 }
 
+/**
+ * ONE SELECTED TOOTH on a case, in Universal Numbering (1-32).
+ * Additive: PatientCase.category / caseType are untouched and still carry the
+ * legacy single-value snapshot, so every existing reader (All Cases table,
+ * public tracking, taxonomy usage counts) keeps working unchanged. See
+ * deriveLegacyTaxonomy() in src/lib/case-tooth-items.ts for how the snapshot is
+ * derived from these rows.
+ * The 1..32 range and the 1..4 entry count are enforced in the API layer
+ * (toothItemsSchema in src/lib/validations.ts) rather than by a CHECK
+ * constraint, matching how every other domain rule in this schema is applied.
+ */
+model CaseToothItem {
+  id          String   @id @default(cuid())
+  caseId      String   @map("case_id")
+  toothNumber Int      @map("tooth_number")
+  // Display order of the tooth cards. Distinct from toothNumber so the UI can
+  // preserve the order the admin added them in.
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  case    PatientCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entries CaseToothCaseType[]
+
+  // One row per tooth per case — a tooth is selected or it is not. Multiple
+  // treatments on the same tooth are `entries`, never duplicate tooth rows.
+  @@unique([caseId, toothNumber])
+  @@index([caseId])
+  @@map("case_tooth_items")
+}
+
+/**
+ * ONE category + case type pair on one tooth. 1-4 of these per tooth.
+ * category/caseType are stored as the same free-text keys PatientCase uses, NOT
+ * as a FK to CaseTypeOption: these are historical SNAPSHOTS, exactly like
+ * PatientCase.caseType. Deactivating or renaming a taxonomy option must not
+ * rewrite what a past case says it was. Validity is checked against the ACTIVE
+ * taxonomy at write time only.
+ */
+model CaseToothCaseType {
+  id          String   @id @default(cuid())
+  toothItemId String   @map("tooth_item_id")
+  category    String
+  caseType    String   @map("case_type")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  toothItem CaseToothItem @relation(fields: [toothItemId], references: [id], onDelete: Cascade)
+
+  @@index([toothItemId])
+  @@map("case_tooth_case_types")
+}
+
 // ------------------------------------------------------------------
 // A dental case. Doctors track these by public tracking ID only.
 // ------------------------------------------------------------------
 model PatientCase {
-  id                      String       @id @default(cuid())
-  trackingId              String       @unique @map("tracking_id")
-  patientFirstName        String       @map("patient_first_name")
-  patientLastName         String       @map("patient_last_name")
+  id                      String    @id @default(cuid())
+  trackingId              String    @unique @map("tracking_id")
+  patientFirstName        String    @map("patient_first_name")
+  patientLastName         String    @map("patient_last_name")
   // Denormalized lowercased full name for fast, case-insensitive lookup.
-  patientFullNameNorm     String       @map("patient_full_name_norm")
+  patientFullNameNorm     String    @map("patient_full_name_norm")
   // NAME SNAPSHOT, always the display value — never resolved through doctorId.
   // Renaming a roster doctor must not rewrite what past cases say, the same
   // reasoning that keeps receivedBy a snapshot below.
-  doctorName              String       @map("doctor_name")
+  doctorName              String    @map("doctor_name")
   // Optional link to the Doctor roster. NULL = a free-text one-off doctor who
   // is not on the roster; such a case can be linked retroactively if that
   // doctor is added later. Only linked cases appear in a doctor's public
   // portal. SetNull on delete: removing a roster entry never touches the case.
-  doctorId                String?      @map("doctor_id")
+  doctorId                String?   @map("doctor_id")
   // WHO LOGGED THE CASE INTO THE SYSTEM at intake (not who handled production).
   // Write-once: set on create, never updatable — receivedBy is absent from
   // caseUpdateSchema and the PATCH route rejects it (see src/lib/validations.ts).
   // Required as of Phase B (20260728140000_received_by_not_null); the pre-existing
   // rows were removed rather than backfilled, so no sentinel reached production.
-  receivedBy              String       @map("received_by")
-  caseType                String       @map("case_type")
+  receivedBy              String    @map("received_by")
+  caseType                String    @map("case_type")
   // Stable taxonomy key. This column used to be the CaseCategory enum; the
   // migration converts it to text without changing any existing values.
   category                String
   // Selected production template (src/lib/production-templates.ts). Both nullable:
   // a case can exist before a collection/stage is chosen.
-  collectionId            String?      @map("collection_id")
-  currentStageId          String?      @map("current_stage_id")
+  collectionId            String?   @map("collection_id")
+  currentStageId          String?   @map("current_stage_id")
   // Stage ids hidden for THIS case (excluded from its stepper). Default: none.
-  hiddenStageIds          String[]     @default([]) @map("hidden_stage_ids")
+  hiddenStageIds          String[]  @default([]) @map("hidden_stage_ids")
   // Derived + persisted whenever collection/stage/hidden changes: true when the
   // current stage is the last VISIBLE stage. Drives archive + dashboard queries.
-  isCompleted             Boolean      @default(false) @map("is_completed")
-  estimatedCompletionDate DateTime?    @map("estimated_completion_date")
+  isCompleted             Boolean   @default(false) @map("is_completed")
+  estimatedCompletionDate DateTime? @map("estimated_completion_date")
   notes                   String?
-  createdAt               DateTime     @default(now()) @map("created_at")
-  updatedAt               DateTime     @updatedAt @map("updated_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
 
-  progress   CaseProgress[]
-  images     CaseImage[]
+  progress       CaseProgress[]
+  images         CaseImage[]
+  // Per-tooth treatment plan. Cascade on delete: these rows describe THIS case
+  // and mean nothing without it (unlike actionLogs, which outlive the case).
+  toothItems     CaseToothItem[]
   // Virtual back-relation only — the FK column lives on case_action_logs, so
   // this adds NO column to patient_cases. onDelete: SetNull there keeps the
   // audit trail after a case is deleted.
-  actionLogs CaseActionLog[]
-  doctor     Doctor?         @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  actionLogs     CaseActionLog[]
+  doctor         Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
   categoryConfig CaseCategoryConfig @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
 
   // Indexes tuned for the two hot paths: public tracking lookup + admin list.

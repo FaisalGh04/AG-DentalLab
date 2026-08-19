@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { formatTrackingId } from "@/lib/tracking-id-format";
 import { imageProxyPath } from "@/lib/s3";
 import { redactName } from "@/lib/utils";
+import { TOOTH_ITEM_INCLUDE } from "@/lib/case-tooth-items";
 import type {
   PublicCaseDTO,
   AdminCaseListResponse,
@@ -156,6 +157,8 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
     include: {
       progress: { orderBy: { order: "asc" } },
       images: { orderBy: { createdAt: "desc" } },
+      // Empty for legacy cases; the UI falls back to category/caseType.
+      toothItems: TOOTH_ITEM_INCLUDE,
     },
   });
   if (!c) return null;
@@ -249,6 +252,17 @@ export async function getCaseById(id: string): Promise<AdminCaseDTO | null> {
       caption: i.caption,
       stageId: i.stageId,
       createdAt: i.createdAt.toISOString(),
+    })),
+    toothItems: c.toothItems.map((item) => ({
+      id: item.id,
+      toothNumber: item.toothNumber,
+      order: item.order,
+      entries: item.entries.map((entry) => ({
+        id: entry.id,
+        category: entry.category,
+        caseType: entry.caseType,
+        order: entry.order,
+      })),
     })),
     stageHistory: visits.map((v) => ({
       // Non-null by the `toStageId: { not: null }` filter above.

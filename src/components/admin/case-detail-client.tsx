@@ -37,6 +37,7 @@ import { TrackingIdCopy } from "@/components/case/tracking-id-copy";
 import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { StageViewerDialog } from "@/components/admin/stage-viewer-dialog";
 import { StageActorHistoryDialog } from "@/components/admin/stage-actor-history-dialog";
+import { ToothTreatmentSummary } from "@/components/admin/tooth-treatment-summary";
 import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -467,6 +468,16 @@ export function CaseDetailClient({ id }: { id: string }) {
             </p>
           </div>
         )}
+
+        {/* Per-tooth plan. Falls back to the legacy category/caseType pair for
+            cases created before tooth items existed — see the component. */}
+        <div className="border-t border-border/80 p-6">
+          <ToothTreatmentSummary
+            toothItems={kase.toothItems}
+            legacyCategory={kase.category}
+            legacyCaseType={kase.caseType}
+          />
+        </div>
 
         {/* 6 tiles → 2x3 on desktop. Read-only throughout: receivedBy is
             write-once and has no inline editor by design. */}
