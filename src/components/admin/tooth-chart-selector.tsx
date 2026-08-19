@@ -65,15 +65,17 @@ export function ToothChartSelector({
           <DialogDescription>{t("tooth.selectorDesc")}</DialogDescription>
         </DialogHeader>
 
+        {/* The jaw labels used to sit here as a left/right header row, which
+            read as "left jaw / right jaw" — the exact confusion this chart has
+            to prevent. They now live inside the chart, each centred over its
+            own arch. */}
         <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
-          <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <span>{t("tooth.upperJaw")}</span>
-            <span>{t("tooth.lowerJaw")}</span>
-          </div>
           <ToothChart
             selected={pending}
             onToggle={toggle}
             toothLabel={(n) => t("tooth.toothNumber", { number: n })}
+            upperLabel={t("tooth.upperJaw")}
+            lowerLabel={t("tooth.lowerJaw")}
           />
         </div>
 

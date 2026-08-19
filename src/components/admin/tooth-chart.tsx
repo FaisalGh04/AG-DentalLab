@@ -25,7 +25,9 @@ import { cn } from "@/lib/utils";
  */
 
 const VIEW_W = 660;
-const VIEW_H = 420;
+// Taller than the arches strictly need: the extra top and bottom bands are what
+// the UPPER JAW / LOWER JAW labels sit in, each one touching its own arch.
+const VIEW_H = 448;
 const PAD_X = 34;
 const MID_Y = VIEW_H / 2;
 /** Vertical clearance between the two arches, where the numbers sit. */
@@ -130,6 +132,8 @@ export function ToothChart({
   onToggle,
   disabled,
   toothLabel,
+  upperLabel,
+  lowerLabel,
   className,
 }: {
   selected: readonly number[];
@@ -137,6 +141,9 @@ export function ToothChart({
   disabled?: boolean;
   /** Localized accessible name, e.g. "Tooth 6". */
   toothLabel: (tooth: number) => string;
+  /** Localized "Upper Jaw" / "Lower Jaw", drawn beside their own arch. */
+  upperLabel: string;
+  lowerLabel: string;
   className?: string;
 }) {
   const selectedSet = React.useMemo(() => new Set(selected), [selected]);
@@ -171,17 +178,75 @@ export function ToothChart({
         </filter>
       </defs>
 
-      {/* Occlusal midline — the only chrome, and it is what makes the two
-          arches read as one mouth rather than two rows of shapes. */}
+      {/* Each jaw gets its own tinted panel. Two separated fields read as upper
+          and lower instantly; a single dashed rule between two rows of shapes
+          left it to the viewer to work out which half was which. */}
+      <rect
+        x="2"
+        y="2"
+        width={VIEW_W - 4}
+        height={MID_Y - 10}
+        rx="18"
+        className="fill-brand-50/60 dark:fill-brand-400/[0.06]"
+      />
+      <rect
+        x="2"
+        y={MID_Y + 8}
+        width={VIEW_W - 4}
+        height={VIEW_H - MID_Y - 10}
+        rx="18"
+        className="fill-brand-50/60 dark:fill-brand-400/[0.06]"
+      />
+
+      {/* Occlusal midline, sitting in the gap between the two panels. */}
       <line
         x1={PAD_X - 12}
         y1={MID_Y}
         x2={VIEW_W - PAD_X + 12}
         y2={MID_Y}
-        className="stroke-brand-200/70 dark:stroke-brand-400/20"
-        strokeWidth="1"
-        strokeDasharray="4 6"
+        className="stroke-brand-300/70 dark:stroke-brand-400/25"
+        strokeWidth="1.5"
+        strokeDasharray="5 7"
       />
+
+      {/* Jaw labels, centred in their own panel and touching their own arch.
+          Inside the SVG rather than above it so the label can never drift away
+          from the geometry it names, whatever width the chart is scaled to. */}
+      {(
+        [
+          { text: upperLabel, range: "1-16", y: 32 },
+          { text: lowerLabel, range: "17-32", y: VIEW_H - 38 },
+        ] as const
+      ).map((band) => (
+        <g key={band.range} pointerEvents="none">
+          <text
+            x={VIEW_W / 2}
+            y={band.y}
+            textAnchor="middle"
+            fontSize="17"
+            fontWeight="700"
+            letterSpacing="1.4"
+            className="fill-brand-800 dark:fill-brand-50"
+          >
+            {band.text.toUpperCase()}
+          </text>
+          {/* Number range as a quiet second line — the legend, without a
+              separate legend block to clutter the panel. */}
+          <text
+            x={VIEW_W / 2}
+            y={band.y + 17}
+            textAnchor="middle"
+            fontSize="13"
+            fontWeight="600"
+            // direction, not dir: SVG <text> has no dir attribute in React's
+            // types. Without it "1-16" bidi-reorders to "16-1" in Arabic.
+            style={{ direction: "ltr" }}
+            className="fill-brand-700/70 dark:fill-brand-100/60"
+          >
+            {band.range}
+          </text>
+        </g>
+      ))}
 
       {placed.map((p) => {
         const isSelected = selectedSet.has(p.tooth);
