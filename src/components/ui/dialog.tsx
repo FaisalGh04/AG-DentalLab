@@ -84,11 +84,24 @@ const DialogContent = React.forwardRef<
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * Reserves the close button's corner for the WHOLE header, title and
+ * description alike.
+ *
+ * The button is absolutely positioned and, on mobile, 44px tall (h-11 top-3) —
+ * tall enough to reach past the title and into the first line of the
+ * description. Padding the title alone therefore cannot clear it, which is what
+ * put "…and when." underneath the X on a 390px phone. Sized to match the
+ * button: 44px + gutter below sm, 32px + gutter from sm up.
+ */
 const DialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5", className)} {...props} />
+  <div
+    className={cn("flex flex-col space-y-1.5 pe-12 sm:pe-9", className)}
+    {...props}
+  />
 );
 DialogHeader.displayName = "DialogHeader";
 

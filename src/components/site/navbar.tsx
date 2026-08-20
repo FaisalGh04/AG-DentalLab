@@ -92,7 +92,13 @@ export function Navbar() {
               />
             </Link>
 
-            <div className="hidden items-center gap-1 md:flex">
+            {/* lg, not md: the full bar (6 links + language toggle + Track Case +
+                the Contact Us CTA) needs ~946px. Switching at md (768px) meant
+                every width from 768-945 — iPad portrait at 834 and phone
+                landscape at 844 among them — rendered a desktop nav that did
+                not fit: "Our Work" and "Why Us" wrapped to two lines and the
+                Contact Us CTA was sliced off at the right edge. */}
+            <div className="hidden items-center gap-1 lg:flex">
               {NAV_LINKS.map((l) => {
                 const isActive = isHome && active === l.id;
                 return (
@@ -119,7 +125,7 @@ export function Navbar() {
               })}
             </div>
 
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-2 lg:flex">
               <LanguageToggle />
               <Button asChild variant="ghost" size="sm">
                 <Link href="/track">
@@ -134,7 +140,7 @@ export function Navbar() {
             </div>
 
             <button
-              className="rounded-xl p-2 transition-colors hover:bg-brand-50 dark:text-foreground dark:hover:bg-white/10 md:hidden"
+              className="rounded-xl p-2 transition-colors hover:bg-brand-50 dark:text-foreground dark:hover:bg-white/10 lg:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label={t("nav.toggleMenu")}
             >
@@ -148,7 +154,7 @@ export function Navbar() {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="glass mt-2 flex flex-col gap-1 rounded-2xl p-3 md:hidden"
+                className="glass mt-2 flex flex-col gap-1 rounded-2xl p-3 lg:hidden"
               >
                 {NAV_LINKS.map((l) => (
                   <Link

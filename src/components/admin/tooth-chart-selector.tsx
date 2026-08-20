@@ -59,9 +59,7 @@ export function ToothChartSelector({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="pe-10 sm:pe-8">
-            {t("tooth.selectorTitle")}
-          </DialogTitle>
+          <DialogTitle>{t("tooth.selectorTitle")}</DialogTitle>
           <DialogDescription>{t("tooth.selectorDesc")}</DialogDescription>
         </DialogHeader>
 

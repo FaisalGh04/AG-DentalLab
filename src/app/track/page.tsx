@@ -21,7 +21,15 @@ export default async function TrackPage() {
   return (
     <div className="dark min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="relative isolate min-h-[100svh] overflow-hidden pb-24 pt-36">
+      {/* overflow-CLIP, not overflow-hidden. Both clip the decorative glow that
+          is wider than the viewport, but `hidden` also makes this a scrollable
+          box — one with no scrollbar, since nothing is visibly scrollable. On a
+          short, wide viewport (a phone in landscape) the browser's
+          scroll-into-view for the search result latched main.scrollLeft to its
+          full 118px, shifting the search field and the Back link permanently off
+          the left edge with no way to scroll them back. `clip` clips without
+          creating a scroll container, so there is nothing to latch. */}
+      <main className="relative isolate min-h-[100svh] overflow-clip pb-24 pt-36">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-background" />
           {/* Mobile-reduced blur radius. At full radius these huge filter:blur
