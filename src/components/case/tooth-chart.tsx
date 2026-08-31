@@ -68,34 +68,178 @@ const PALETTE: Record<
   },
 };
 
-const VIEW_W = 660;
-// Taller than the arches strictly need: the extra top and bottom bands are what
-// the UPPER JAW / LOWER JAW labels sit in, each one touching its own arch.
-const VIEW_H = 448;
-const PAD_X = 34;
+const VIEW_W = 356;
+const VIEW_H = 336;
+const CX = VIEW_W / 2;
 const MID_Y = VIEW_H / 2;
-/** Vertical clearance between the two arches, where the numbers sit. */
-const ARCH_GAP = 30;
-/** How far the back teeth ride above/below the front teeth. */
-const ARCH_DEPTH = 104;
-/** Nominal crown box; per-tooth multipliers in TOOTH_WIDTH/HEIGHT scale it. */
-const BASE_W = 34;
-const BASE_H = 42;
-/** Tilt of the outermost teeth, in degrees — teeth fan out along the arch. */
-const MAX_TILT = 24;
+
 /**
- * Breathing room held open at the dental midline, in the same relative units
- * as TOOTH_WIDTH — half a central incisor. It buys the vertical midline ~9px
- * of clear space on either side, so the line runs BETWEEN 8|9 and 24|25
- * instead of grazing either crown. The arch absorbs it by tightening ~3%
- * elsewhere, which leaves the outer molars within half a pixel of where they
- * were and the whole chart still centred on VIEW_W / 2.
+ * ARCH SHAPE — ONE OVAL, NOT TWO HORSESHOES.
+ *
+ * Both jaws share a single ellipse centred on (CX, MID_Y). The upper arch takes
+ * its TOP half and the lower arch its BOTTOM half, so the thirty-two crowns
+ * close into one continuous ring: front teeth at the very top and bottom,
+ * molars running round to meet at the left and right.
+ *
+ * This is the correction from the previous layout, where each jaw had its own
+ * centre placed OUTSIDE the arch. That put both sets of front teeth in the
+ * middle of the chart and both sets of molars at the outside, so the upper jaw
+ * curved down like a U and the lower curved up — two horseshoes facing each
+ * other across a gutter, rather than one oval. Sharing the centre inverts both:
+ * the upper now bulges up, the lower down.
+ *
+ * ARCH_SWEEP must stay BELOW 90°. At exactly 90° the two halves would meet at
+ * the sides and tooth 1 would land on top of tooth 32; the shortfall is what
+ * opens the gap at each side that the R and L markers sit in. The gap is
+ * 2 * RY * cos(ARCH_SWEEP), so lowering the sweep widens it.
+ *
+ * ARCH_RATIO is RY/RX — just under 1 for an oval a little wider than tall,
+ * which keeps the chart from getting taller than the dialog can show.
+ *
+ * RX is NOT a constant — it is solved from the teeth (see ARCH below), so each
+ * half is always exactly long enough to seat its sixteen crowns shoulder to
+ * shoulder. Change the tooth sizes and the oval resizes itself.
  */
-const MIDLINE_GAP = TOOTH_WIDTH.incisor / 2;
-/** Where the vertical midline starts inside a panel — below the jaw label. */
-const MIDLINE_INSET = 60;
+const ARCH_RATIO = 0.9;
+const ARCH_SWEEP = 74;
+
+/**
+ * Nominal crown box. Much smaller than the old 34x42: at this size sixteen
+ * teeth fit a compact arch, which lets the whole viewBox shrink from 660 wide
+ * to 430 — so every tooth actually renders LARGER on a phone than it used to,
+ * despite being smaller in chart units.
+ */
+const BASE_W = 25;
+const BASE_H = 29;
+/**
+ * How much of the per-kind size variation in TOOTH_WIDTH/HEIGHT to keep.
+ * 0 = every tooth identical, 1 = full anatomical variation. Damped to 0.45 for
+ * the "neat and clinical" read: a molar is still visibly the widest tooth, but
+ * the row no longer lurches between a 28px molar and a 21px incisor.
+ * Applied HERE, not in src/lib/teeth.ts — those ratios are shared anatomy data
+ * and stay the single source of truth.
+ */
+const UNIFORMITY = 0.45;
+/**
+ * Slot width as a fraction of the crown width. Slightly under 1 so neighbouring
+ * crowns just touch: teeth sit on the OUTSIDE of the curve, where the arc their
+ * outer edge follows is longer than the arc through their centres, so slots
+ * sized exactly to the crown leave a visible gap between every pair.
+ */
+const PACKING = 0.94;
+/** Clear arc length held open between the central incisors, in px. */
+const MIDLINE_GAP = 15;
+/** A little slack at each end so the third molars are not flush with the tips. */
+const ARCH_END_PAD = 4;
+/**
+ * The dental midline is drawn as FOUR segments, not two.
+ *
+ * The front teeth now sit at the top and bottom of the ring, so the line has to
+ * start out there — level with the incisal edges of 8|9 and 24|25 — to actually
+ * run between them, which is the whole point of it. Between there and the
+ * occlusal gutter it would cross the jaw label, so each half is broken around
+ * its label: tip -> above the label, then below the label -> the gutter.
+ *
+ * All four are drawn from the end nearest the label outward, so the dash phase
+ * is mirror-symmetric about both axes.
+ */
+/** Outer end, level with the incisal edges of the central incisors. */
+const MIDLINE_TIP = 16;
+/** Clear of the jaw label block (label baseline 66, range descender ~83). */
+const MIDLINE_LABEL_TOP = 50;
+const MIDLINE_LABEL_BOTTOM = 90;
 /** Where it stops short of the occlusal line, leaving the gutter clear. */
-const MIDLINE_GUTTER = 12;
+const MIDLINE_GUTTER = 8;
+
+/** Damped crown box for one kind, in px. */
+function crownSize(kind: ToothKind): { w: number; h: number } {
+  return {
+    w: BASE_W * (1 + (TOOTH_WIDTH[kind] - 1) * UNIFORMITY),
+    h: BASE_H * (1 + (TOOTH_HEIGHT[kind] - 1) * UNIFORMITY),
+  };
+}
+
+const DEG = Math.PI / 180;
+
+/**
+ * The arch curve, as an arc-length lookup.
+ *
+ * Teeth must be spaced by ARC LENGTH, not by angle. On a flattened ellipse an
+ * equal angular step covers ~RX of arc at the front and only ~RY at the sides,
+ * so equal angles would leave gaps between the incisors while overlapping the
+ * molars — the exact failure the old straight-line layout avoided by spacing on
+ * cumulative crown width. This keeps that rule and bends it round the ellipse.
+ */
+interface ArchCurve {
+  rx: number;
+  ry: number;
+  /** Cumulative arc length at each sample. */
+  cum: number[];
+  /** Sample angle in degrees, parallel to `cum`. */
+  ang: number[];
+  length: number;
+}
+
+const CURVE_SAMPLES = 720;
+
+/** Sample the arc for a given RX and return its cumulative-length table. */
+function sampleArch(rx: number): ArchCurve {
+  const ry = rx * ARCH_RATIO;
+  const cum: number[] = [0];
+  const ang: number[] = [-ARCH_SWEEP];
+  let prevX = rx * Math.sin(-ARCH_SWEEP * DEG);
+  let prevY = ry * Math.cos(-ARCH_SWEEP * DEG);
+  let total = 0;
+  for (let i = 1; i <= CURVE_SAMPLES; i += 1) {
+    const a = -ARCH_SWEEP + (2 * ARCH_SWEEP * i) / CURVE_SAMPLES;
+    const x = rx * Math.sin(a * DEG);
+    const y = ry * Math.cos(a * DEG);
+    total += Math.hypot(x - prevX, y - prevY);
+    cum.push(total);
+    ang.push(a);
+    prevX = x;
+    prevY = y;
+  }
+  return { rx, ry, cum, ang, length: total };
+}
+
+/** Angle (degrees) at a given arc length along the curve. */
+function angleAt(curve: ArchCurve, s: number): number {
+  const { cum, ang } = curve;
+  let lo = 0;
+  let hi = cum.length - 1;
+  const target = Math.min(Math.max(s, 0), curve.length);
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (cum[mid]! <= target) lo = mid;
+    else hi = mid;
+  }
+  const span = cum[hi]! - cum[lo]!;
+  const t = span > 0 ? (target - cum[lo]!) / span : 0;
+  return ang[lo]! + (ang[hi]! - ang[lo]!) * t;
+}
+
+/**
+ * ONE arch, solved once at module load.
+ *
+ * The sixteen crown widths plus the midline gap and the end padding give the
+ * arc length the arch has to provide; arc length scales linearly with RX at a
+ * fixed ratio, so RX falls straight out of a unit-radius sample. The result is
+ * an oval sized by its teeth rather than by a hand-tuned magic number.
+ */
+const ARCH = (() => {
+  const widths = UPPER_TEETH.map((n) => crownSize(toothKind(n)).w * PACKING);
+  const needed =
+    widths.reduce((sum, w) => sum + w, 0) + MIDLINE_GAP + ARCH_END_PAD * 2;
+  const unit = sampleArch(1).length;
+  return sampleArch(needed / unit);
+})();
+
+/**
+ * Horizontal half-extent of the ring, measured to the CENTRES of the side
+ * molars. Also where the R and L markers sit.
+ */
+const ARCH_HALF_W = ARCH.rx * Math.sin(ARCH_SWEEP * DEG);
 
 interface Placed {
   tooth: number;
@@ -112,43 +256,66 @@ interface Placed {
 }
 
 /**
- * Lay one arch out as a horseshoe: a parabola in `t`, so the central incisors
- * sit closest to the occlusal midline and the third molars ride furthest back.
+ * Seat one arch's sixteen teeth around the ellipse.
+ *
+ * Each crown gets a slot of its own width along the arc, with the midline gap
+ * inserted at the halfway index — 8|9 above, 24|25 below. Both halves of an
+ * arch carry identical crown widths, so budgeting the gap this way keeps its
+ * centre exactly on CX and the arch symmetric about it.
+ *
+ * Every tooth is rotated so its crown points radially OUTWARD from the shared
+ * centre — the ring radiates like petals, incisors facing straight up (upper)
+ * or straight down (lower) and molars facing the cheeks. One rule for all
+ * thirty-two, replacing the old linear tilt fan.
  */
 function placeArch(teeth: readonly number[], upper: boolean): Placed[] {
-  const span = VIEW_W - PAD_X * 2;
-  // Space by CUMULATIVE crown width, not by index. Even spacing collides the
-  // wide molars at the ends of the arch while leaving gaps between the narrow
-  // incisors — the teeth have to sit shoulder to shoulder to read as one jaw.
-  const widths = teeth.map((n) => TOOTH_WIDTH[toothKind(n)]);
-  // The midline gap is spaced like a (very narrow) extra tooth, inserted at the
-  // halfway index — 8|9 on the upper arch, 24|25 on the lower. Both halves of
-  // an arch carry identical crown widths, so budgeting for it here keeps the
-  // gap's centre exactly on VIEW_W / 2 and the arch symmetric about it.
+  const sizes = teeth.map((n) => crownSize(toothKind(n)));
   const midIndex = Math.floor(teeth.length / 2);
-  const totalWidth = widths.reduce((sum, w) => sum + w, 0) + MIDLINE_GAP;
-  let consumed = 0;
+  // ONE centre for both jaws — see the ARCH SHAPE note above. `upper` only
+  // decides which half of the ellipse the teeth are mirrored onto.
+  const sign = upper ? -1 : 1;
+
+  let consumed = ARCH_END_PAD;
   return teeth.map((tooth, i) => {
     if (i === midIndex) consumed += MIDLINE_GAP;
-    // Centre of this crown as a fraction of the arch, so gaps stay uniform.
-    const t = (consumed + widths[i]! / 2) / totalWidth;
-    consumed += widths[i]!;
-    const offset = 2 * t - 1; // -1 at the left end, 0 at centre, +1 at the right
-    const depth = ARCH_DEPTH * offset * offset;
+    const { w, h } = sizes[i]!;
+    // The SLOT is PACKING x the crown, so the crowns overlap a little and read
+    // as one continuous arch rather than a row of separate shapes.
+    const slot = w * PACKING;
+    const centreS = consumed + slot / 2;
+    consumed += slot;
+
+    const a = angleAt(ARCH, centreS);
+    const sin = Math.sin(a * DEG);
+    const cos = Math.cos(a * DEG);
     const kind = toothKind(tooth);
-    const w = BASE_W * TOOTH_WIDTH[kind];
-    const h = BASE_H * TOOTH_HEIGHT[kind];
+
+    // Outward radial direction. atan2 of the ellipse RADIUS VECTOR, not of `a`
+    // itself — on a non-circular ellipse the two differ, and using `a` would
+    // point the side teeth off at the wrong angle.
+    const radial = Math.atan2(ARCH.rx * sin, ARCH.ry * cos) / DEG;
+
+    // Neighbour spacing along the arc, so hit boxes TILE instead of leaving
+    // dead gaps between crowns. On a phone the crowns are ~19px across; without
+    // this a tap landing between two of them would do nothing at all.
+    const pitch = (ARCH.length - MIDLINE_GAP - ARCH_END_PAD * 2) / teeth.length;
+
     return {
       tooth,
-      x: PAD_X + t * span,
-      y: upper ? MID_Y - ARCH_GAP - depth : MID_Y + ARCH_GAP + depth,
-      // Mirrored between arches so both fan outward from the midline rather
-      // than both leaning the same way.
-      rotation: (upper ? 1 : -1) * MAX_TILT * offset,
+      x: CX + ARCH.rx * sin,
+      // Top half for the upper jaw, bottom half for the lower.
+      y: MID_Y + sign * ARCH.ry * cos,
+      // The UPPER crown path is the flipped one now (see `flip` in the render):
+      // pointing a crown outward from a shared centre means the upper jaw's
+      // teeth point UP, which is the mirror of what they did when each jaw had
+      // its own centre below/above it. The rotation sign flips with the path.
+      // Checked at both ends: at the midline the front teeth point straight
+      // away from the centre, and the side molars of both jaws point outward.
+      rotation: sign * -radial,
       kind,
       upper,
-      hitW: Math.max(w, 26),
-      hitH: h + 8,
+      hitW: Math.max(pitch, w + 6),
+      hitH: h + 12,
       d: toothPath(kind, w, h),
     };
   });
@@ -159,11 +326,13 @@ function cuspEdge(halfW: number, y: number, kind: ToothKind): string {
   const x0 = -halfW * 0.92;
   const x1 = halfW * 0.92;
   if (kind === "canine") {
-    // Single pointed cusp — the canine's defining feature.
-    return ` L 0 ${(y + 13).toFixed(2)} L ${x1.toFixed(2)} ${y.toFixed(2)}`;
+    // Single pointed cusp — the canine's defining feature. Proportional to the
+    // crown rather than a fixed 13px: at the new size that constant was almost
+    // the whole tooth and the canines came out as spikes.
+    return ` L 0 ${(y + halfW * 0.9).toFixed(2)} L ${x1.toFixed(2)} ${y.toFixed(2)}`;
   }
   const cusps = kind === "molar" ? 4 : kind === "premolar" ? 2 : 1;
-  const depth = kind === "incisor" ? 4 : 7;
+  const depth = halfW * (kind === "incisor" ? 0.28 : 0.48);
   const seg = (x1 - x0) / cusps;
   let d = "";
   for (let i = 0; i < cusps; i += 1) {
@@ -238,7 +407,14 @@ export function ToothChart({
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      className={cn("h-auto w-full touch-manipulation select-none", className)}
+      className={cn(
+        // max-w: this arch is nearly as tall as it is wide, so stretching it to
+        // the full width of a max-w-3xl dialog would make it ~750px tall and
+        // push Confirm/Cancel off screen. Capped and centred instead — a 448px
+        // arch is comfortably readable, and callers can still override.
+        "mx-auto h-auto w-full max-w-[28rem] touch-manipulation select-none",
+        className,
+      )}
       role="group"
       aria-label="Tooth chart"
     >
@@ -253,10 +429,10 @@ export function ToothChart({
         <filter id="tooth-shadow" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow
             dx="0"
-            dy="1.2"
-            stdDeviation="1.6"
+            dy="0.8"
+            stdDeviation="1"
             floodColor="#0b211c"
-            floodOpacity="0.28"
+            floodOpacity="0.26"
           />
         </filter>
       </defs>
@@ -269,7 +445,7 @@ export function ToothChart({
         y="2"
         width={VIEW_W - 4}
         height={MID_Y - 10}
-        rx="18"
+        rx="14"
         className={palette.panel}
       />
       <rect
@@ -277,41 +453,48 @@ export function ToothChart({
         y={MID_Y + 8}
         width={VIEW_W - 4}
         height={VIEW_H - MID_Y - 10}
-        rx="18"
+        rx="14"
         className={palette.panel}
       />
 
-      {/* Occlusal midline, sitting in the gap between the two panels. */}
+      {/* Occlusal line, in the gutter between the panels. Stops short of the
+          R and L markers rather than running under them, so the three read as
+          one axis with its two ends labelled. */}
       <line
-        x1={PAD_X - 12}
+        x1={CX - ARCH_HALF_W + 26}
         y1={MID_Y}
-        x2={VIEW_W - PAD_X + 12}
+        x2={CX + ARCH_HALF_W - 26}
         y2={MID_Y}
         className={palette.midline}
         strokeWidth="1.5"
         strokeDasharray="5 7"
       />
 
-      {/* Dental midline — the vertical counterpart, one per panel, running down
-          the gap opened between the central incisors (8|9 above, 24|25 below).
-          Drawn before the teeth so a crown always wins the overlap, and both
-          segments are drawn OUTWARD from the occlusal gutter so their dashes
-          mirror each other across it instead of drifting out of phase. */}
+      {/* Dental midline, running through the gap between the central incisors
+          — 8|9 at the top of the ring, 24|25 at the bottom. Four segments, see
+          MIDLINE_TIP. Drawn before the teeth so a crown always wins the
+          overlap, and never interactive. */}
       {(
         [
-          { arch: "upper", from: MID_Y - MIDLINE_GUTTER, to: MIDLINE_INSET },
+          { id: "upper-tip", from: MIDLINE_LABEL_TOP, to: MIDLINE_TIP },
+          { id: "upper-inner", from: MID_Y - MIDLINE_GUTTER, to: MIDLINE_LABEL_BOTTOM },
           {
-            arch: "lower",
+            id: "lower-inner",
             from: MID_Y + MIDLINE_GUTTER,
-            to: VIEW_H - MIDLINE_INSET,
+            to: VIEW_H - MIDLINE_LABEL_BOTTOM,
+          },
+          {
+            id: "lower-tip",
+            from: VIEW_H - MIDLINE_LABEL_TOP,
+            to: VIEW_H - MIDLINE_TIP,
           },
         ] as const
       ).map((seg) => (
         <line
-          key={seg.arch}
-          x1={VIEW_W / 2}
+          key={seg.id}
+          x1={CX}
           y1={seg.from}
-          x2={VIEW_W / 2}
+          x2={CX}
           y2={seg.to}
           className={palette.midline}
           strokeWidth="1.5"
@@ -320,13 +503,47 @@ export function ToothChart({
         />
       ))}
 
-      {/* Jaw labels, centred in their own panel and touching their own arch.
-          Inside the SVG rather than above it so the label can never drift away
-          from the geometry it names, whatever width the chart is scaled to. */}
+      {/* PATIENT'S RIGHT and LEFT, in the gap where the two arches stop short
+          of meeting. R goes on the VIEWER'S LEFT: a dental chart is drawn as if
+          facing the patient, so their right is our left — and that is already
+          how this chart is numbered, with the upper-right quadrant (1-8) and
+          the lower-right (25-32) both drawn on the left. The markers are a
+          reading aid, not content: the per-tooth aria-labels already carry the
+          number, so a screen reader announcing a bare "R L" would only add
+          noise. Hence aria-hidden. */}
       {(
         [
-          { text: upperLabel, range: "1-16", y: 32 },
-          { text: lowerLabel, range: "17-32", y: VIEW_H - 38 },
+          { side: "R", x: CX - ARCH_HALF_W },
+          { side: "L", x: CX + ARCH_HALF_W },
+        ] as const
+      ).map((m) => (
+        <text
+          key={m.side}
+          x={m.x}
+          y={MID_Y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="13"
+          fontWeight="700"
+          letterSpacing="0.5"
+          pointerEvents="none"
+          aria-hidden="true"
+          className={palette.range}
+        >
+          {m.side}
+        </text>
+      ))}
+
+      {/* Jaw labels, inside the ring. The middle of the oval is dead space,
+          and filling it costs no height — a band above and below the chart
+          would have added ~76px, which is the difference between fitting the
+          dialog and scrolling it. It is also where a printed chart puts them.
+          Still inside the SVG, so a label can never drift away from the
+          geometry it names. */}
+      {(
+        [
+          { text: upperLabel, range: "1-16", y: 66 },
+          { text: lowerLabel, range: "17-32", y: VIEW_H - 79 },
         ] as const
       ).map((band) => (
         <g key={band.range} pointerEvents="none">
@@ -334,9 +551,9 @@ export function ToothChart({
             x={VIEW_W / 2}
             y={band.y}
             textAnchor="middle"
-            fontSize="17"
+            fontSize="12.5"
             fontWeight="700"
-            letterSpacing="1.4"
+            letterSpacing="1.1"
             className={palette.label}
           >
             {band.text.toUpperCase()}
@@ -345,9 +562,9 @@ export function ToothChart({
               separate legend block to clutter the panel. */}
           <text
             x={VIEW_W / 2}
-            y={band.y + 17}
+            y={band.y + 13}
             textAnchor="middle"
-            fontSize="13"
+            fontSize="10.5"
             fontWeight="600"
             // direction, not dir: SVG <text> has no dir attribute in React's
             // types. Without it "1-16" bidi-reorders to "16-1" in Arabic.
@@ -364,8 +581,11 @@ export function ToothChart({
         // Inert when the whole chart is disabled, or — on the public tracker —
         // when this tooth carries no treatment to show.
         const inert = disabled || (!idleInteractive && !isSelected);
-        // Flip the shared shape for the lower arch so its cusps point up.
-        const flip = p.upper ? "" : " scale(1,-1)";
+        // The shared crown path is drawn with its biting edge at +y (down).
+        // Radiating outward from ONE centre means the UPPER jaw's crowns point
+        // up, so the upper arch is now the flipped one — the reverse of the
+        // two-horseshoe layout this replaced.
+        const flip = p.upper ? " scale(1,-1)" : "";
         return (
           <g
             key={p.tooth}
@@ -407,7 +627,7 @@ export function ToothChart({
               <path
                 d={p.d}
                 filter="url(#tooth-shadow)"
-                strokeWidth="1.4"
+                strokeWidth="1"
                 className={cn(
                   "transition-[fill,stroke] duration-150",
                   isSelected ? palette.selected : palette.idle,
@@ -421,7 +641,7 @@ export function ToothChart({
               <path
                 d={p.d}
                 fill="none"
-                strokeWidth="2.5"
+                strokeWidth="2"
                 pointerEvents="none"
                 className="stroke-transparent group-focus-visible:stroke-brand-400"
               />
@@ -430,10 +650,12 @@ export function ToothChart({
                 still read horizontally. */}
             <text
               x={p.x}
-              y={p.y + (p.upper ? -1 : 1)}
+              // Nudged toward the crown's bulk, which sits on the root side —
+              // and the root side swapped when the flip did.
+              y={p.y + (p.upper ? 1 : -1)}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="11.5"
+              fontSize="9.5"
               fontWeight="700"
               pointerEvents="none"
               className={cn(
