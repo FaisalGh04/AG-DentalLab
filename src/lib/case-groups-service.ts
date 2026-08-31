@@ -85,6 +85,7 @@ export async function buildCaseGroupTree(): Promise<CaseGroupTree> {
           labelEn: st.labelEn,
           labelAr: st.labelAr,
           order: st.order,
+          overdueAfterMinutes: st.overdueAfterMinutes,
           inUseCount,
         };
       }),

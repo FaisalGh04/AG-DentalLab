@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { AdminProviders } from "@/components/providers";
 import { Sidebar } from "@/components/admin/sidebar";
 import { MobileTopbar } from "@/components/admin/mobile-topbar";
+import { OverdueAlertBar } from "@/components/admin/overdue-alert-bar";
 
 export default async function AdminLayout({
   children,
@@ -22,6 +23,10 @@ export default async function AdminLayout({
         <Sidebar adminName={adminName} />
         <div className="flex min-w-0 flex-1 flex-col">
           <MobileTopbar adminName={adminName} />
+          {/* Above <main>, below the mobile topbar: visible on every admin page
+              without ever overlaying the page's own content. Renders nothing at
+              all when no unmuted notification is overdue. */}
+          <OverdueAlertBar />
           <main className="flex-1 p-4 md:p-8">{children}</main>
         </div>
       </div>

@@ -38,6 +38,7 @@ import { CaseFormDialog } from "@/components/admin/case-form-dialog";
 import { StageViewerDialog } from "@/components/admin/stage-viewer-dialog";
 import { StageActorHistoryDialog } from "@/components/admin/stage-actor-history-dialog";
 import { ToothTreatmentSummary } from "@/components/admin/tooth-treatment-summary";
+import { CaseNotificationBell } from "@/components/admin/case-notification-bell";
 import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -97,6 +98,40 @@ export function CaseDetailClient({ id }: { id: string }) {
    * saved value, so it is harmless there.
    */
   const [workflowResetKey, setWorkflowResetKey] = React.useState(0);
+
+  /**
+   * Stage called out by an overdue notification — from `?stage=` when the admin
+   * arrived by clicking the red bar or an inbox row, or from the bell on this
+   * page. Presentation only: it highlights and scrolls, and changes nothing
+   * about the case.
+   */
+  const [focusedStage, setFocusedStage] = React.useState<string | null>(null);
+  const stagesPanelRef = React.useRef<HTMLDivElement | null>(null);
+
+  const focusStage = React.useCallback((stageKey: string) => {
+    setFocusedStage(stageKey);
+    stagesPanelRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, []);
+
+  // Deep link. Gated on `kase` because the panel this scrolls to does not exist
+  // until the case has loaded — on a cold navigation the effect would otherwise
+  // fire against a null ref and silently do nothing.
+  const stageParam = params.get("stage");
+  const caseLoaded = !!kase;
+  React.useEffect(() => {
+    if (stageParam && caseLoaded) focusStage(stageParam);
+  }, [stageParam, caseLoaded, focusStage]);
+
+  // The highlight is an attention cue, not a mode: it fades on its own so the
+  // page does not stay visually flagged for the rest of the session.
+  React.useEffect(() => {
+    if (!focusedStage) return;
+    const timer = window.setTimeout(() => setFocusedStage(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [focusedStage]);
 
   const badgeLabels = {
     completed: t("state.completed"),
@@ -258,7 +293,11 @@ export function CaseDetailClient({ id }: { id: string }) {
         >
           <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t("detail.allCases")}
         </Link>
-        <div className="flex gap-2">
+        {/* Bell, Edit, Delete — in that order. flex-wrap so three controls plus
+            an Arabic label set still fit a 390px phone without shrinking the
+            tap targets. */}
+        <div className="flex flex-wrap gap-2">
+          <CaseNotificationBell caseId={id} onFocusStage={focusStage} />
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4" /> {t("detail.edit")}
           </Button>
@@ -379,9 +418,11 @@ export function CaseDetailClient({ id }: { id: string }) {
           )}
         </div>
 
-        {/* Per-stage hide/show management */}
+        {/* Per-stage hide/show management. Also the anchor an overdue
+            notification scrolls to — it is the one place on the page that names
+            every stage individually. */}
         {collection && (
-          <div className="border-t border-border/80 bg-white/50 p-6">
+          <div ref={stagesPanelRef} className="border-t border-border/80 bg-white/50 p-6">
             <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Layers className="h-3.5 w-3.5" /> {t("detail.stagesInCase")}
             </p>
@@ -397,10 +438,15 @@ export function CaseDetailClient({ id }: { id: string }) {
                   <span
                     key={s.id}
                     className={cn(
-                      "inline-flex items-center rounded-full border",
+                      "inline-flex items-center rounded-full border transition-shadow",
                       hidden
                         ? "border-border bg-muted/40"
                         : "border-brand-200 bg-brand-50",
+                      // The stage an overdue notification pointed at. A ring
+                      // rather than a colour swap, so the chip's own hidden /
+                      // visible state stays readable underneath.
+                      focusedStage === s.id &&
+                        "ring-2 ring-destructive/70 ring-offset-2 ring-offset-background",
                     )}
                   >
                     {/* ACT: toggling visibility is a gated lifecycle change. */}

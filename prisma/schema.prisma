@@ -155,6 +155,14 @@ model PatientCase {
   // a case can exist before a collection/stage is chosen.
   collectionId            String?   @map("collection_id")
   currentStageId          String?   @map("current_stage_id")
+  // WHEN the case entered currentStageId. A DERIVED CACHE of the audit log —
+  // case_action_logs stays the source of truth, and this column is written from
+  // exactly the same rule getCaseById() uses (latest SUCCESS CASE_CREATED /
+  // STAGE_CHANGED / COLLECTION_CHANGED whose to_stage_id is the current stage).
+  // Denormalized because the overdue scan needs to range-filter EVERY active
+  // case on it; deriving that per case from the log would be a per-row subquery.
+  // NULL = entry time unknown (legacy rows with no audit trail) → never overdue.
+  currentStageEnteredAt   DateTime? @map("current_stage_entered_at")
   // Stage ids hidden for THIS case (excluded from its stepper). Default: none.
   hiddenStageIds          String[]  @default([]) @map("hidden_stage_ids")
   // Derived + persisted whenever collection/stage/hidden changes: true when the
@@ -174,8 +182,11 @@ model PatientCase {
   // this adds NO column to patient_cases. onDelete: SetNull there keeps the
   // audit trail after a case is deleted.
   actionLogs     CaseActionLog[]
-  doctor         Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
-  categoryConfig CaseCategoryConfig @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
+  // Read/mute state for this case's overdue notifications. Cascade: the state
+  // describes a notification ABOUT this case and is meaningless without it.
+  overdueNotices StageOverdueNotice[]
+  doctor         Doctor?              @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  categoryConfig CaseCategoryConfig   @relation(fields: [category], references: [category], onDelete: Restrict, onUpdate: Cascade)
 
   // Indexes tuned for the two hot paths: public tracking lookup + admin list.
   @@index([patientFullNameNorm])
@@ -186,6 +197,9 @@ model PatientCase {
   // Public doctor portal: one doctor's cases, split active/archive, newest
   // first — this composite covers the whole query in one index.
   @@index([doctorId, isCompleted, createdAt])
+  // THE overdue scan: active cases whose stage entry is older than the smallest
+  // configured threshold. isCompleted first (equality) then the range column.
+  @@index([isCompleted, currentStageEnteredAt])
   @@map("patient_cases")
 }
 
@@ -326,23 +340,75 @@ model CaseStageSet {
 }
 
 model CaseStage {
-  id         String       @id @default(cuid())
-  stageSetId String       @map("stage_set_id")
-  stageSet   CaseStageSet @relation(fields: [stageSetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  id                  String       @id @default(cuid())
+  stageSetId          String       @map("stage_set_id")
+  stageSet            CaseStageSet @relation(fields: [stageSetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   // stage_key = the legacy stage id, unique within its set — what live case data
   // (current_stage_id, hidden_stage_ids, CaseProgress/CaseImage.stage_id) resolves to.
-  stageKey   String       @map("stage_key")
-  labelEn    String       @map("label_en")
-  labelAr    String       @map("label_ar")
-  order      Int          @default(0)
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
+  stageKey            String       @map("stage_key")
+  labelEn             String       @map("label_en")
+  labelAr             String       @map("label_ar")
+  order               Int          @default(0)
+  /// Overdue threshold for THIS stage, in MINUTES. NULL = no overdue alerting
+  /// for the stage (the default, and what every pre-existing row keeps).
+  /// Minutes rather than hours so the comparison is exact integer arithmetic —
+  /// the admin UI edits it in hours (0.25 steps) and converts at the boundary.
+  overdueAfterMinutes Int?         @map("overdue_after_minutes")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
 
   quickAddSteps StageQuickAddStep[]
 
   @@unique([stageSetId, stageKey])
   @@index([stageSetId, order])
   @@map("case_stages")
+}
+
+// ------------------------------------------------------------------
+// STAGE-OVERDUE NOTIFICATIONS (admin only).
+//
+// The notifications themselves are NOT stored. They are DERIVED on read from
+// three facts that already exist — the case's current stage, when it entered
+// (patient_cases.current_stage_entered_at) and that stage's configured
+// threshold (case_stages.overdue_after_minutes) — see src/lib/stage-overdue-service.ts.
+//
+// That choice is deliberate. A materialized notification table would need a
+// background job to create rows when a case goes overdue and to retire them
+// when it moves on; this project has no cron or worker, and a stale row would
+// mean the admin sees an alert for a stage the case already left. Deriving
+// makes "the case moved on" self-healing: the notification simply stops being
+// computed.
+//
+// What CANNOT be derived is what the admin did about it, so that — and only
+// that — is what this table stores. Rows are written lazily: an untouched
+// notification has no row at all and reads as unread + unmuted.
+// ------------------------------------------------------------------
+model StageOverdueNotice {
+  id             String   @id @default(cuid())
+  caseId         String   @map("case_id")
+  /// The stage this notification is about — a stage_key, matching
+  /// PatientCase.currentStageId (never a CaseStage.id).
+  stageKey       String   @map("stage_key")
+  /// WHICH VISIT to that stage. Part of the unique key on purpose: if a case
+  /// leaves a stage and later returns, the new visit has a new entry time and
+  /// therefore no state row, so it surfaces as a FRESH unread, unmuted
+  /// notification. Muting a stage once must not silence it forever.
+  stageEnteredAt DateTime @map("stage_entered_at")
+
+  /// When the admin opened/clicked it. NULL = unread.
+  readAt  DateTime? @map("read_at")
+  /// When the admin muted it. NULL = active. Muted notifications are excluded
+  /// from the red alert bar but stay visible under "Muted" in the bell + inbox.
+  mutedAt DateTime? @map("muted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  case PatientCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, stageKey, stageEnteredAt])
+  @@index([caseId])
+  @@map("stage_overdue_notices")
 }
 
 // ------------------------------------------------------------------
@@ -451,6 +517,15 @@ enum CaseActionType {
   ADMIN_PASSWORD_RESET_BLOCKED
   OWNER_PASSWORD_CHANGED
   OWNER_PASSWORD_CHANGE_FAILED
+  // Stage-overdue notifications. STAGE_OVERDUE_* rows record what the admin did
+  // about an alert, never the alert itself — the notification is derived, so
+  // there is no "notification created" event to log.
+  STAGE_OVERDUE_MUTED
+  STAGE_OVERDUE_UNMUTED
+  STAGE_OVERDUE_READ_ALL
+  // A stage's overdue_after_minutes was changed (or cleared) in the workflow
+  // editor. Carries no caseId — it is a configuration change, not a case event.
+  STAGE_OVERDUE_DURATION_UPDATED
 }
 
 enum CaseActionOutcome {

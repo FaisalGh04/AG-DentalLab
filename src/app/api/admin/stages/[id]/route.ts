@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { apiOk, apiError, handleApiError } from "@/lib/api";
 import { requireAdmin } from "@/lib/guard";
+import { getClientIp } from "@/lib/ratelimit";
+import { resolveActingAdmin } from "@/lib/admin-accounts";
+import { auditNoticeActions } from "@/lib/notification-audit";
 import { prisma } from "@/lib/prisma";
 import { caseStageUpdateSchema } from "@/lib/validations";
 import { stageInUseBreakdown } from "@/lib/case-groups-service";
@@ -12,8 +16,9 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * PATCH /api/admin/stages/[id] — rename (labelEn/labelAr) and/or reorder. The
- * stageKey is immutable (live case data resolves against it) and never changes.
+ * PATCH /api/admin/stages/[id] — rename (labelEn/labelAr), reorder, and/or set
+ * the overdue notification threshold. The stageKey is immutable (live case data
+ * resolves against it) and never changes.
  */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
@@ -28,8 +33,39 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const updated = await prisma.caseStage.update({
       where: { id },
       data: input,
-      select: { id: true, stageKey: true, labelEn: true, labelAr: true, order: true },
+      select: {
+        id: true,
+        stageKey: true,
+        labelEn: true,
+        labelAr: true,
+        order: true,
+        overdueAfterMinutes: true,
+      },
     });
+
+    // Audited because it changes when every case in this stage starts alerting
+    // — a silent edit here would make a later "why did nobody get warned?"
+    // unanswerable. Compared against the stored value so a no-op save (the
+    // inline editor sends every field) writes nothing.
+    if (
+      input.overdueAfterMinutes !== undefined &&
+      input.overdueAfterMinutes !== existing.overdueAfterMinutes
+    ) {
+      const session = await auth();
+      const actingAdmin = await resolveActingAdmin(session?.user?.id);
+      await auditNoticeActions([
+        {
+          action: "STAGE_OVERDUE_DURATION_UPDATED",
+          // No case: this is workflow configuration, not a case event. The
+          // stage is identified by its key in to_stage_id.
+          stageKey: updated.stageKey,
+          adminEmail: actingAdmin?.email ?? session?.user?.email ?? null,
+          adminName: actingAdmin?.displayName ?? null,
+          ip: getClientIp(req.headers),
+        },
+      ]);
+    }
+
     revalidatePath("/track");
     return apiOk(updated);
   } catch (err) {

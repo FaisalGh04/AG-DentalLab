@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ArrowDown,
   Check,
+  Clock,
   X,
   Loader2,
 } from "lucide-react";
@@ -17,6 +18,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { ApiError } from "@/lib/fetcher";
+import {
+  hoursToMinutes,
+  minutesToHoursInput,
+  MIN_OVERDUE_HOURS,
+} from "@/lib/overdue-format";
 import {
   useCaseGroupsTree,
   useCreateCaseGroup,
@@ -36,7 +42,19 @@ import type {
 } from "@/types/case-groups";
 
 type EditKind = "group" | "set" | "stage";
-type Editing = { kind: EditKind; id: string; en: string; ar: string } | null;
+/**
+ * `overdueHours` is the raw INPUT STRING, not a number: "" is a meaningful
+ * value (disable alerts for this stage) and mid-typing states like "2." must
+ * survive a re-render. It is parsed to minutes once, on save.
+ * Only stage rows use it; group/set edits carry "".
+ */
+type Editing = {
+  kind: EditKind;
+  id: string;
+  en: string;
+  ar: string;
+  overdueHours: string;
+} | null;
 
 const TYPES = ["REGULAR", "DIGITAL"] as const;
 
@@ -74,7 +92,20 @@ export function CaseGroupsClient() {
     try {
       if (editing.kind === "group") await updateGroup.mutateAsync({ id: editing.id, input });
       else if (editing.kind === "set") await updateSet.mutateAsync({ id: editing.id, input });
-      else await updateStage.mutateAsync({ id: editing.id, input });
+      else {
+        // undefined = unparseable input; null = deliberately empty (alerts off).
+        // The two must not collapse: saving a typo as "off" would silently stop
+        // a stage alerting.
+        const minutes = hoursToMinutes(editing.overdueHours);
+        if (minutes === undefined) {
+          toast.error(t("groups.overdueInvalid", { min: MIN_OVERDUE_HOURS }));
+          return;
+        }
+        await updateStage.mutateAsync({
+          id: editing.id,
+          input: { ...input, overdueAfterMinutes: minutes },
+        });
+      }
       setEditing(null);
       toast.success(t("groups.toastSaved"));
     } catch (e) {
@@ -220,7 +251,13 @@ export function CaseGroupsClient() {
                 onSave={saveEdit}
                 onCancel={() => setEditing(null)}
                 onEdit={() =>
-                  setEditing({ kind: "group", id: group.id, en: group.labelEn, ar: group.labelAr })
+                  setEditing({
+                    kind: "group",
+                    id: group.id,
+                    en: group.labelEn,
+                    ar: group.labelAr,
+                    overdueHours: "",
+                  })
                 }
                 onDelete={() => del("group", group.id, deleteGroup.mutateAsync)}
                 deleteDisabled={group.stageSets.length > 0}
@@ -255,7 +292,13 @@ export function CaseGroupsClient() {
                           onSave={saveEdit}
                           onCancel={() => setEditing(null)}
                           onEdit={() =>
-                            setEditing({ kind: "set", id: set.id, en: set.labelEn, ar: set.labelAr })
+                            setEditing({
+                              kind: "set",
+                              id: set.id,
+                              en: set.labelEn,
+                              ar: set.labelAr,
+                              overdueHours: "",
+                            })
                           }
                           onDelete={() => del("set", set.id, deleteSet.mutateAsync)}
                           deleteDisabled={set.caseCount > 0 || set.stages.length > 0}
@@ -377,42 +420,89 @@ function StageList({
       {set.stages.length === 0 && (
         <p className="px-1 py-1 text-xs text-muted-foreground">{t("groups.noStages")}</p>
       )}
-      {set.stages.map((stage, si) => (
-        <div key={stage.id} className="flex items-center gap-1 rounded-lg bg-card px-1.5 py-1">
-          <div className="flex flex-col">
-            <IconBtn label={t("groups.moveUp")} disabled={si === 0 || pending} onClick={() => onMove(si, -1)}>
-              <ArrowUp className="h-3.5 w-3.5" />
-            </IconBtn>
-            <IconBtn label={t("groups.moveDown")} disabled={si === set.stages.length - 1 || pending} onClick={() => onMove(si, 1)}>
-              <ArrowDown className="h-3.5 w-3.5" />
-            </IconBtn>
-          </div>
-          {editInputs("stage", stage.id) ? (
+      {set.stages.map((stage, si) =>
+        // Editing a stage breaks OUT of the compact row: three fields plus a
+        // helper line do not fit a half-width column, and squeezing the overdue
+        // input in beside the labels made every field unusably narrow on a
+        // phone. The read-only row keeps its original one-line shape.
+        editInputs("stage", stage.id) ? (
+          <div
+            key={stage.id}
+            className="space-y-2 rounded-lg border border-brand-200 bg-card p-2"
+          >
             <EditFields editing={editing!} setEditing={setEditing} />
-          ) : (
+            <OverdueField editing={editing!} setEditing={setEditing} t={t} />
+            <div className="flex justify-end">
+              <RowActions
+                editing
+                onSave={saveEdit}
+                onCancel={() => setEditing(null)}
+                onEdit={() => undefined}
+                onDelete={() => undefined}
+                deleteTitle=""
+                t={t}
+                small
+              />
+            </div>
+          </div>
+        ) : (
+          <div key={stage.id} className="flex items-center gap-1 rounded-lg bg-card px-1.5 py-1">
+            <div className="flex flex-col">
+              <IconBtn label={t("groups.moveUp")} disabled={si === 0 || pending} onClick={() => onMove(si, -1)}>
+                <ArrowUp className="h-3.5 w-3.5" />
+              </IconBtn>
+              <IconBtn label={t("groups.moveDown")} disabled={si === set.stages.length - 1 || pending} onClick={() => onMove(si, 1)}>
+                <ArrowDown className="h-3.5 w-3.5" />
+              </IconBtn>
+            </div>
             <span className="min-w-0 flex-1 truncate text-sm text-ink">{L(stage)}</span>
-          )}
-          {!editInputs("stage", stage.id) && stage.inUseCount > 0 && (
-            <span
-              className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700"
-              title={t("groups.inUse", { count: stage.inUseCount })}
-            >
-              {t("groups.inUse", { count: stage.inUseCount })}
-            </span>
-          )}
-          <RowActions
-            editing={editInputs("stage", stage.id)}
-            onSave={saveEdit}
-            onCancel={() => setEditing(null)}
-            onEdit={() => setEditing({ kind: "stage", id: stage.id, en: stage.labelEn, ar: stage.labelAr })}
-            onDelete={() => onDeleteStage(stage.id)}
-            deleteDisabled={stage.inUseCount > 0}
-            deleteTitle={stage.inUseCount > 0 ? t("groups.deleteStageBlocked") : t("groups.deleteStage")}
-            t={t}
-            small
-          />
-        </div>
-      ))}
+            {/* Alerting is invisible otherwise — an admin must be able to see
+                which stages warn, and after how long, without opening each. */}
+            {stage.overdueAfterMinutes != null && (
+              <span
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.65rem] font-semibold text-destructive"
+                title={t("groups.overdueBadgeTitle", {
+                  hours: minutesToHoursInput(stage.overdueAfterMinutes),
+                })}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                <span dir="ltr">
+                  {t("groups.overdueBadge", {
+                    hours: minutesToHoursInput(stage.overdueAfterMinutes),
+                  })}
+                </span>
+              </span>
+            )}
+            {stage.inUseCount > 0 && (
+              <span
+                className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[0.65rem] font-medium text-amber-700"
+                title={t("groups.inUse", { count: stage.inUseCount })}
+              >
+                {t("groups.inUse", { count: stage.inUseCount })}
+              </span>
+            )}
+            <RowActions
+              editing={false}
+              onSave={saveEdit}
+              onCancel={() => setEditing(null)}
+              onEdit={() =>
+                setEditing({
+                  kind: "stage",
+                  id: stage.id,
+                  en: stage.labelEn,
+                  ar: stage.labelAr,
+                  overdueHours: minutesToHoursInput(stage.overdueAfterMinutes),
+                })
+              }
+              onDelete={() => onDeleteStage(stage.id)}
+              deleteDisabled={stage.inUseCount > 0}
+              deleteTitle={stage.inUseCount > 0 ? t("groups.deleteStageBlocked") : t("groups.deleteStage")}
+              t={t}
+              small
+            />
+          </div>
+        ),
+      )}
 
       {addStageFor === set.id ? (
         <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-border p-2">
@@ -434,6 +524,57 @@ function StageList({
           {t("groups.addStage")}
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * "Overdue notification after" — the per-stage threshold, edited in HOURS.
+ *
+ * Hours because that is how a lab talks about it ("give CAD two and a half
+ * hours"); minutes are what the API and the DB see, converted once on save by
+ * hoursToMinutes. Empty is a first-class value and the helper text says so, so
+ * turning alerting off never requires guessing at a sentinel like 0.
+ */
+function OverdueField({
+  editing,
+  setEditing,
+  t,
+}: {
+  editing: NonNullable<Editing>;
+  setEditing: (e: Editing) => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  const fieldId = "overdue-" + editing.id;
+  return (
+    <div className="space-y-1">
+      <label
+        htmlFor={fieldId}
+        className="block text-xs font-medium text-foreground/80"
+      >
+        {t("groups.overdueLabel")}
+      </label>
+      <div className="flex items-center gap-1.5">
+        <Input
+          id={fieldId}
+          // Not type="number": Firefox and Safari silently discard a partially
+          // typed decimal, and a spinner is meaningless at a 0.25 step.
+          // inputMode still gets the numeric keypad on a phone.
+          type="text"
+          inputMode="decimal"
+          dir="ltr"
+          value={editing.overdueHours}
+          onChange={(e) => setEditing({ ...editing, overdueHours: e.target.value })}
+          placeholder={t("groups.overduePlaceholder")}
+          className="h-8 w-28"
+        />
+        <span className="text-xs text-muted-foreground">
+          {t("groups.overdueUnit")}
+        </span>
+      </div>
+      <p className="text-[0.7rem] leading-snug text-muted-foreground">
+        {t("groups.overdueHelp")}
+      </p>
     </div>
   );
 }

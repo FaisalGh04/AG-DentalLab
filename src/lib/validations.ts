@@ -678,12 +678,60 @@ export const caseStageCreateSchema = z.object({
 });
 export type CaseStageCreateInput = z.infer<typeof caseStageCreateSchema>;
 
-// stageKey is immutable — only labels + order are editable.
+/**
+ * Overdue threshold for a stage, in MINUTES.
+ *
+ * `.nullable()` is the switch-off value and is meaningfully different from
+ * omitting the key: null clears an existing threshold, absent leaves it alone.
+ * Floor of 15 = the 0.25 h the UI offers as its smallest step; ceiling of
+ * 1,000,000 min (~2 years) is a sanity bound, not a policy.
+ */
+const overdueAfterMinutesSchema = z
+  .number()
+  .int("Use whole minutes")
+  .min(15, "Must be at least 0.25 hours")
+  .max(1_000_000)
+  .nullable();
+
+// stageKey is immutable — only labels, order and the overdue threshold are
+// editable.
 export const caseStageUpdateSchema = z
   .object({
     labelEn: z.string().trim().min(1).max(120).optional(),
     labelAr: z.string().trim().min(1).max(120).optional(),
     order: z.number().int().min(0).optional(),
+    overdueAfterMinutes: overdueAfterMinutesSchema.optional(),
   })
   .refine((d) => Object.keys(d).length > 0, "Nothing to update");
 export type CaseStageUpdateInput = z.infer<typeof caseStageUpdateSchema>;
+
+// ------------------------------------------------------------------
+// Stage-overdue notifications (admin only)
+// ------------------------------------------------------------------
+
+/**
+ * Target for a read/mute mutation: either an explicit list of cases or every
+ * currently-overdue one.
+ *
+ * Only case ids cross the wire. The stage and the visit timestamp that complete
+ * a notification's identity are resolved server-side from the case row (see
+ * applyNoticeState), so a caller cannot address a notification that does not
+ * exist or forge state for a stage a case has already left.
+ */
+const noticeTargetShape = {
+  caseIds: z.array(z.string().min(1).max(64)).max(500).optional(),
+  all: z.boolean().optional(),
+};
+
+const requireTarget = (d: { caseIds?: string[]; all?: boolean }) =>
+  d.all === true || (d.caseIds?.length ?? 0) > 0;
+
+export const noticeReadSchema = z
+  .object(noticeTargetShape)
+  .refine(requireTarget, "Nothing to mark read");
+export type NoticeReadInput = z.infer<typeof noticeReadSchema>;
+
+export const noticeMuteSchema = z
+  .object({ ...noticeTargetShape, muted: z.boolean() })
+  .refine(requireTarget, "Nothing to mute or unmute");
+export type NoticeMuteInput = z.infer<typeof noticeMuteSchema>;

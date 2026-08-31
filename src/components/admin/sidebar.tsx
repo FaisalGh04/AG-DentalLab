@@ -19,6 +19,7 @@ import {
 import { AdminSettingsDialog } from "@/components/admin/admin-settings-dialog";
 import { AdminLanguageToggle } from "@/components/admin/admin-language-toggle";
 import { AdminThemeToggle } from "@/components/admin/admin-theme";
+import { NotificationsInbox } from "@/components/admin/notifications-inbox";
 import { ADMIN_NAV_LINKS } from "@/components/admin/nav-links";
 import { useAdminI18n } from "@/components/i18n/admin-i18n";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,10 @@ export function Sidebar({ adminName }: { adminName: string }) {
       </nav>
 
       <div className="mt-auto shrink-0 space-y-2 border-t border-border pt-4">
+        {/* Sits with the utilities rather than in the nav list: the inbox is a
+            panel, not a destination, and putting it among the links would make
+            it the only row that never highlights as the active route. */}
+        <NotificationsInbox />
         <AdminThemeToggle className="w-full" />
         <AdminLanguageToggle className="w-full justify-center" />
 

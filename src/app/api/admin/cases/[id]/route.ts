@@ -218,6 +218,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         category: targetCategory,
         collectionId: life.collectionId,
         currentStageId: life.currentStageId,
+        // Restart the overdue clock only on an actual stage MOVE. Keyed off the
+        // normalized value, exactly like the audit diff above, so a collection
+        // change (which derives a new stage server-side) restarts it too while
+        // an ordinary field edit — or re-selecting the current stage — leaves it
+        // untouched. Resetting it on every PATCH would make a case look freshly
+        // arrived every time someone edited its notes.
+        ...(life.currentStageId !== existing.currentStageId
+          ? { currentStageEnteredAt: life.currentStageId ? new Date() : null }
+          : {}),
         hiddenStageIds: life.hiddenStageIds,
         isCompleted: life.isCompleted,
         estimatedCompletionDate:

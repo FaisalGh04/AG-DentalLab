@@ -200,6 +200,10 @@ export async function POST(req: NextRequest) {
         category,
         collectionId: life.collectionId,
         currentStageId: life.currentStageId,
+        // Starts the overdue clock. Mirrors the CASE_CREATED audit row written
+        // just below — same instant, same meaning — so the derived cache and
+        // the audit log agree from the case's very first row.
+        currentStageEnteredAt: life.currentStageId ? new Date() : null,
         hiddenStageIds: life.hiddenStageIds,
         isCompleted: life.isCompleted,
           estimatedCompletionDate: input.estimatedCompletionDate

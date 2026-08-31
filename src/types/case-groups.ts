@@ -8,6 +8,12 @@ export interface CaseStageNode {
   labelEn: string;
   labelAr: string;
   order: number;
+  /**
+   * Overdue notification threshold in MINUTES, or null when this stage does not
+   * alert. The editor shows and accepts HOURS; minutes is what crosses the wire
+   * and what the DB stores, so the two never drift through a float.
+   */
+  overdueAfterMinutes: number | null;
   /** Total live references (current stage + hidden + progress + images). >0 blocks delete. */
   inUseCount: number;
 }
