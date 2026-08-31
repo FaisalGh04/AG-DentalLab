@@ -27,6 +27,20 @@
     --gold: 38 44% 46%;
     --bg-main: 111 22% 94%;
     --bg-section: 126 18% 89%;
+
+    /* Scrollbar thumb, light surfaces. brand-500 (#47856D) at low alpha — taken
+       from the palette rather than picked by eye, so the thumb stays in family
+       with everything else. The TRACK is deliberately not a variable: it is
+       always transparent (see the scrollbar block further down). */
+    --scrollbar-thumb: rgb(71 133 109 / 0.35);
+    --scrollbar-thumb-hover: rgb(71 133 109 / 0.55);
+    --scrollbar-thumb-active: rgb(71 133 109 / 0.7);
+
+    /* Canvas colour for dark surfaces. Same value as --background inside .dark,
+       but declared HERE, on :root, because it has to be readable from <html> —
+       and on the public pages <html> is not the element that carries `.dark`.
+       Used only by the html rule below. */
+    --canvas-dark: 164 35% 6%;
   }
 
   .dark {
@@ -51,6 +65,25 @@
     --ring: 157 42% 42%;
     --gold: 38 44% 52%;
     --cream: 60 14% 95%;
+  }
+
+  /*
+   * Scrollbar thumb, dark surfaces. brand-200 (#C9E0D4) at low alpha — a light
+   * frost rather than a green, because on the near-black admin/track surfaces a
+   * green thumb reads as a smudge.
+   *
+   * The `html:has(.dark)` half is not redundant. The admin theme toggle puts
+   * `.dark` on <html>, but the public pages (/ and /track) put it on a wrapper
+   * INSIDE <body>. The window scrollbar is painted from the root element, so
+   * without this the near-black public pages would inherit the LIGHT thumb.
+   * Where :has() is unsupported the rule is simply skipped and those pages fall
+   * back to the light thumb, which is still a transparent-track improvement.
+   */
+  .dark,
+  html:has(.dark) {
+    --scrollbar-thumb: rgb(201 224 212 / 0.22);
+    --scrollbar-thumb-hover: rgb(201 224 212 / 0.38);
+    --scrollbar-thumb-active: rgb(201 224 212 / 0.5);
   }
 }
 
@@ -368,18 +401,99 @@
   }
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* ─────────────────────────────────────────────────────────────────────────
+   SCROLLBARS — glass, not chrome.
+
+   The track used to be painted `hsl(var(--bg-main))`, and --bg-main is defined
+   ONLY in :root — it is never redefined for .dark. That one omission caused
+   both of the reported symptoms from a single source: a solid pale-green bar
+   down the side of every light dialog, and the SAME near-white bar on the dark
+   ones, where it was the brightest thing on the screen.
+
+   The track is now transparent everywhere, so whatever glass surface is behind
+   the scroller shows through, and only the thumb is drawn.
+
+   The thumb is inset by a 3px TRANSPARENT border with `background-clip:
+   padding-box`. That is what makes it read as a floating pill instead of a bar
+   welded to the edge — and it costs no layout, unlike padding on the scroll
+   container, which would shift the content. Hit area stays the full 12px even
+   though only 6px is painted.
+
+   Scroll BEHAVIOUR is untouched: no overflow, overscroll, scroll-behavior or
+   scrollbar-gutter property is set here. Dialogs keep their existing
+   `[scrollbar-gutter:stable]`, which is what stops content shifting when a
+   scrollbar appears.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/*
+ * THE CANVAS BEHIND THE TRACK.
+ *
+ * A transparent track shows whatever is behind it, and behind the document
+ * scrollbar there is no element — there is the CANVAS, which by default
+ * propagates up from `body`. This body is painted `hsl(var(--bg-main))` plus a
+ * white-to-pale-green gradient, and --bg-main is light in BOTH themes (the very
+ * omission that made the old track look wrong). So making the track transparent
+ * fixed the dialogs but left the window scrollbar a bright strip down the side
+ * of every dark page — the same bug, one level further out.
+ *
+ * Giving <html> its own background in dark mode stops body's background
+ * propagating: the canvas — and therefore the scrollbar gutter and any
+ * overscroll — goes dark, while body's gradient carries on painting inside its
+ * own box exactly as before. Nothing else moves.
+ */
+html.dark,
+html:has(.dark) {
+  background-color: hsl(var(--canvas-dark));
 }
-::-webkit-scrollbar-track {
-  background-color: hsl(var(--bg-main));
+
+/* FIREFOX ONLY — and the guard is the whole point.
+   Chrome 121+ implements the standard `scrollbar-width` / `scrollbar-color`
+   properties, and on any scroller where one of them is set it IGNORES the
+   ::-webkit-scrollbar pseudo-elements entirely. Declaring both unconditionally
+   would therefore silently throw away the inset pill, the min-height and the
+   hover/active states below, leaving Chrome with a plain thin bar.
+   `not selector(::-webkit-scrollbar)` is false in Chrome and Safari (they
+   support the pseudo-element) and true in Firefox (it does not), so each engine
+   gets exactly one mechanism and they never compete. Safari older than 16.4
+   does not support `@supports selector()` at all, skips this block, and falls
+   through to the WebKit rules it does understand — the safe direction. */
+@supports (scrollbar-width: thin) and (not selector(::-webkit-scrollbar)) {
+  /* Both properties inherit, so the root declaration covers every scroller. */
+  :root {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+/* WebKit / Blink. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-brand-200;
+  background-color: var(--scrollbar-thumb);
+  /* Paint only inside the padding box, leaving the 3px border as clear inset. */
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  /* Long pages otherwise shrink the thumb to an unusable dot. */
+  min-height: 2.5rem;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-brand-300;
+  background-color: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-thumb-active);
+}
+/* The stepper arrows are chrome the glass UI has no use for. */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
