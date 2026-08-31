@@ -83,6 +83,19 @@ const BASE_W = 34;
 const BASE_H = 42;
 /** Tilt of the outermost teeth, in degrees — teeth fan out along the arch. */
 const MAX_TILT = 24;
+/**
+ * Breathing room held open at the dental midline, in the same relative units
+ * as TOOTH_WIDTH — half a central incisor. It buys the vertical midline ~9px
+ * of clear space on either side, so the line runs BETWEEN 8|9 and 24|25
+ * instead of grazing either crown. The arch absorbs it by tightening ~3%
+ * elsewhere, which leaves the outer molars within half a pixel of where they
+ * were and the whole chart still centred on VIEW_W / 2.
+ */
+const MIDLINE_GAP = TOOTH_WIDTH.incisor / 2;
+/** Where the vertical midline starts inside a panel — below the jaw label. */
+const MIDLINE_INSET = 60;
+/** Where it stops short of the occlusal line, leaving the gutter clear. */
+const MIDLINE_GUTTER = 12;
 
 interface Placed {
   tooth: number;
@@ -108,9 +121,15 @@ function placeArch(teeth: readonly number[], upper: boolean): Placed[] {
   // wide molars at the ends of the arch while leaving gaps between the narrow
   // incisors — the teeth have to sit shoulder to shoulder to read as one jaw.
   const widths = teeth.map((n) => TOOTH_WIDTH[toothKind(n)]);
-  const totalWidth = widths.reduce((sum, w) => sum + w, 0);
+  // The midline gap is spaced like a (very narrow) extra tooth, inserted at the
+  // halfway index — 8|9 on the upper arch, 24|25 on the lower. Both halves of
+  // an arch carry identical crown widths, so budgeting for it here keeps the
+  // gap's centre exactly on VIEW_W / 2 and the arch symmetric about it.
+  const midIndex = Math.floor(teeth.length / 2);
+  const totalWidth = widths.reduce((sum, w) => sum + w, 0) + MIDLINE_GAP;
   let consumed = 0;
   return teeth.map((tooth, i) => {
+    if (i === midIndex) consumed += MIDLINE_GAP;
     // Centre of this crown as a fraction of the arch, so gaps stay uniform.
     const t = (consumed + widths[i]! / 2) / totalWidth;
     consumed += widths[i]!;
@@ -272,6 +291,34 @@ export function ToothChart({
         strokeWidth="1.5"
         strokeDasharray="5 7"
       />
+
+      {/* Dental midline — the vertical counterpart, one per panel, running down
+          the gap opened between the central incisors (8|9 above, 24|25 below).
+          Drawn before the teeth so a crown always wins the overlap, and both
+          segments are drawn OUTWARD from the occlusal gutter so their dashes
+          mirror each other across it instead of drifting out of phase. */}
+      {(
+        [
+          { arch: "upper", from: MID_Y - MIDLINE_GUTTER, to: MIDLINE_INSET },
+          {
+            arch: "lower",
+            from: MID_Y + MIDLINE_GUTTER,
+            to: VIEW_H - MIDLINE_INSET,
+          },
+        ] as const
+      ).map((seg) => (
+        <line
+          key={seg.arch}
+          x1={VIEW_W / 2}
+          y1={seg.from}
+          x2={VIEW_W / 2}
+          y2={seg.to}
+          className={palette.midline}
+          strokeWidth="1.5"
+          strokeDasharray="5 7"
+          pointerEvents="none"
+        />
+      ))}
 
       {/* Jaw labels, centred in their own panel and touching their own arch.
           Inside the SVG rather than above it so the label can never drift away
